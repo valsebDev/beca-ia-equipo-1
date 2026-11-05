@@ -1,0 +1,12 @@
+# Bitácora de Interacciones con IA - Práctica 1 (ms-users)
+
+Registro estructurado de interacciones, prompts, skills y agentes empleados.
+
+| # | Fecha | Herramienta | Tipo (prompt/skill/agente) | Objetivo | Prompt o archivo | Resultado | Qué ajusté y por qué |
+|---|-------|-------------|----------------------------|----------|------------------|-----------|-----------------|
+| 1 | 03/11 | Gemini | prompt | Generar requerimientos, actores, entidades, HU y RNF | `prompts/p1-hu.md` | Especificación con actores, entidades, 5 HU en Gherkin con escenarios negativos (400, 401, 409, 423), 3 RNF y preguntas abiertas. | Reajusté el resultado haciendo enfasis en el formato "Genera el archivo .MD al finalizar". |
+| 2 | 03/11 | Gemini | prompt | Generar modelo relacional y migración Flyway para PostgreSQL 16 | `prompts/p1-db.md` | Script `V1__crear_tablas_usuarios.sql` con tipos nativos, constraints `NOT NULL`, `UNIQUE` e índices B-Tree justificados en comentarios. | Reajusté los tipos nativos e índices. |
+| 3 | 04/11 | Gemini | prompt | Generar arquitectura REST por capas para ms-users | `prompts/p1-rest.md` | Clases de dominio, repositorios Spring Data JPA, DTOs tipo `record`, `UserService`, controladores (`AuthController`, `UserController`) y `GlobalExceptionHandler` con `ProblemDetail` (RFC 9457). |  |
+| 4 | 04/11 | Gemini | prompt | Generar configuración de dependencias y quality gates en Maven | `prompts/p1-pom.md` | Archivo `pom.xml` con Java 21, Spring Boot 3, plugins de Checkstyle, PMD/CPD, SpotBugs con FindSecBugs y OWASP Dependency-Check. | Actualicé pom para evitar errores de configuración. |
+| 5 | 04/11 | Gemini | prompt | Generar pruebas unitarias y de integración para servicio y controladores | `prompts/p1-pruebas.md` | 15 pruebas automatizadas: 7 pruebas unitarias con JUnit 5/Mockito (`UserServiceTest`) y 8 pruebas de MVC (`UserControllerTest`) cubriendo códigos 200, 201, 400, 401, 404, 409 y 423. | Comprobé el funcionamiento de los test. |
+| 6 | 04/11 | Gemini | agente | Revisión y auditoría de cumplimiento contra la rúbrica de P1 | Revisión de estructura del repo | Detección de discrepancia de nomenclatura en `UsersNotFoundException.java` vs `UserNotFoundException.java` y columnas faltantes en migración. | Renombre los archivos para resolver las discrepancias. |
