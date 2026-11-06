@@ -15,8 +15,8 @@ import java.time.Instant;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.TestConstructor;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -28,6 +28,7 @@ import com.ids.ms_tickets.model.TicketStatus;
 import com.ids.ms_tickets.service.TicketService;
 
 @WebMvcTest(TicketController.class)
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 class TicketControllerTest {
 
 	private static final String VALID_BODY = """
@@ -35,11 +36,14 @@ class TicketControllerTest {
 			 "categoryId":1,"priorityId":2}
 			""";
 
-	@Autowired
-	private MockMvc mockMvc;
+	private final MockMvc mockMvc;
 
 	@MockitoBean
 	private TicketService ticketService;
+
+	TicketControllerTest(MockMvc mockMvc) {
+		this.mockMvc = mockMvc;
+	}
 
 	@Test
 	void createTicket_withValidBody_returns201WithLocation() throws Exception {

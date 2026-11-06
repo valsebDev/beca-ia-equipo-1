@@ -1,0 +1,326 @@
+{
+	"info": {
+		"name": "ms-tickets",
+		"description": "Pruebas de los endpoints de /api/v1/tickets. Identidad simulada con X-User-Id y X-User-Role (Práctica 1).",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "baseUrl", "value": "http://localhost:8080" },
+		{ "key": "adminId", "value": "1" },
+		{ "key": "agentId", "value": "2" },
+		{ "key": "requesterId", "value": "10" },
+		{ "key": "ticketId", "value": "1" }
+	],
+	"item": [
+		{
+			"name": "1. Crear ticket (SOLICITANTE)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{ "key": "X-User-Id", "value": "{{requesterId}}" },
+					{ "key": "X-User-Role", "value": "SOLICITANTE" },
+					{ "key": "Content-Type", "value": "application/json" }
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"title\": \"Impresora sin red\",\n\t\"description\": \"La impresora del piso 2 no responde desde ayer\",\n\t\"categoryId\": 1,\n\t\"priorityId\": 2\n}"
+				},
+				"url": "{{baseUrl}}/api/v1/tickets"
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Responde 201', () => pm.response.to.have.status(201));",
+							"pm.test('Incluye Location', () => pm.response.to.have.header('Location'));",
+							"pm.test('Estado inicial ABIERTO', () => pm.expect(pm.response.json().status).to.eql('ABIERTO'));",
+							"pm.collectionVariables.set('ticketId', pm.response.json().id);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "2. Crear ticket con título vacío (400) [negativo]",
+			"request": {
+				"method": "POST",
+				"header": [
+					{ "key": "X-User-Id", "value": "{{requesterId}}" },
+					{ "key": "X-User-Role", "value": "SOLICITANTE" },
+					{ "key": "Content-Type", "value": "application/json" }
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"title\": \"\",\n\t\"description\": \"La impresora del piso 2 no responde desde ayer\",\n\t\"categoryId\": 1,\n\t\"priorityId\": 2\n}"
+				},
+				"url": "{{baseUrl}}/api/v1/tickets"
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Responde 400', () => pm.response.to.have.status(400));",
+							"pm.test('Código VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));",
+							"pm.test('Lista errors con el campo title', () => pm.expect(pm.response.json().errors[0].field).to.eql('title'));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "3. Listar mis tickets (SOLICITANTE)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{ "key": "X-User-Id", "value": "{{requesterId}}" },
+					{ "key": "X-User-Role", "value": "SOLICITANTE" }
+				],
+				"url": "{{baseUrl}}/api/v1/tickets"
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Responde 200 con arreglo', () => {",
+							"  pm.response.to.have.status(200);",
+							"  pm.expect(pm.response.json()).to.be.an('array');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "4. Consultar ticket por ID (dueño)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{ "key": "X-User-Id", "value": "{{requesterId}}" },
+					{ "key": "X-User-Role", "value": "SOLICITANTE" }
+				],
+				"url": "{{baseUrl}}/api/v1/tickets/{{ticketId}}"
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Responde 200', () => pm.response.to.have.status(200));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "5. Consultar ticket ajeno (403) [negativo]",
+			"request": {
+				"method": "GET",
+				"header": [
+					{ "key": "X-User-Id", "value": "99" },
+					{ "key": "X-User-Role", "value": "SOLICITANTE" }
+				],
+				"url": "{{baseUrl}}/api/v1/tickets/{{ticketId}}"
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Responde 403', () => pm.response.to.have.status(403));",
+							"pm.test('Respuesta ProblemDetail', () => pm.expect(pm.response.json().status).to.eql(403));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "6. Consultar ticket inexistente (404) [negativo]",
+			"request": {
+				"method": "GET",
+				"header": [
+					{ "key": "X-User-Id", "value": "{{adminId}}" },
+					{ "key": "X-User-Role", "value": "ADMIN" }
+				],
+				"url": "{{baseUrl}}/api/v1/tickets/999999"
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Responde 404', () => pm.response.to.have.status(404));",
+							"pm.test('Código TICKET_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('TICKET_NOT_FOUND'));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "7. Asignar ticket a agente (ADMIN)",
+			"request": {
+				"method": "PATCH",
+				"header": [
+					{ "key": "X-User-Id", "value": "{{adminId}}" },
+					{ "key": "X-User-Role", "value": "ADMIN" },
+					{ "key": "Content-Type", "value": "application/json" }
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"assigneeId\": {{agentId}}\n}"
+				},
+				"url": "{{baseUrl}}/api/v1/tickets/{{ticketId}}/assignment"
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Responde 200', () => pm.response.to.have.status(200));",
+							"pm.test('Estado ASIGNADO', () => pm.expect(pm.response.json().status).to.eql('ASIGNADO'));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "8. Asignar por SOLICITANTE (403) [negativo]",
+			"request": {
+				"method": "PATCH",
+				"header": [
+					{ "key": "X-User-Id", "value": "{{requesterId}}" },
+					{ "key": "X-User-Role", "value": "SOLICITANTE" },
+					{ "key": "Content-Type", "value": "application/json" }
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"assigneeId\": {{agentId}}\n}"
+				},
+				"url": "{{baseUrl}}/api/v1/tickets/{{ticketId}}/assignment"
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Responde 403', () => pm.response.to.have.status(403));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "9. Cambiar estado a EN_PROGRESO (AGENTE asignado)",
+			"request": {
+				"method": "PATCH",
+				"header": [
+					{ "key": "X-User-Id", "value": "{{agentId}}" },
+					{ "key": "X-User-Role", "value": "AGENTE" },
+					{ "key": "Content-Type", "value": "application/json" }
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"status\": \"EN_PROGRESO\",\n\t\"comment\": \"Revisando el equipo\"\n}"
+				},
+				"url": "{{baseUrl}}/api/v1/tickets/{{ticketId}}/status"
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Responde 200', () => pm.response.to.have.status(200));",
+							"pm.test('Estado EN_PROGRESO', () => pm.expect(pm.response.json().status).to.eql('EN_PROGRESO'));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "10. Transición inválida (409) [negativo]",
+			"request": {
+				"method": "PATCH",
+				"header": [
+					{ "key": "X-User-Id", "value": "{{agentId}}" },
+					{ "key": "X-User-Role", "value": "AGENTE" },
+					{ "key": "Content-Type", "value": "application/json" }
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"status\": \"ABIERTO\"\n}"
+				},
+				"url": "{{baseUrl}}/api/v1/tickets/{{ticketId}}/status"
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Responde 409', () => pm.response.to.have.status(409));",
+							"pm.test('Código TICKET_INVALID_TRANSITION', () => pm.expect(pm.response.json().code).to.eql('TICKET_INVALID_TRANSITION'));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "11. Consultar historial (ADMIN)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{ "key": "X-User-Id", "value": "{{adminId}}" },
+					{ "key": "X-User-Role", "value": "ADMIN" }
+				],
+				"url": "{{baseUrl}}/api/v1/tickets/{{ticketId}}/history"
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Responde 200 con arreglo', () => {",
+							"  pm.response.to.have.status(200);",
+							"  pm.expect(pm.response.json()).to.be.an('array');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "12. Petición sin cabecera de rol (400) [negativo]",
+			"request": {
+				"method": "GET",
+				"header": [
+					{ "key": "X-User-Id", "value": "{{requesterId}}" }
+				],
+				"url": "{{baseUrl}}/api/v1/tickets"
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Responde 400', () => pm.response.to.have.status(400));",
+							"pm.test('Código MALFORMED_REQUEST', () => pm.expect(pm.response.json().code).to.eql('MALFORMED_REQUEST'));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		}
+	]
+}
