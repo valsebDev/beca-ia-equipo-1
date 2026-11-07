@@ -1,26 +1,7 @@
 package com.ids.ms_users.controller;
 
-import java.time.LocalDateTime;
-
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.ids.ms_users.domain.Role;
 import com.ids.ms_users.dto.LoginRequest;
 import com.ids.ms_users.dto.RegisterUserRequest;
@@ -33,28 +14,60 @@ import com.ids.ms_users.exception.InvalidCredentialsException;
 import com.ids.ms_users.exception.UserNotFoundException;
 import com.ids.ms_users.service.TokenService;
 import com.ids.ms_users.service.UserService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-@WebMvcTest(controllers = {AuthController.class, UserController.class})
-@AutoConfigureMockMvc(addFilters = false)
-@Import(GlobalExceptionHandler.class)
+import java.time.LocalDateTime;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@ExtendWith(MockitoExtension.class)
 class UserControllerTest {
 
-    @Autowired
     private MockMvc mockMvc;
-
-    @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @Mock
     private UserService userService;
 
-    @MockBean
+    @Mock
     private TokenService tokenService;
+
+    @InjectMocks
+    private UserController userController;
+
+    @InjectMocks
+    private AuthController authController;
+
+    @BeforeEach
+    void setUp() {
+        objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+
+        mockMvc = MockMvcBuilders
+                .standaloneSetup(authController, userController)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
+    }
 
     @Test
     @DisplayName("HU-01: POST /api/v1/auth/register - Exitoso devuelve 201 Created")
     void register_payloadValido_retorna201Created() throws Exception {
-        // Given
         RegisterUserRequest request = new RegisterUserRequest(
                 "Maria", "Gonzalez", "Perez", "maria@ids.com", "Password#2026"
         );
@@ -64,7 +77,6 @@ class UserControllerTest {
         );
         given(userService.register(any(RegisterUserRequest.class))).willReturn(response);
 
-        // When / Then
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -74,16 +86,14 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("HU-01: POST /api/v1/auth/register - Correo duplicado devuelve 409 Conflict (ProblemDetail)")
+    @DisplayName("HU-01: POST /api/v1/auth/register - Correo duplicado devuelve 409 Conflict")
     void register_correoDuplicado_retorna409Conflict() throws Exception {
-        // Given
         RegisterUserRequest request = new RegisterUserRequest(
                 "Maria", "Gonzalez", "Perez", "duplicado@ids.com", "Password#2026"
         );
         given(userService.register(any(RegisterUserRequest.class)))
                 .willThrow(new EmailAlreadyExistsException("duplicado@ids.com"));
 
-        // When / Then
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -95,12 +105,10 @@ class UserControllerTest {
     @Test
     @DisplayName("HU-01: POST /api/v1/auth/register - Payload sin campos obligatorios devuelve 400 Bad Request")
     void register_payloadInvalido_retorna400BadRequest() throws Exception {
-        // Given (nombre en blanco y contraseña no cumple regex)
         RegisterUserRequest request = new RegisterUserRequest(
                 "", "", "", "formato-invalido", "123"
         );
 
-        // When / Then
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -112,12 +120,10 @@ class UserControllerTest {
     @Test
     @DisplayName("HU-02: POST /api/v1/auth/login - Credenciales inválidas devuelven 401 Unauthorized")
     void login_credencialesInvalidas_devuelve401Unauthorized() throws Exception {
-        // Given
         LoginRequest request = new LoginRequest("user@ids.com", "BadPassword");
         given(userService.login(any(LoginRequest.class)))
                 .willThrow(new InvalidCredentialsException("Credenciales no válidas"));
 
-        // When / Then
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -129,12 +135,10 @@ class UserControllerTest {
     @Test
     @DisplayName("HU-03: POST /api/v1/auth/login - Cuenta bloqueada devuelve 423 Locked")
     void login_cuentaBloqueada_devuelve423Locked() throws Exception {
-        // Given
         LoginRequest request = new LoginRequest("bloqueado@ids.com", "Password#123");
         given(userService.login(any(LoginRequest.class)))
                 .willThrow(new AccountLockedException("Cuenta bloqueada temporalmente"));
 
-        // When / Then
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -146,7 +150,6 @@ class UserControllerTest {
     @Test
     @DisplayName("HU-04: GET /api/v1/users/me - Consulta de perfil exitosa devuelve 200 OK")
     void getMyProfile_usuarioAutenticado_devuelve200Ok() throws Exception {
-        // Given
         String tokenHeader = "Bearer mock-token";
         String userIdentifier = "uuid-solicitante";
         UserResponse response = new UserResponse(
@@ -157,7 +160,6 @@ class UserControllerTest {
         given(tokenService.extractUserIdentifier(tokenHeader)).willReturn(userIdentifier);
         given(userService.getProfile(userIdentifier)).willReturn(response);
 
-        // When / Then
         mockMvc.perform(get("/api/v1/users/me")
                         .header("Authorization", tokenHeader))
                 .andExpect(status().isOk())
@@ -168,7 +170,6 @@ class UserControllerTest {
     @Test
     @DisplayName("HU-04: GET /api/v1/users/me - Usuario no encontrado devuelve 404 Not Found")
     void getMyProfile_usuarioNoEncontrado_devuelve404NotFound() throws Exception {
-        // Given
         String tokenHeader = "Bearer mock-token";
         String userIdentifier = "uuid-no-existe";
 
@@ -176,7 +177,6 @@ class UserControllerTest {
         given(userService.getProfile(userIdentifier))
                 .willThrow(new UserNotFoundException("Usuario no encontrado con identificador: " + userIdentifier));
 
-        // When / Then
         mockMvc.perform(get("/api/v1/users/me")
                         .header("Authorization", tokenHeader))
                 .andExpect(status().isNotFound())
@@ -185,29 +185,8 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("HU-05: PATCH /api/v1/users/{userIdentifier}/status - Actualiza el estado del usuario")
-    void updateUserStatus_usuarioAdministrado_devuelve200Ok() throws Exception {
-        String userIdentifier = "uuid-target";
-        UpdateUserStatusRequest request = new UpdateUserStatusRequest(false);
-        UserResponse response = new UserResponse(
-                userIdentifier, "Pedro", "Navaja", null, "pedro@ids.com",
-                Role.AGENTE, false, LocalDateTime.now()
-        );
-        given(userService.updateStatus(eq(userIdentifier), any(UpdateUserStatusRequest.class)))
-                .willReturn(response);
-
-        mockMvc.perform(patch("/api/v1/users/{userIdentifier}/status", userIdentifier)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userIdentifier").value(userIdentifier))
-                .andExpect(jsonPath("$.isActive").value(false));
-    }
-
-    @Test
     @DisplayName("HU-05: PATCH /api/v1/users/me/status - Desactivación lógica devuelve 200 OK")
     void updateMyStatus_desactivacionExitosa_devuelve200Ok() throws Exception {
-        // Given
         String tokenHeader = "Bearer mock-token-admin";
         String userIdentifier = "uuid-target";
         UpdateUserStatusRequest request = new UpdateUserStatusRequest(false);
@@ -219,7 +198,6 @@ class UserControllerTest {
         given(tokenService.extractUserIdentifier(tokenHeader)).willReturn(userIdentifier);
         given(userService.updateStatus(eq(userIdentifier), any(UpdateUserStatusRequest.class))).willReturn(response);
 
-        // When / Then
         mockMvc.perform(patch("/api/v1/users/me/status")
                         .header("Authorization", tokenHeader)
                         .contentType(MediaType.APPLICATION_JSON)

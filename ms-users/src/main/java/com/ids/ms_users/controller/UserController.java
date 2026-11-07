@@ -3,6 +3,7 @@ package com.ids.ms_users.controller;
 import com.ids.ms_users.dto.UpdateProfileRequest;
 import com.ids.ms_users.dto.UpdateUserStatusRequest;
 import com.ids.ms_users.dto.UserResponse;
+import com.ids.ms_users.exception.ForbiddenOperationException;
 import com.ids.ms_users.service.TokenService;
 import com.ids.ms_users.service.UserService;
 import jakarta.validation.Valid;
@@ -15,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -43,14 +46,6 @@ public class UserController {
         return ResponseEntity.ok(userService.updateProfile(userIdentifier, request));
     }
 
-    // HU-05: Desactivación / cambio de estado por parte de ADMIN
-    @PatchMapping("/{userIdentifier}/status")
-    public ResponseEntity<UserResponse> updateUserStatus(
-            @PathVariable String userIdentifier,
-            @Valid @RequestBody UpdateUserStatusRequest request) {
-        return ResponseEntity.ok(userService.updateStatus(userIdentifier, request));
-    }
-
     @PatchMapping("/me/status")
     public ResponseEntity<UserResponse> updateMyStatus(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
@@ -59,11 +54,18 @@ public class UserController {
         return ResponseEntity.ok(userService.updateStatus(userIdentifier, request));
     }
 
-    // HU-05: Desactivación por ADMIN de cualquier usuario mediante su ID/identificador
+    // HU-05: Desactivación por ADMIN (líneas partidas para cumplir con Checkstyle <= 120 caracteres)
     @PatchMapping("/{userIdentifier}/status")
     public ResponseEntity<UserResponse> updateUserStatusByAdmin(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable String userIdentifier,
             @Valid @RequestBody UpdateUserStatusRequest request) {
+        tokenService.extractUserIdentifier(authHeader);
+        List<String> roles = tokenService.extractRoles(authHeader);
+        if (roles == null || !roles.contains("ADMIN")) {
+            throw new ForbiddenOperationException(
+                    "Solo un usuario con rol ADMIN puede desactivar cuentas");
+        }
         return ResponseEntity.ok(userService.updateStatus(userIdentifier, request));
     }
 }

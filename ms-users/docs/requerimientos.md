@@ -2,7 +2,7 @@
 
 **Microservicio:** `ms-users`  
 **Sistema:** Mesa de Ayuda (Sistema de Tickets)  
-**Stack:** Java 21, Spring Boot 3.x, PostgreSQL 16, Spring Security, JWT  
+**Stack:** Java 17, Spring Boot 4.1.2, PostgreSQL 16, Spring Security, JWT
 **Fase:** Práctica 1 (Análisis y Especificación de Requerimientos)
 
 ---

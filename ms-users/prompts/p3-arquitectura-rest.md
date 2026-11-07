@@ -1,10 +1,10 @@
 # Prompt 3: Arquitectura REST por Capas
 
 ## 1. ROL
-Actúa como Desarrollador Backend Senior en Java 21 y Spring Boot 3.
+Actúa como Desarrollador Backend Senior en Java 17 y Spring Boot 4.1.2.
 
 ## 2. CONTEXTO
-Microservicio ms-users. Stack: Java 21, Spring Boot 3.3.x, Spring Data JPA, Maven. Paquete base: com.ids.ms_users.
+Microservicio ms-users. Stack: Java 17, Spring Boot 4.1.2, Spring Data JPA, Maven. Paquete base: com.ids.ms_users.
 
 ## 3. TAREA
 Generar la arquitectura REST por capas completa:
@@ -28,5 +28,8 @@ Bloques de código con rutas completas relativas.
 ## 6. VERIFICACIÓN
 Comprobar compilación limpia con ./mvnw clean compile.
 
-## 7. SUPUESTOS / EJEMPLO
-- Formato RFC 9457 incluye campos type, title, status, detail, instance e invalidParams.
+## EJEMPLO
+Una respuesta de error de validación debe usar ProblemDetail con status 400 y una propiedad `invalidParams`.
+
+## SUPUESTOS
+- El formato RFC 9457 puede incluir campos type, title, status, detail, instance e invalidParams.

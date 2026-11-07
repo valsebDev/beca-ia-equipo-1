@@ -1,10 +1,13 @@
 package com.ids.ms_users.service;
 
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
 import javax.crypto.SecretKey;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +17,7 @@ import com.ids.ms_users.exception.InvalidCredentialsException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 
 @Service
 public class TokenService {
@@ -23,11 +27,23 @@ public class TokenService {
     private final String issuer;
     private final String audience;
 
+    @Autowired
     public TokenService(
-            SecretKey signingKey,
+            @Value("${app.security.jwt.secret}") String secret,
             @Value("${app.security.jwt.access-ttl-minutes:15}") long expirationMinutes,
             @Value("${app.security.jwt.issuer:ms-users}") String issuer,
             @Value("${app.security.jwt.audience:mesa-ayuda}") String audience) {
+        this(createSigningKey(secret), expirationMinutes, issuer, audience);
+    }
+
+    public TokenService(
+            SecretKey signingKey,
+            long expirationMinutes,
+            String issuer,
+            String audience) {
+        if (signingKey == null) {
+            throw new IllegalArgumentException("La clave de firma JWT no puede ser nula");
+        }
         this.signingKey = signingKey;
         this.expirationMinutes = expirationMinutes;
         this.issuer = issuer;
@@ -61,30 +77,62 @@ public class TokenService {
     }
 
     public String extractUserIdentifier(String bearerHeader) {
+        Claims claims = extractAllClaims(bearerHeader);
+        Object identifier = claims.get("userIdentifier");
+        if (!(identifier instanceof String userIdentifier) || userIdentifier.isBlank()) {
+            throw new InvalidCredentialsException("Token JWT inválido o sin identificador de usuario");
+        }
+        try {
+            Long.parseLong(claims.getSubject());
+        } catch (NumberFormatException ex) {
+            throw new InvalidCredentialsException("Token JWT inválido o sin identificador de usuario");
+        }
+        return userIdentifier;
+    }
+
+    public List<String> extractRoles(String bearerHeader) {
+        Claims claims = extractAllClaims(bearerHeader);
+        Object rolesClaim = claims.get("roles");
+        if (!(rolesClaim instanceof List<?> roleClaims)) {
+            return null;
+        }
+
+        List<String> roles = new ArrayList<>();
+        for (Object role : roleClaims) {
+            if (!(role instanceof String roleName)) {
+                return null;
+            }
+            roles.add(roleName);
+        }
+        return List.copyOf(roles);
+    }
+
+    private Claims extractAllClaims(String bearerHeader) {
         if (bearerHeader == null || !bearerHeader.startsWith("Bearer ")) {
             throw new InvalidCredentialsException("Cabecera de autorización faltante o con formato inválido");
         }
         String token = bearerHeader.substring(7);
         try {
-            Claims claims = Jwts.parser()
+            return Jwts.parser()
                     .verifyWith(signingKey)
                     .requireIssuer(issuer)
                     .requireAudience(audience)
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-            Long.parseLong(claims.getSubject());
-            String userIdentifier = claims.get("userIdentifier", String.class);
-            if (userIdentifier == null || userIdentifier.isBlank()) {
-                throw new IllegalArgumentException("El token no contiene un identificador de usuario válido");
-            }
-            return userIdentifier;
         } catch (JwtException | IllegalArgumentException ex) {
-            throw new InvalidCredentialsException("Token JWT inválido o expirado", ex);
+            throw new InvalidCredentialsException("Token JWT inválido o expirado");
         }
     }
 
     public long getExpirationSeconds() {
         return expirationMinutes * 60;
+    }
+
+    private static SecretKey createSigningKey(String secret) {
+        if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalArgumentException("JWT_SECRET debe tener al menos 32 caracteres (256 bits)");
+        }
+        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 }

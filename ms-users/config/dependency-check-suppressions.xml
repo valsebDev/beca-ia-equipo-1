@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <suppress>
+        <notes><![CDATA[
+        CVE-2025-7962 is a Jakarta Mail SMTP injection advisory. Dependency-Check
+        matched it to angus-activation 2.0.3 through a broad CPE association. This
+        suppression is restricted to that exact Maven package URL and CVE. Revisit
+        if the resolved dependency changes or Angus Activation receives a direct advisory.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.eclipse\.angus/angus-activation@2\.0\.3$</packageUrl>
+        <cve>CVE-2025-7962</cve>
+    </suppress>
+</suppressions>

@@ -23,5 +23,11 @@ Bloque de código SQL único listo para V1__crear_tablas_usuarios.sql.
 ## 6. VERIFICACIÓN
 Verificar que todas las columnas NOT NULL, UNIQUE y llaves foráneas/check estén comentadas.
 
-## 7. SUPUESTOS / EJEMPLO
+## EJEMPLO
+```sql
+-- Justifica: HU-02 consulta usuarios por correo durante el inicio de sesión.
+CREATE UNIQUE INDEX uk_users_email ON users (email);
+```
+
+## SUPUESTOS
 - Contraseñas almacenadas como hash BCrypt de longitud variable (VARCHAR 255).

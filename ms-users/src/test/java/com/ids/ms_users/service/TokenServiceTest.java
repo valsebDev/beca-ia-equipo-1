@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,7 +54,22 @@ class TokenServiceTest {
         assertEquals("ana@example.com", claims.get("email", String.class));
         assertEquals("Ana García López", claims.get("name", String.class));
         assertEquals(List.of("ADMIN"), claims.get("roles"));
+        assertNotNull(claims.getExpiration());
         assertEquals(USER_IDENTIFIER, tokenService.extractUserIdentifier("Bearer " + token));
+        assertEquals(List.of("ADMIN"), tokenService.extractRoles("Bearer " + token));
+    }
+
+    @Test
+    void extractUserIdentifier_tokenFirmadoAlterado_lanzaCredencialesInvalidas() {
+        User user = new User(USER_IDENTIFIER, "Ana", "García", "López", "ana@example.com",
+                "encoded-password", Role.ADMIN, true, LocalDateTime.now());
+        ReflectionTestUtils.setField(user, "id", 42L);
+        String[] parts = tokenService.generateToken(user).split("\\.");
+        String payload = parts[1];
+        parts[1] = (payload.charAt(0) == 'A' ? "B" : "A") + payload.substring(1);
+
+        assertThrows(InvalidCredentialsException.class,
+                () -> tokenService.extractUserIdentifier("Bearer " + String.join(".", parts)));
     }
 
     @Test

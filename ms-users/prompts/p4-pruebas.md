@@ -22,5 +22,8 @@ Archivos UserServiceTest.java y UserControllerTest.java con rutas completas.
 ## 6. VERIFICACIÓN
 Ejecutar ./mvnw test y confirmar todas en verde.
 
-## 7. SUPUESTOS / EJEMPLO
-- Aislar el contexto de Spring en pruebas web usando @AutoConfigureMockMvc(addFilters = false).
+## EJEMPLO
+Un caso de HU-05 debe comprobar que ADMIN obtiene 200 y un usuario SOLICITANTE obtiene 403.
+
+## SUPUESTOS
+- Las pruebas web pueden aislar el contexto con @AutoConfigureMockMvc(addFilters = false), siempre que se pruebe por separado la validación real del JWT.

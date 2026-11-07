@@ -7,7 +7,7 @@ Actúa como analista de requerimientos senior con experiencia en arquitectura de
 
 ## CONTEXTO
 
-Microservicio `ms-users` de un sistema de Mesa de Ayuda en Java 21 y Spring Boot 3. 
+Microservicio `ms-users` de un sistema de Mesa de Ayuda en Java 17 y Spring Boot 4.1.2.
 
 Texto de negocio: "El microservicio ms-users maneja registro, autenticación (login con correo y contraseña), emisión de tokens JWT, roles (SOLICITANTE, AGENTE, ADMIN), consulta y edición de perfil, desactivación de cuentas y bloqueo temporal por intentos fallidos de login."
 
@@ -42,6 +42,9 @@ Documento Markdown estructurado con secciones: Actores, Entidades, Reglas de Neg
 
 Verifica que cada HU tenga al menos un escenario negativo en Gherkin.
 
+## EJEMPLO
+`Scenario: Registro con correo duplicado` debe terminar con HTTP 409 Conflict.
+
 # Prompt 2: Modelo relacional y migración Flyway.
 ## ROL
 Actúa como Administrador de Bases de Datos especializado en PostgreSQL 16.
@@ -65,12 +68,15 @@ Genera un único bloque de código SQL listo para guardarse en `V1__crear_tablas
 ## VERIFICACIÓN
 Verifica que las restricciones NOT NULL, UNIQUE y los índices tengan su correspondiente justificación en comentarios.
 
+## EJEMPLO
+`CREATE UNIQUE INDEX uk_users_email ON users (email);` debe llevar un comentario que justifique su relación con el login.
+
 # Prompt 3: Arquitectura REST (DTOs, Service, Controller, ExceptionHandler).
 ## ROL
-Actúa como Desarrollador Backend Senior en Java 21 y Spring Boot 3.
+Actúa como Desarrollador Backend Senior en Java 17 y Spring Boot 4.1.2.
 
 ## CONTEXTO
-Microservicio `ms-users` del proyecto Mesa de Ayuda. Stack: Java 21, Spring Boot 3.x, Spring Data JPA, Maven. Paquete base: `com.ids.ms_users`. Requerimientos en #file:ms-users/docs/requerimientos.md.
+Microservicio `ms-users` del proyecto Mesa de Ayuda. Stack: Java 17, Spring Boot 4.1.2, Spring Data JPA, Maven. Paquete base: `com.ids.ms_users`. Requerimientos en #file:ms-users/docs/requerimientos.md.
 
 ## TAREA
 Genera la arquitectura REST completa para `ms-users` que cubra las HU de gestión de usuarios (Registro, Login, Perfil `GET /me`, Edición `PUT /me` y Desactivación `PATCH /me/status`).
@@ -87,6 +93,9 @@ Genera un bloque de código por archivo Java con su ruta completa como encabezad
 
 ## VERIFICACIÓN
 Indica los comandos de compilación Maven para verificar que no existan errores de sintaxis o dependencias faltantes.
+
+## EJEMPLO
+Una solicitud protegida sin JWT debe responder HTTP 401; una operación administrativa con rol insuficiente debe responder HTTP 403.
 
 # Prompt 4: Automatización de pruebas unitarias y de controlador.
 ## ROL
@@ -110,3 +119,6 @@ Archivos de prueba Java estructurados con rutas completas.
 
 ## VERIFICACIÓN
 Indica el comando Maven exacto para ejecutar las pruebas (`./mvnw -B verify`) y verificar que pasen en verde.
+
+## EJEMPLO
+Incluye un caso de MockMvc que envíe un JWT alterado y espere HTTP 401.

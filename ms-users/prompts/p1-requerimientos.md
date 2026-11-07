@@ -4,7 +4,7 @@
 Actúa como analista de requerimientos senior con experiencia en arquitectura de microservicios y Spring Boot.
 
 ## 2. CONTEXTO
-Microservicio ms-users del sistema de Mesa de Ayuda en Java 17 y Spring Boot 3. 
+Microservicio ms-users del sistema de Mesa de Ayuda en Java 17 y Spring Boot 4.1.2.
 Texto de negocio: "El microservicio ms-users maneja registro, autenticación (login con correo y contraseña), emisión de tokens JWT, roles (SOLICITANTE, AGENTE, ADMIN), consulta y edición de perfil, desactivación de cuentas y bloqueo temporal por intentos fallidos de login."
 
 ## 3. TAREA
@@ -24,9 +24,12 @@ Documento Markdown estructurado con secciones: Actores, Entidades, Reglas de Neg
 ## 6. VERIFICACIÓN
 Verifica que cada HU tenga al menos un escenario negativo en Gherkin.
 
-## 7. SUPUESTOS / EJEMPLO
-Ejemplo de escenario Gherkin negativo esperado:
+## EJEMPLO
+Escenario Gherkin negativo esperado:
 Scenario: Intento de registro con correo ya existente
   Given que el correo "usuario@empresa.com" ya se encuentra registrado
   When el cliente intenta registrarse con dicho correo
   Then el sistema rechaza la petición respondiendo con código HTTP 409 Conflict.
+
+## SUPUESTOS
+Marca como SUPUESTO cualquier regla que no esté confirmada por el cliente.
