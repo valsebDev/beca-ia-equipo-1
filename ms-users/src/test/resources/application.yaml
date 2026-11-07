@@ -10,3 +10,14 @@ spring:
     database-platform: org.hibernate.dialect.H2Dialect
   flyway:
     enabled: false
+
+app:
+  security:
+    jwt:
+      secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+      access-ttl-minutes: 15
+      issuer: ms-users
+      audience: mesa-ayuda
+    lock:
+      max-failed-attempts: 5
+      duration-minutes: 15

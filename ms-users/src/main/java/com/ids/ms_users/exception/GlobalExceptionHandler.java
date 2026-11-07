@@ -15,12 +15,14 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final String TIMESTAMP_PROPERTY = "timestamp";
+
     @ExceptionHandler(EmailAlreadyExistsException.class)
     public ProblemDetail handleEmailAlreadyExists(EmailAlreadyExistsException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
         problem.setTitle("Conflicto de Datos");
         problem.setType(URI.create("https://ids.com/errors/email-already-exists"));
-        problem.setProperty("timestamp", Instant.now());
+        problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return problem;
     }
 
@@ -29,7 +31,7 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
         problem.setTitle("Credenciales Inválidas");
         problem.setType(URI.create("https://ids.com/errors/unauthorized"));
-        problem.setProperty("timestamp", Instant.now());
+        problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return problem;
     }
 
@@ -38,7 +40,7 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.LOCKED, ex.getMessage());
         problem.setTitle("Cuenta Bloqueada Temporalmente");
         problem.setType(URI.create("https://ids.com/errors/account-locked"));
-        problem.setProperty("timestamp", Instant.now());
+        problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return problem;
     }
 
@@ -47,7 +49,7 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
         problem.setTitle("Cuenta Inactiva");
         problem.setType(URI.create("https://ids.com/errors/account-inactive"));
-        problem.setProperty("timestamp", Instant.now());
+        problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return problem;
     }
 
@@ -56,7 +58,7 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         problem.setTitle("Usuario No Encontrado");
         problem.setType(URI.create("https://ids.com/errors/user-not-found"));
-        problem.setProperty("timestamp", Instant.now());
+        problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return problem;
     }
 
@@ -66,7 +68,7 @@ public class GlobalExceptionHandler {
         HttpStatus.BAD_REQUEST, "Uno o más campos tienen errores de validación");
         problem.setTitle("Error de Validación");
         problem.setType(URI.create("https://ids.com/errors/validation-error"));
-        problem.setProperty("timestamp", Instant.now());
+        problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
 
         Map<String, String> errors = ex.getBindingResult().getFieldErrors().stream()
             .collect(Collectors.toMap(

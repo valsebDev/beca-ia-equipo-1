@@ -1,11 +1,29 @@
 package com.ids.ms_users.controller;
 
+import java.time.LocalDateTime;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ids.ms_users.domain.Role;
-import com.ids.ms_users.dto.AuthResponse;
 import com.ids.ms_users.dto.LoginRequest;
 import com.ids.ms_users.dto.RegisterUserRequest;
-import com.ids.ms_users.dto.UpdateProfileRequest;
 import com.ids.ms_users.dto.UpdateUserStatusRequest;
 import com.ids.ms_users.dto.UserResponse;
 import com.ids.ms_users.exception.AccountLockedException;
@@ -15,27 +33,6 @@ import com.ids.ms_users.exception.InvalidCredentialsException;
 import com.ids.ms_users.exception.UserNotFoundException;
 import com.ids.ms_users.service.TokenService;
 import com.ids.ms_users.service.UserService;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-
-import java.time.LocalDateTime;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = {AuthController.class, UserController.class})
 @AutoConfigureMockMvc(addFilters = false)
@@ -185,6 +182,26 @@ class UserControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.title").value("Usuario No Encontrado"));
+    }
+
+    @Test
+    @DisplayName("HU-05: PATCH /api/v1/users/{userIdentifier}/status - Actualiza el estado del usuario")
+    void updateUserStatus_usuarioAdministrado_devuelve200Ok() throws Exception {
+        String userIdentifier = "uuid-target";
+        UpdateUserStatusRequest request = new UpdateUserStatusRequest(false);
+        UserResponse response = new UserResponse(
+                userIdentifier, "Pedro", "Navaja", null, "pedro@ids.com",
+                Role.AGENTE, false, LocalDateTime.now()
+        );
+        given(userService.updateStatus(eq(userIdentifier), any(UpdateUserStatusRequest.class)))
+                .willReturn(response);
+
+        mockMvc.perform(patch("/api/v1/users/{userIdentifier}/status", userIdentifier)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userIdentifier").value(userIdentifier))
+                .andExpect(jsonPath("$.isActive").value(false));
     }
 
     @Test

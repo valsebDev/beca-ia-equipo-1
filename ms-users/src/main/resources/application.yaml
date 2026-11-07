@@ -1,16 +1,17 @@
 server:
   port: ${PORT:8081}
   error:
-    include-message: always
-    include-binding-errors: always
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
 
 spring:
   application:
     name: ms-users
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/mesa_ayuda}
-    username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/users_db}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: org.postgresql.Driver
   jpa:
     open-in-view: false
@@ -18,7 +19,7 @@ spring:
       ddl-auto: validate
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
     show-sql: false
   flyway:
     enabled: true
@@ -28,8 +29,9 @@ app:
   security:
     jwt:
       secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
-      expiration-minutes: ${JWT_EXPIRATION_MINUTES:60}
-      issuer: ${JWT_ISSUER:ms-users}
+      access-ttl-minutes: ${JWT_ACCESS_TTL_MINUTES:15}
+      issuer: ms-users
+      audience: mesa-ayuda
     lock:
       max-failed-attempts: ${MAX_FAILED_ATTEMPTS:5}
       duration-minutes: ${LOCK_DURATION_MINUTES:15}

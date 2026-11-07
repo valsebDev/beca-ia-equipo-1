@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -42,11 +43,27 @@ public class UserController {
         return ResponseEntity.ok(userService.updateProfile(userIdentifier, request));
     }
 
+    // HU-05: Desactivación / cambio de estado por parte de ADMIN
+    @PatchMapping("/{userIdentifier}/status")
+    public ResponseEntity<UserResponse> updateUserStatus(
+            @PathVariable String userIdentifier,
+            @Valid @RequestBody UpdateUserStatusRequest request) {
+        return ResponseEntity.ok(userService.updateStatus(userIdentifier, request));
+    }
+
     @PatchMapping("/me/status")
     public ResponseEntity<UserResponse> updateMyStatus(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @Valid @RequestBody UpdateUserStatusRequest request) {
         String userIdentifier = tokenService.extractUserIdentifier(authHeader);
+        return ResponseEntity.ok(userService.updateStatus(userIdentifier, request));
+    }
+
+    // HU-05: Desactivación por ADMIN de cualquier usuario mediante su ID/identificador
+    @PatchMapping("/{userIdentifier}/status")
+    public ResponseEntity<UserResponse> updateUserStatusByAdmin(
+            @PathVariable String userIdentifier,
+            @Valid @RequestBody UpdateUserStatusRequest request) {
         return ResponseEntity.ok(userService.updateStatus(userIdentifier, request));
     }
 }
