@@ -8,6 +8,8 @@ import lombok.Getter;
 @Getter
 public class DomainValidationException extends DomainException {
 
+	private static final long serialVersionUID = 1L;
+
 	private final String field;
 
 	public DomainValidationException(String field, String message) {

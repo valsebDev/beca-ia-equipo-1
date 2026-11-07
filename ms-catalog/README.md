@@ -55,7 +55,14 @@ Health check: `GET http://localhost:8080/actuator/health`.
 ./mvnw test
 ```
 
-Incluye pruebas unitarias de servicio (JUnit 5 + Mockito) y pruebas de controlador con `@WebMvcTest`. No requieren base de datos.
+Incluye pruebas unitarias de servicio (JUnit 5 + Mockito) y pruebas de controlador con `@WebMvcTest`. No requieren base de datos, salvo `MsCatalogApplicationTests`, que usa Testcontainers y necesita Docker.
+
+Para las puertas de calidad completas (Checkstyle, PMD, SpotBugs con FindSecBugs, Dependency-Check y JaCoCo con cobertura de líneas ≥ 70 %):
+
+```bash
+set -a; . ./.env; set +a      # Dependency-Check necesita NVD_API_KEY
+./mvnw -B verify
+```
 
 ## 4. Documentación de la API (Swagger UI)
 
