@@ -1,0 +1,8 @@
+# Bitácora de IA: ms-tickets
+
+| # | Fecha | Herramienta | Tipo (prompt/skill/agente) | Objetivo | Prompt o archivo | Resultado | Qué ajusté y por qué |
+|---|---|---|---|---|---|---|---|
+| 1 | 2026-11-05 | GitHub Copilot (Claude Haiku 5.5) | prompt | Redactar requerimientos y HU-01 a HU-04 | `prompts/01-requerimientos-hu.md` → `docs/requerimientos.md` | Historias con criterios Gherkin y escenarios negativos | Quité reglas inventadas y marqué los supuestos con `SUPUESTO:` para que cada regla no confirmada en `ARCHITECTURE.md` quede visible. |
+| 2 | 2026-11-05 | GitHub Copilot (Claude Haiku 5.5) | prompt | Diseñar el modelo de datos y la migración Flyway | `prompts/02-modelo-datos-flyway.md` → `src/main/resources/db/migration/V1__create_ticket_tables.sql` | Tablas `tickets` y `ticket_history` con CHECK e índices | Eliminé las FK hacia `ms-users` y `ms-catalog` porque son microservicios independientes y solo se guardan IDs. |
+| 3 | 2026-11-05 | GitHub Copilot (Claude Haiku 5.5) | prompt | Implementar CRUD por capas y API REST | `prompts/03-crud-capas-rest.md` → controladores, servicios y `GlobalExceptionHandler` | Seis endpoints bajo `/api/v1/tickets` con `ProblemDetail` | Corregí `GlobalExceptionHandler`: al extender `ResponseEntityExceptionHandler` con handlers del mismo tipo, el arranque fallaba por ambigüedad, así que quité la herencia. |
+| 4 | 2026-11-05 | GitHub Copilot (Claude Haiku 5.5) | prompt | Escribir pruebas unitarias y de capa web | `prompts/04-pruebas-unitarias-web.md` → `TicketServiceTest`, `TicketControllerTest` | 16 pruebas activas en verde, 1 desactivada | Desactivé `contextLoads` porque requiere PostgreSQL activo; las pruebas de slice cubren el contexto sin base de datos. |
