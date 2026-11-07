@@ -1,0 +1,425 @@
+openapi: 3.0.3
+info:
+  title: ms-catalog — Catálogo de servicio
+  version: v1
+  description: >-
+    Gestión de categorías, prioridades y políticas SLA de la mesa de ayuda.
+    En la Práctica 1 no hay autenticación; la seguridad JWT se añade en la Práctica 3.
+servers:
+  - url: http://localhost:8083
+    description: Desarrollo local (puerto host de docker-compose)
+  - url: http://localhost:8080
+    description: Ejecución directa con ./mvnw spring-boot:run
+tags:
+  - name: Categorías
+    description: Clasificación de incidencias. Se desactivan, nunca se borran.
+  - name: Prioridades
+    description: Niveles de urgencia con su política SLA.
+paths:
+  /api/v1/categories:
+    get:
+      tags: [Categorías]
+      operationId: listCategories
+      summary: Listar categorías
+      parameters:
+        - name: active
+          in: query
+          required: false
+          description: Si se indica, filtra por estado activo. Sin filtro devuelve todas.
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Lista de categorías ordenada por nombre
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryResponse'
+    post:
+      tags: [Categorías]
+      operationId: createCategory
+      summary: Crear categoría
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+      responses:
+        '201':
+          description: Categoría creada. La cabecera Location apunta al recurso.
+          headers:
+            Location:
+              description: URL de la categoría creada
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/CategoryAlreadyExists'
+  /api/v1/categories/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Categorías]
+      operationId: getCategory
+      summary: Consultar categoría por id
+      responses:
+        '200':
+          description: Categoría encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '404':
+          $ref: '#/components/responses/CategoryNotFound'
+    put:
+      tags: [Categorías]
+      operationId: updateCategory
+      summary: Modificar nombre y descripción de una categoría
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+      responses:
+        '200':
+          description: Categoría actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/CategoryNotFound'
+        '409':
+          $ref: '#/components/responses/CategoryAlreadyExists'
+    delete:
+      tags: [Categorías]
+      operationId: deactivateCategory
+      summary: Desactivar categoría (borrado lógico)
+      description: Marca active=false. El registro se conserva para el historial de tickets.
+      responses:
+        '204':
+          description: Categoría desactivada
+        '404':
+          $ref: '#/components/responses/CategoryNotFound'
+  /api/v1/priorities:
+    get:
+      tags: [Prioridades]
+      operationId: listPriorities
+      summary: Listar prioridades con su SLA
+      description: Devuelve las prioridades ordenadas de nivel 1 (más urgente) a nivel 10.
+      responses:
+        '200':
+          description: Lista de prioridades
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PriorityResponse'
+    post:
+      tags: [Prioridades]
+      operationId: createPriority
+      summary: Crear prioridad con su SLA
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PriorityRequest'
+      responses:
+        '201':
+          description: Prioridad creada. La cabecera Location apunta al recurso.
+          headers:
+            Location:
+              description: URL de la prioridad creada
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriorityResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/PriorityAlreadyExists'
+  /api/v1/priorities/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Prioridades]
+      operationId: getPriority
+      summary: Consultar prioridad por id
+      responses:
+        '200':
+          description: Prioridad encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriorityResponse'
+        '404':
+          $ref: '#/components/responses/PriorityNotFound'
+  /api/v1/priorities/{id}/sla:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    put:
+      tags: [Prioridades]
+      operationId: updatePrioritySla
+      summary: Actualizar la política SLA de una prioridad
+      description: >-
+        Valida que resolutionHours sea mayor o igual que responseHours y que
+        ambos no superen los límites configurados (app.sla).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SlaRequest'
+      responses:
+        '200':
+          description: SLA actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriorityResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/PriorityNotFound'
+components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      description: Identificador numérico
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+  schemas:
+    CategoryRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 80
+          example: Redes
+        description:
+          type: string
+          maxLength: 255
+          example: Problemas de red
+    CategoryResponse:
+      type: object
+      required: [id, name, active]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: Hardware
+        description:
+          type: string
+          nullable: true
+          example: Fallas de equipos físicos
+        active:
+          type: boolean
+          example: true
+    PriorityCode:
+      type: string
+      enum: [CRITICA, ALTA, MEDIA, BAJA]
+    PriorityRequest:
+      type: object
+      required: [code, name, level, sla]
+      properties:
+        code:
+          $ref: '#/components/schemas/PriorityCode'
+        name:
+          type: string
+          maxLength: 50
+          example: Alta
+        level:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: 1 es la prioridad más urgente. Debe ser único.
+          example: 2
+        sla:
+          $ref: '#/components/schemas/SlaRequest'
+    PriorityResponse:
+      type: object
+      required: [id, code, name, level, active, sla]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 2
+        code:
+          $ref: '#/components/schemas/PriorityCode'
+        name:
+          type: string
+          example: Alta
+        level:
+          type: integer
+          example: 2
+        active:
+          type: boolean
+          example: true
+        sla:
+          $ref: '#/components/schemas/SlaResponse'
+    SlaRequest:
+      type: object
+      required: [responseHours, resolutionHours]
+      properties:
+        responseHours:
+          type: integer
+          minimum: 1
+          maximum: 720
+          description: Horas máximas para la primera respuesta (límite por defecto 720).
+          example: 4
+        resolutionHours:
+          type: integer
+          minimum: 1
+          maximum: 2160
+          description: Horas máximas para resolver. Debe ser mayor o igual que responseHours.
+          example: 24
+    SlaResponse:
+      type: object
+      required: [responseHours, resolutionHours]
+      properties:
+        responseHours:
+          type: integer
+          example: 4
+        resolutionHours:
+          type: integer
+          example: 24
+    ProblemDetail:
+      type: object
+      description: Error en formato RFC 9457 (application/problem+json)
+      required: [type, title, status, detail, instance, code, timestamp]
+      properties:
+        type:
+          type: string
+          format: uri
+          example: https://mesa-ayuda.ids/problems/category-not-found
+        title:
+          type: string
+          example: Recurso no encontrado
+        status:
+          type: integer
+          example: 404
+        detail:
+          type: string
+          description: Mensaje en español para el usuario
+          example: No existe una categoría con id 999
+        instance:
+          type: string
+          example: /api/v1/categories/999
+        code:
+          type: string
+          example: CATEGORY_NOT_FOUND
+        timestamp:
+          type: string
+          format: date-time
+        errors:
+          type: array
+          description: Solo presente en errores 400 de validación
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: name
+              message:
+                type: string
+                example: debe tener entre 2 y 80 caracteres
+  responses:
+    ValidationError:
+      description: Datos no válidos o JSON ilegible
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+          example:
+            type: https://mesa-ayuda.ids/problems/validation-error
+            title: Error de validación
+            status: 400
+            detail: La solicitud contiene datos no válidos
+            instance: /api/v1/categories
+            code: VALIDATION_ERROR
+            timestamp: '2026-11-05T07:04:35Z'
+            errors:
+              - field: name
+                message: debe tener entre 2 y 80 caracteres
+    CategoryNotFound:
+      description: La categoría no existe
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+          example:
+            type: https://mesa-ayuda.ids/problems/category-not-found
+            title: Recurso no encontrado
+            status: 404
+            detail: No existe una categoría con id 999
+            instance: /api/v1/categories/999
+            code: CATEGORY_NOT_FOUND
+            timestamp: '2026-11-05T07:04:35Z'
+    CategoryAlreadyExists:
+      description: Ya existe una categoría con ese nombre
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+          example:
+            type: https://mesa-ayuda.ids/problems/category-already-exists
+            title: Conflicto con el estado actual
+            status: 409
+            detail: Ya existe una categoría llamada "Software"
+            instance: /api/v1/categories
+            code: CATEGORY_ALREADY_EXISTS
+            timestamp: '2026-11-05T07:04:35Z'
+    PriorityNotFound:
+      description: La prioridad no existe
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+          example:
+            type: https://mesa-ayuda.ids/problems/priority-not-found
+            title: Recurso no encontrado
+            status: 404
+            detail: No existe una prioridad con id 999
+            instance: /api/v1/priorities/999/sla
+            code: PRIORITY_NOT_FOUND
+            timestamp: '2026-11-05T07:04:35Z'
+    PriorityAlreadyExists:
+      description: Ya existe una prioridad con ese código o nivel
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+          example:
+            type: https://mesa-ayuda.ids/problems/priority-already-exists
+            title: Conflicto con el estado actual
+            status: 409
+            detail: Ya existe una prioridad con código ALTA
+            instance: /api/v1/priorities
+            code: PRIORITY_ALREADY_EXISTS
+            timestamp: '2026-11-05T07:04:35Z'
