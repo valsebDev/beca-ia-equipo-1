@@ -1,7 +1,8 @@
 package com.ids.ms_catalog.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -16,10 +17,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 
-@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+	private static final Logger LOG = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 	private static final String PROBLEM_BASE_URI = "https://mesa-ayuda.ids/problems/";
 
 	@ExceptionHandler(NotFoundException.class)
@@ -55,8 +56,8 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(Exception.class)
 	ProblemDetail handleUnexpected(Exception ex, HttpServletRequest request) {
-		if (log.isErrorEnabled()) {
-			log.error("Error no controlado en {}", request.getRequestURI(), ex);
+		if (LOG.isErrorEnabled()) {
+			LOG.error("Error no controlado en {}", request.getRequestURI(), ex);
 		}
 		return build(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "Error interno",
 				"Ocurrió un error interno. Intente más tarde", request);

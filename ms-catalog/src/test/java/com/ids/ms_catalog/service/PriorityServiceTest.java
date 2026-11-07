@@ -25,14 +25,18 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PriorityServiceTest {
 
 	private static final String MEDIA_NAME = "Media";
+	private static final String ALTA_NAME = "Alta";
 
 	@Mock
 	private PriorityRepository priorityRepository;
@@ -46,7 +50,7 @@ class PriorityServiceTest {
 		alta = new Priority();
 		alta.setId(2L);
 		alta.setCode(PriorityCode.ALTA);
-		alta.setName("Alta");
+		alta.setName(ALTA_NAME);
 		alta.setLevel((short) 2);
 		alta.setActive(true);
 		SlaPolicy sla = new SlaPolicy();
@@ -67,7 +71,7 @@ class PriorityServiceTest {
 	void findByIdDevuelveLaPrioridadSolicitada() {
 		when(priorityRepository.findByIdWithSla(2L)).thenReturn(Optional.of(alta));
 
-		assertThat(priorityService.findById(2L).name()).isEqualTo("Alta");
+		assertThat(priorityService.findById(2L).name()).isEqualTo(ALTA_NAME);
 	}
 
 	@Test
@@ -75,6 +79,24 @@ class PriorityServiceTest {
 		when(priorityRepository.findByIdWithSla(anyLong())).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> priorityService.findById(999L)).isInstanceOf(NotFoundException.class);
+	}
+
+	private void crearEsperandoConflicto(PriorityRequest request) {
+		try {
+			priorityService.create(request);
+			fail("Se esperaba ConflictException");
+		} catch (ConflictException expected) {
+			// El tipo y el código de la excepción se verifican en el test hermano de conflicto.
+		}
+	}
+
+	private void crearEsperandoValidacion(PriorityRequest request) {
+		try {
+			priorityService.create(request);
+			fail("Se esperaba DomainValidationException");
+		} catch (DomainValidationException expected) {
+			// El campo rechazado se verifica en el test hermano de validación.
+		}
 	}
 
 	@Nested
@@ -101,12 +123,23 @@ class PriorityServiceTest {
 		void createLanzaConflictoCuandoElCodigoYaExiste() {
 			when(priorityRepository.existsByCode(PriorityCode.ALTA)).thenReturn(true);
 
-			PriorityRequest request = new PriorityRequest(PriorityCode.ALTA, "Alta", 5, new SlaRequest(1, 2));
+			PriorityRequest request = new PriorityRequest(PriorityCode.ALTA, ALTA_NAME, 5, new SlaRequest(1, 2));
 
 			assertThatExceptionOfType(ConflictException.class)
 					.isThrownBy(() -> priorityService.create(request))
 					.extracting(ConflictException::getCode)
 					.isEqualTo("PRIORITY_ALREADY_EXISTS");
+		}
+
+		@Test
+		void createNoGuardaPrioridadCuandoElCodigoYaExiste() {
+			when(priorityRepository.existsByCode(PriorityCode.ALTA)).thenReturn(true);
+
+			PriorityRequest request = new PriorityRequest(PriorityCode.ALTA, ALTA_NAME, 5, new SlaRequest(1, 2));
+
+			crearEsperandoConflicto(request);
+
+			verify(priorityRepository, never()).save(any(Priority.class));
 		}
 
 		@Test
@@ -133,6 +166,15 @@ class PriorityServiceTest {
 		}
 
 		@Test
+		void createNoGuardaPrioridadCuandoLaResolucionEsMenorQueLaRespuesta() {
+			PriorityRequest request = new PriorityRequest(PriorityCode.MEDIA, MEDIA_NAME, 3, new SlaRequest(10, 5));
+
+			crearEsperandoValidacion(request);
+
+			verify(priorityRepository, never()).save(any(Priority.class));
+		}
+
+		@Test
 		void createRechazaRespuestaSobreElMaximoConfigurado() {
 			PriorityRequest request = new PriorityRequest(PriorityCode.MEDIA, MEDIA_NAME, 3, new SlaRequest(800, 900));
 
@@ -140,6 +182,15 @@ class PriorityServiceTest {
 					.isThrownBy(() -> priorityService.create(request))
 					.extracting(DomainValidationException::getField)
 					.isEqualTo("responseHours");
+		}
+
+		@Test
+		void createNoGuardaPrioridadCuandoLaRespuestaSuperaElMaximo() {
+			PriorityRequest request = new PriorityRequest(PriorityCode.MEDIA, MEDIA_NAME, 3, new SlaRequest(800, 900));
+
+			crearEsperandoValidacion(request);
+
+			verify(priorityRepository, never()).save(any(Priority.class));
 		}
 	}
 

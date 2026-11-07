@@ -9,10 +9,11 @@
 		<artifactId>maven-checkstyle-plugin</artifactId>
 		<version>3.6.0</version>
 		<dependencies>
+			<!-- 12.3.1 y no 14.4.0: 14.4.0 exige Java 21 y el plugin 3.6.0 corre sobre Java 17. -->
 			<dependency>
 				<groupId>com.puppycrawl.tools</groupId>
 				<artifactId>checkstyle</artifactId>
-				<version>14.4.0</version>
+				<version>12.3.1</version>
 			</dependency>
 		</dependencies>
 		<configuration>

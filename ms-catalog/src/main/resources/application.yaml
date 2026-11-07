@@ -3,7 +3,7 @@ spring:
     name: ms-catalog
   datasource:
     url: jdbc:postgresql://${CATALOG_DB_HOST:localhost}:${CATALOG_DB_PORT:5435}/${CATALOG_DB_NAME:catalog_db}
-    username: ${CATALOG_DB_USER:catalog}
+    username: ${CATALOG_DB_USER}
     password: ${CATALOG_DB_PASSWORD}
   jpa:
     open-in-view: false
