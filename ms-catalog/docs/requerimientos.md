@@ -45,34 +45,38 @@ Como responsable de la mesa de ayuda, necesitamos un catálogo que organice los 
 
 | ID | Título | Prioridad MoSCoW | Estimación (pts) |
 |---|---|---|---|
-| HU-01 | Crear categorías de servicio | Must | 3 |
-| HU-02 | Consultar categorías activas | Must | 2 |
-| HU-03 | Modificar una categoría | Should | 2 |
-| HU-04 | Desactivar una categoría sin perder historial | Must | 2 |
-| HU-05 | Consultar y registrar prioridades | Must | 3 |
-| HU-06 | Definir el SLA de una prioridad | Must | 3 |
+| HU-CAT-02 | Crear categorías de servicio | Must | 2 |
+| HU-CAT-01 | Consultar categorías activas | Must | 2 |
+| HU-CAT-03 | Modificar una categoría | Should | 2 |
+| HU-CAT-04 | Desactivar una categoría sin perder historial | Should | 2 |
+| HU-CAT-05 | Consultar prioridades | Must | 2 |
+| HU-CAT-06 | Registrar prioridades | Must | 3 |
+| HU-CAT-07 | Definir el SLA de una prioridad | Must | 3 |
 
-**HU-01 — Crear categorías de servicio**
+**HU-CAT-02 — Crear categorías de servicio**
 Como ADMIN quiero crear categorías de servicio para clasificar las incidencias, para que los solicitantes reporten cada problema en la categoría correcta.
 
-**HU-02 — Consultar categorías activas**
+**HU-CAT-01 — Consultar categorías activas**
 Como SOLICITANTE quiero consultar las categorías activas para elegir la adecuada al reportar un ticket, para que el reporte llegue al equipo correcto.
 
-**HU-03 — Modificar una categoría**
+**HU-CAT-03 — Modificar una categoría**
 Como ADMIN quiero modificar el nombre y la descripción de una categoría, para corregir su clasificación cuando cambie el servicio.
 
-**HU-04 — Desactivar una categoría sin perder historial**
+**HU-CAT-04 — Desactivar una categoría sin perder historial**
 Como ADMIN quiero desactivar una categoría, para que deje de ofrecerse sin perder el historial de tickets que la usaron.
 
-**HU-05 — Consultar y registrar prioridades**
-Como ADMIN quiero registrar y consultar las prioridades con su nivel de urgencia, para ordenar la atención de los tickets.
+**HU-CAT-05 — Consultar prioridades**
+Como ADMIN quiero consultar las prioridades con su nivel de urgencia, para ordenar la atención de los tickets.
 
-**HU-06 — Definir el SLA de una prioridad**
+**HU-CAT-06 — Registrar prioridades**
+Como ADMIN quiero registrar una prioridad con su nivel de urgencia, para ampliar los niveles de atención.
+
+**HU-CAT-07 — Definir el SLA de una prioridad**
 Como ADMIN quiero definir las horas de respuesta y de resolución de cada prioridad, para que ms-tickets calcule las fechas límite de los tickets.
 
 ### 3.1 Criterios de aceptación (Gherkin)
 
-**HU-01**
+**HU-CAT-02**
 ```gherkin
 Escenario: Crear una categoría válida
   Dado que soy ADMIN y no existe una categoría llamada "Redes"
@@ -90,7 +94,7 @@ Escenario negativo: Rechazar un nombre de un solo carácter
   Entonces recibo 400 con code VALIDATION_ERROR y errors que incluye el campo "name"
 ```
 
-**HU-02**
+**HU-CAT-01**
 ```gherkin
 Escenario: Listar solo categorías activas ordenadas por nombre
   Dado que existen "Software" (activa) y "Hardware" (inactiva)
@@ -103,7 +107,7 @@ Escenario negativo: Consultar una categoría inexistente
   Entonces recibo 404 con code CATEGORY_NOT_FOUND
 ```
 
-**HU-03**
+**HU-CAT-03**
 ```gherkin
 Escenario: Modificar nombre y descripción
   Dado que existe la categoría "Accesos" con id 3
@@ -121,7 +125,7 @@ Escenario negativo: Modificar una categoría inexistente
   Entonces recibo 404 con code CATEGORY_NOT_FOUND
 ```
 
-**HU-04**
+**HU-CAT-04**
 ```gherkin
 Escenario: Desactivar una categoría
   Dado que existe la categoría "Hardware" con id 1 y active = true
@@ -134,13 +138,17 @@ Escenario negativo: Desactivar una categoría inexistente
   Entonces recibo 404 con code CATEGORY_NOT_FOUND y no se elimina ningún registro
 ```
 
-**HU-05**
+**HU-CAT-05**
 ```gherkin
 Escenario: Listar prioridades ordenadas por nivel
   Dado que existen las prioridades CRITICA, ALTA, MEDIA y BAJA (seed V2)
   Cuando envío GET /api/v1/priorities
   Entonces recibo 200 con las prioridades ordenadas de nivel 1 a 4
 
+```
+
+**HU-CAT-06**
+```gherkin
 Escenario negativo: Registrar un código fuera del dominio
   Dado que soy ADMIN
   Cuando envío POST /api/v1/priorities con code "URGENTE"
@@ -152,7 +160,7 @@ Escenario negativo: Registrar un código ya existente
   Entonces recibo 409 con code PRIORITY_ALREADY_EXISTS
 ```
 
-**HU-06**
+**HU-CAT-07**
 ```gherkin
 Escenario: Actualizar el SLA de una prioridad
   Dado que existe la prioridad ALTA con id 2
@@ -176,7 +184,7 @@ Escenario negativo: Prioridad inexistente
 |---|---|---|---|
 | RNF-01 | Rendimiento | Los `GET` de catálogo responden con p95 ≤ 300 ms con hasta 500 registros y 50 usuarios concurrentes. | Prueba de carga (JMeter o k6) en la demo |
 | RNF-02 | Disponibilidad | `/actuator/health` responde 200 en ≤ 1 s y el servicio está disponible ≥ 99 % durante el horario de operación (08:00–20:00). | Healthcheck de Docker cada 30 s durante una semana de pruebas |
-| RNF-03 | Integridad de datos | Las migraciones Flyway V1 y V2 se aplican sin error en PostgreSQL 16 y `ddl-auto=validate` arranca sin discrepancias; el 100 % de las categorías desactivadas conserva su registro. | Arranque contra `catalog_db` y prueba de desactivación (HU-04) |
+| RNF-03 | Integridad de datos | Las migraciones Flyway V1 y V2 se aplican sin error en PostgreSQL 16 y `ddl-auto=validate` arranca sin discrepancias; el 100 % de las categorías desactivadas conserva su registro. | Arranque contra `catalog_db` y prueba de desactivación (HU-CAT-04) |
 | RNF-04 | Seguridad de errores | El 100 % de las respuestas 500 devuelven `detail` genérico, sin stack trace ni mensaje interno. | Prueba del `GlobalExceptionHandler` y configuración `include-stacktrace=never` |
 | RNF-05 | Mantenibilidad | Cobertura de líneas ≥ 70 %, métodos ≤ 30 líneas y complejidad ciclomática ≤ 10. | JaCoCo y revisión de calidad (QUALITY-REPORT) |
 

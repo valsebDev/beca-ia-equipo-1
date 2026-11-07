@@ -9,7 +9,7 @@ Historias y criterios Gherkin: `docs/requerimientos.md`. Errores: `ARCHITECTURE.
 En Boot 4, `@WebMvcTest` está en `org.springframework.boot.webmvc.test.autoconfigure` y los mocks se declaran con `@MockitoBean`.
 
 ## TAREA
-1. Pruebas unitarias de `service` con JUnit 5 y Mockito (`@ExtendWith(MockitoExtension.class)`). Cubre escenarios positivos y negativos de HU-01 a HU-06: duplicados, no encontrado, rango de SLA y orden de horas, y borrado lógico sin `delete`.
+1. Pruebas unitarias de `service` con JUnit 5 y Mockito (`@ExtendWith(MockitoExtension.class)`). Cubre escenarios positivos y negativos de HU-CAT-01 a HU-CAT-07: duplicados, no encontrado, rango de SLA y orden de horas, y borrado lógico sin `delete`.
 2. Pruebas de `controller` con `@WebMvcTest` y MockMvc que validen:
    - Códigos 200, 201 (con `Location`) y 204.
    - 400 por Bean Validation con `errors[].field`.

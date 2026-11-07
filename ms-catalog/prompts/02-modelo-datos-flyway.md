@@ -5,7 +5,7 @@ Actúa como arquitecto de datos y desarrollador backend senior, experto en Postg
 
 ## CONTEXTO
 Microservicio **ms-catalog** (`catalog_db`, PostgreSQL 16) con Spring Boot 4.1.2 y Java 17. Fuente de verdad: `ARCHITECTURE.md` §2.2 (modelo ER de catálogo), §2.4 (estrategia Flyway) y §0 (D3, D10).
-Requerimientos y IDs de historia: `docs/requerimientos.md` (HU-01 a HU-06).
+Requerimientos y IDs de historia: `docs/requerimientos.md` (HU-CAT-01 a HU-CAT-07).
 Dependencias del `pom.xml`: `spring-boot-starter-data-jpa`, `spring-boot-starter-flyway`, `flyway-database-postgresql`, `postgresql`.
 
 ## TAREA
@@ -29,7 +29,7 @@ Dependencias del `pom.xml`: `spring-boot-starter-data-jpa`, `spring-boot-starter
 ## EJEMPLO
 Índice justificado en Flyway:
 ```sql
--- justifica: HU-01 y HU-03 rechazan nombres duplicados al crear y al renombrar una categoría (consulta de unicidad por name)
+-- justifica: HU-CAT-02 y HU-CAT-03 rechazan nombres duplicados al crear y al renombrar una categoría (consulta de unicidad por name)
 CONSTRAINT uk_categories_name UNIQUE (name)
 ```
 

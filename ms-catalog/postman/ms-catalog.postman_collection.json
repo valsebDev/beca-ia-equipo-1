@@ -39,10 +39,10 @@
       ]
     },
     {
-      "name": "Categorías (HU-01 a HU-04)",
+      "name": "Categorías (HU-CAT-01 a HU-CAT-04)",
       "item": [
         {
-          "name": "HU-02 Listar todas las categorías",
+          "name": "HU-CAT-01 Listar todas las categorías",
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/api/v1/categories"
@@ -63,7 +63,7 @@
           ]
         },
         {
-          "name": "HU-02 Listar solo categorías activas",
+          "name": "HU-CAT-01 Listar solo categorías activas",
           "request": {
             "method": "GET",
             "url": {
@@ -89,7 +89,7 @@
           ]
         },
         {
-          "name": "HU-02 Consultar categoría por id",
+          "name": "HU-CAT-01 Consultar categoría por id",
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/api/v1/categories/{{categoryId}}"
@@ -107,7 +107,7 @@
           ]
         },
         {
-          "name": "HU-02 [Negativo] Categoría inexistente -> 404",
+          "name": "HU-CAT-01 [Negativo] Categoría inexistente -> 404",
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/api/v1/categories/999999"
@@ -129,7 +129,7 @@
           ]
         },
         {
-          "name": "HU-01 Crear categoría -> 201",
+          "name": "HU-CAT-02 Crear categoría -> 201",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -157,7 +157,7 @@
           ]
         },
         {
-          "name": "HU-01 [Negativo] Nombre duplicado -> 409",
+          "name": "HU-CAT-02 [Negativo] Nombre duplicado -> 409",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -183,7 +183,7 @@
           ]
         },
         {
-          "name": "HU-01 [Negativo] Nombre de 1 carácter -> 400",
+          "name": "HU-CAT-02 [Negativo] Nombre de 1 carácter -> 400",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -210,7 +210,7 @@
           ]
         },
         {
-          "name": "HU-03 Modificar categoría -> 200",
+          "name": "HU-CAT-03 Modificar categoría -> 200",
           "request": {
             "method": "PUT",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -236,7 +236,7 @@
           ]
         },
         {
-          "name": "HU-03 [Negativo] Usar nombre de otra categoría -> 409",
+          "name": "HU-CAT-03 [Negativo] Usar nombre de otra categoría -> 409",
           "request": {
             "method": "PUT",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -261,7 +261,7 @@
           ]
         },
         {
-          "name": "HU-03 [Negativo] Modificar categoría inexistente -> 404",
+          "name": "HU-CAT-03 [Negativo] Modificar categoría inexistente -> 404",
           "request": {
             "method": "PUT",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -287,7 +287,7 @@
           ]
         },
         {
-          "name": "HU-04 Desactivar categoría (borrado lógico) -> 204",
+          "name": "HU-CAT-04 Desactivar categoría (borrado lógico) -> 204",
           "request": {
             "method": "DELETE",
             "url": "{{baseUrl}}/api/v1/categories/{{newCategoryId}}"
@@ -307,7 +307,7 @@
           ]
         },
         {
-          "name": "HU-04 Verificar que la categoría desactivada sigue existiendo (active=false)",
+          "name": "HU-CAT-04 Verificar que la categoría desactivada sigue existiendo (active=false)",
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/api/v1/categories/{{newCategoryId}}"
@@ -328,7 +328,7 @@
           ]
         },
         {
-          "name": "HU-04 [Negativo] Desactivar categoría inexistente -> 404",
+          "name": "HU-CAT-04 [Negativo] Desactivar categoría inexistente -> 404",
           "request": {
             "method": "DELETE",
             "url": "{{baseUrl}}/api/v1/categories/999999"
@@ -350,10 +350,10 @@
       ]
     },
     {
-      "name": "Prioridades y SLA (HU-05 y HU-06)",
+      "name": "Prioridades y SLA (HU-CAT-05 a HU-CAT-07)",
       "item": [
         {
-          "name": "HU-05 Listar prioridades ordenadas por nivel",
+          "name": "HU-CAT-05 Listar prioridades ordenadas por nivel",
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/api/v1/priorities"
@@ -375,7 +375,7 @@
           ]
         },
         {
-          "name": "HU-05 Consultar prioridad por id",
+          "name": "HU-CAT-05 Consultar prioridad por id",
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/api/v1/priorities/{{priorityId}}"
@@ -396,7 +396,7 @@
           ]
         },
         {
-          "name": "HU-05 [Negativo] Prioridad inexistente -> 404",
+          "name": "HU-CAT-05 [Negativo] Prioridad inexistente -> 404",
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/api/v1/priorities/999999"
@@ -417,7 +417,7 @@
           ]
         },
         {
-          "name": "HU-05 [Negativo] Crear prioridad con código existente (ALTA) -> 409",
+          "name": "HU-CAT-06 [Negativo] Crear prioridad con código existente (ALTA) -> 409",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -443,7 +443,7 @@
           ]
         },
         {
-          "name": "HU-05 [Negativo] Crear prioridad con código fuera del dominio (URGENTE) -> 400",
+          "name": "HU-CAT-06 [Negativo] Crear prioridad con código fuera del dominio (URGENTE) -> 400",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -469,7 +469,7 @@
           ]
         },
         {
-          "name": "HU-06 Actualizar SLA -> 200",
+          "name": "HU-CAT-07 Actualizar SLA -> 200",
           "request": {
             "method": "PUT",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -496,7 +496,7 @@
           ]
         },
         {
-          "name": "HU-06 [Negativo] Resolución menor que respuesta -> 400",
+          "name": "HU-CAT-07 [Negativo] Resolución menor que respuesta -> 400",
           "request": {
             "method": "PUT",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -522,7 +522,7 @@
           ]
         },
         {
-          "name": "HU-06 [Negativo] Horas de respuesta en 0 -> 400",
+          "name": "HU-CAT-07 [Negativo] Horas de respuesta en 0 -> 400",
           "request": {
             "method": "PUT",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -548,7 +548,7 @@
           ]
         },
         {
-          "name": "HU-06 [Negativo] Actualizar SLA de prioridad inexistente -> 404",
+          "name": "HU-CAT-07 [Negativo] Actualizar SLA de prioridad inexistente -> 404",
           "request": {
             "method": "PUT",
             "header": [{ "key": "Content-Type", "value": "application/json" }],

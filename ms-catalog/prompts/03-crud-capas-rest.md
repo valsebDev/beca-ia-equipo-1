@@ -6,7 +6,7 @@ Actúa como desarrollador backend senior especializado en Spring Boot 4 con arqu
 ## CONTEXTO
 Microservicio **ms-catalog** (Java 17, Spring Boot 4.1.2, PostgreSQL 16 con Flyway). Paquete base `com.ids.ms_catalog`.
 Fuentes: `ARCHITECTURE.md` §3.2 (contrato de API), §3.4 (errores), §5.2 (estructura de paquetes), §5.3 (convenciones).
-Historias: `docs/requerimientos.md` (HU-01 a HU-06). Esquema: `V1__create_catalog_tables.sql`.
+Historias: `docs/requerimientos.md` (HU-CAT-01 a HU-CAT-07). Esquema: `V1__create_catalog_tables.sql`.
 Práctica 1: sin seguridad activa; no añadas `SecurityFilterChain`.
 
 ## TAREA
