@@ -1,0 +1,175 @@
+openapi: 3.0.3
+info:
+  title: API de Usuarios y Autenticación (ms-users)
+  version: 1.0.0
+  description: Microservicio de gestión de usuarios, emisión de JWT y perfiles para Mesa de Ayuda.
+servers:
+  - url: http://localhost:8081
+paths:
+  /api/v1/auth/register:
+    post:
+      summary: Registrar un solicitante
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterUserRequest'
+      responses:
+        '201':
+          description: Usuario creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Datos inválidos
+        '409':
+          description: Correo ya registrado
+  /api/v1/auth/login:
+    post:
+      summary: Autenticarse y obtener un JWT firmado con HS256
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Autenticación correcta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Credenciales inválidas
+        '403':
+          description: Cuenta desactivada
+        '423':
+          description: Cuenta bloqueada temporalmente
+  /api/v1/users/me:
+    get:
+      summary: Obtener el perfil del usuario autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Perfil del usuario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Token ausente, alterado, inválido o expirado
+        '404':
+          description: Usuario del token no encontrado
+    put:
+      summary: Actualizar el perfil del usuario autenticado
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Perfil actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Error de validación
+        '401':
+          description: Token ausente, alterado, inválido o expirado
+        '404':
+          description: Usuario del token no encontrado
+  /api/v1/users/{userIdentifier}/status:
+    patch:
+      summary: Cambiar el estado de una cuenta (solo ADMIN, HU-05)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userIdentifier
+          in: path
+          required: true
+          description: Identificador público del usuario a actualizar
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserStatusRequest'
+      responses:
+        '200':
+          description: Estado actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Error de validación
+        '401':
+          description: Token ausente, alterado, inválido o expirado
+        '403':
+          description: El token es válido, pero no tiene rol ADMIN
+        '404':
+          description: Usuario no encontrado
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    RegisterUserRequest:
+      type: object
+      required: [name, paternalName, email, password]
+      properties:
+        name: { type: string, maxLength: 100 }
+        paternalName: { type: string, maxLength: 100 }
+        maternalName: { type: string, nullable: true, maxLength: 100 }
+        email: { type: string, format: email, maxLength: 150 }
+        password: { type: string, minLength: 8, maxLength: 50 }
+    LoginRequest:
+      type: object
+      required: [email, softPassword]
+      properties:
+        email: { type: string, format: email }
+        softPassword: { type: string }
+    UpdateProfileRequest:
+      type: object
+      required: [name, paternalName]
+      properties:
+        name: { type: string, maxLength: 100 }
+        paternalName: { type: string, maxLength: 100 }
+        maternalName: { type: string, nullable: true, maxLength: 100 }
+    UpdateUserStatusRequest:
+      type: object
+      required: [isActive]
+      properties:
+        isActive: { type: boolean }
+    UserResponse:
+      type: object
+      properties:
+        userIdentifier: { type: string }
+        name: { type: string }
+        paternalName: { type: string }
+        maternalName: { type: string, nullable: true }
+        email: { type: string, format: email }
+        role: { type: string, enum: [SOLICITANTE, AGENTE, ADMIN] }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    AuthResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        tokenType: { type: string, example: Bearer }
+        expiresInSeconds: { type: integer, format: int64 }
+        user:
+          $ref: '#/components/schemas/UserResponse'
