@@ -38,6 +38,7 @@ La mesa de ayuda necesita un canal único para que el personal reporte incidenci
 - RN-12: Si dos usuarios modifican el mismo ticket a la vez, el segundo cambio se rechaza (conflicto de concurrencia). SUPUESTO sobre el criterio de conflicto.
 - RN-13: Si ms-users o ms-catalog no responden, la operación que los necesita se rechaza con error de dependencia no disponible (SUPUESTO sobre la política de reintento: ninguna).
 - RN-14: `RESUELTO` registra `resolvedAt`; `CERRADO` registra `closedAt`. SUPUESTO de que ambos quedan en nulo hasta alcanzar el estado correspondiente.
+- RN-15: SUPUESTO temporal: la identidad llega por las cabeceras X-User-Id / X-User-Role hasta implementar JWT en P3
 
 ## 3. Historias de usuario
 
