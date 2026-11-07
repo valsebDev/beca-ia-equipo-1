@@ -68,8 +68,10 @@ class CategoryServiceTest {
 	void createLanzaConflictoCuandoElNombreYaExiste() {
 		when(categoryRepository.existsByName(SOFTWARE_NAME)).thenReturn(true);
 
+		CategoryRequest request = new CategoryRequest(SOFTWARE_NAME, null);
+
 		assertThatExceptionOfType(ConflictException.class)
-				.isThrownBy(() -> categoryService.create(new CategoryRequest(SOFTWARE_NAME, null)))
+				.isThrownBy(() -> categoryService.create(request))
 				.extracting(ConflictException::getCode)
 				.isEqualTo("CATEGORY_ALREADY_EXISTS");
 	}
@@ -104,7 +106,9 @@ class CategoryServiceTest {
 		when(categoryRepository.findById(3L)).thenReturn(Optional.of(software));
 		when(categoryRepository.existsByNameAndIdNot(anyString(), anyLong())).thenReturn(true);
 
-		assertThatThrownBy(() -> categoryService.update(3L, new CategoryRequest("Hardware", null)))
+		CategoryRequest request = new CategoryRequest("Hardware", null);
+
+		assertThatThrownBy(() -> categoryService.update(3L, request))
 				.isInstanceOf(ConflictException.class);
 	}
 

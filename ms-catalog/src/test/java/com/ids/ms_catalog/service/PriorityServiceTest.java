@@ -101,9 +101,10 @@ class PriorityServiceTest {
 		void createLanzaConflictoCuandoElCodigoYaExiste() {
 			when(priorityRepository.existsByCode(PriorityCode.ALTA)).thenReturn(true);
 
+			PriorityRequest request = new PriorityRequest(PriorityCode.ALTA, "Alta", 5, new SlaRequest(1, 2));
+
 			assertThatExceptionOfType(ConflictException.class)
-					.isThrownBy(() -> priorityService.create(new PriorityRequest(PriorityCode.ALTA, "Alta", 5,
-							new SlaRequest(1, 2))))
+					.isThrownBy(() -> priorityService.create(request))
 					.extracting(ConflictException::getCode)
 					.isEqualTo("PRIORITY_ALREADY_EXISTS");
 		}
@@ -113,27 +114,30 @@ class PriorityServiceTest {
 			when(priorityRepository.existsByCode(PriorityCode.MEDIA)).thenReturn(false);
 			when(priorityRepository.existsByLevel((short) 3)).thenReturn(true);
 
+			PriorityRequest request = new PriorityRequest(PriorityCode.MEDIA, MEDIA_NAME, 3, new SlaRequest(4, 24));
+
 			assertThatExceptionOfType(ConflictException.class)
-					.isThrownBy(() -> priorityService.create(new PriorityRequest(PriorityCode.MEDIA, MEDIA_NAME, 3,
-							new SlaRequest(4, 24))))
+					.isThrownBy(() -> priorityService.create(request))
 					.extracting(ConflictException::getCode)
 					.isEqualTo("PRIORITY_LEVEL_ALREADY_EXISTS");
 		}
 
 		@Test
 		void createRechazaResolucionMenorQueRespuesta() {
+			PriorityRequest request = new PriorityRequest(PriorityCode.MEDIA, MEDIA_NAME, 3, new SlaRequest(10, 5));
+
 			assertThatExceptionOfType(DomainValidationException.class)
-					.isThrownBy(() -> priorityService.create(new PriorityRequest(PriorityCode.MEDIA, MEDIA_NAME, 3,
-							new SlaRequest(10, 5))))
+					.isThrownBy(() -> priorityService.create(request))
 					.extracting(DomainValidationException::getField)
 					.isEqualTo("resolutionHours");
 		}
 
 		@Test
 		void createRechazaRespuestaSobreElMaximoConfigurado() {
+			PriorityRequest request = new PriorityRequest(PriorityCode.MEDIA, MEDIA_NAME, 3, new SlaRequest(800, 900));
+
 			assertThatExceptionOfType(DomainValidationException.class)
-					.isThrownBy(() -> priorityService.create(new PriorityRequest(PriorityCode.MEDIA, MEDIA_NAME, 3,
-							new SlaRequest(800, 900))))
+					.isThrownBy(() -> priorityService.create(request))
 					.extracting(DomainValidationException::getField)
 					.isEqualTo("responseHours");
 		}
@@ -155,8 +159,10 @@ class PriorityServiceTest {
 		void updateSlaLanzaNotFoundCuandoLaPrioridadNoExiste() {
 			when(priorityRepository.findByIdWithSla(anyLong())).thenReturn(Optional.empty());
 
+			SlaRequest sla = new SlaRequest(2, 8);
+
 			assertThatExceptionOfType(NotFoundException.class)
-					.isThrownBy(() -> priorityService.updateSla(999L, new SlaRequest(2, 8)))
+					.isThrownBy(() -> priorityService.updateSla(999L, sla))
 					.extracting(NotFoundException::getCode)
 					.isEqualTo("PRIORITY_NOT_FOUND");
 		}
@@ -165,8 +171,10 @@ class PriorityServiceTest {
 		void updateSlaRechazaResolucionMenorQueRespuesta() {
 			when(priorityRepository.findByIdWithSla(2L)).thenReturn(Optional.of(alta));
 
+			SlaRequest sla = new SlaRequest(10, 5);
+
 			assertThatExceptionOfType(DomainValidationException.class)
-					.isThrownBy(() -> priorityService.updateSla(2L, new SlaRequest(10, 5)))
+					.isThrownBy(() -> priorityService.updateSla(2L, sla))
 					.extracting(DomainValidationException::getField)
 					.isEqualTo("resolutionHours");
 		}
@@ -175,8 +183,10 @@ class PriorityServiceTest {
 		void updateSlaRechazaResolucionSobreElMaximoConfigurado() {
 			when(priorityRepository.findByIdWithSla(2L)).thenReturn(Optional.of(alta));
 
+			SlaRequest sla = new SlaRequest(1, 3000);
+
 			assertThatExceptionOfType(DomainValidationException.class)
-					.isThrownBy(() -> priorityService.updateSla(2L, new SlaRequest(1, 3000)))
+					.isThrownBy(() -> priorityService.updateSla(2L, sla))
 					.extracting(DomainValidationException::getField)
 					.isEqualTo("resolutionHours");
 		}
