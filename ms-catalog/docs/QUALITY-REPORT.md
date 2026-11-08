@@ -10,8 +10,8 @@ Práctica 2 · Calidad como código con instrucciones y skills. Estado comparado
 | PMD 7.29.0 | Categorías bestpractices, errorprone, design, performance, multithreading | 0 | 0 |
 | SpotBugs 4.10.5.0 + FindSecBugs 1.14.0 | Todas | 0 bugs | 0 bugs |
 | SonarQube for IDE | S5778 (lambda de `isThrownBy` con más de una invocación) | 9 hallazgos en pruebas | 0 |
-| Dependency-Check 13.0.0 | CVSS ≥ 7 | No ejecutado en el estado original | 115 dependencias (67 únicas), 0 vulnerables |
-| JaCoCo 0.8.16 | Cobertura de líneas (mínimo 70 %) | 73.0 % (116/159) | 95.8 % (159/166) |
+| Dependency-Check 13.0.0 | CVSS ≥ 7 | No ejecutado en esta sesión sobre el estado original (medición con `-Ddependency-check.skip=true`) | 115 dependencias (67 únicas), 0 vulnerables (08/11/2026, 14:22) |
+| JaCoCo 0.8.16 | Cobertura de líneas (mínimo 70 %) | 73.0 % (116/159) | 95.9 % (164/171) |
 | Pruebas | JUnit/AssertJ | 29 | 52, 0 fallos |
 
 Notas sobre la medición:
@@ -35,14 +35,21 @@ Notas sobre la medición:
 ### Hallazgo 3: CVE en swagger-ui (Dependency-Check)
 
 - **Qué era:** la versión de swagger-ui que trae springdoc tenía un CVE: CVE-2026-116803 y CVE-2026-116804, ambos sobre DOMPurify anterior a 3.4.17.
-- **Quién lo detectó:** quality-gates-java (Dependency-Check) en una ejecución anterior.
-- **Por qué era un problema:** una vulnerabilidad de XSS en la documentación de la API expuesta por el servicio.
-- **Cómo lo corregí:** se fijó `org.webjars:swagger-ui` en 5.34.1 con `dependencyManagement`. Verifiqué en el paquete que swagger-ui 5.34.0 trae DOMPurify 3.4.16 y 5.34.1 trae 3.4.17. Dependency-Check da 0 vulnerables después del cambio.
+- **Quién lo detectó:** Dependency-Check 13.0.0, durante un `verify` con `NVD_API_KEY`, antes de fijar el override. La hora exacta de esa ejecución no consta y su log no está en el repositorio. Reportó CVE-2026-116803 y CVE-2026-116804 sobre swagger-ui 5.34.0 (DOMPurify 3.4.16).
+- **Severidad:** en NVD, CVSS v3.1 6.1 (Medio) y v4.0 5.1 (Medio), con estado "Awaiting Analysis". No uso la puntuación de otro log que no pude verificar.
+- **Por qué era un problema:** XSS en la documentación de la API que expone el servicio.
+- **Cómo lo corregí:** fijé `org.webjars:swagger-ui` en 5.34.1 con `dependencyManagement`. Verifiqué en el paquete que 5.34.0 trae DOMPurify 3.4.16 y 5.34.1 trae 3.4.17. En la ejecución del 8 de noviembre de 2026 (14:22), Dependency-Check escaneó 115 dependencias (67 únicas), reportó 0 vulnerables y no lista swagger-ui 5.34.0.
 
 ## 3. Propuesta de la IA que rechacé
 
 - **Qué proponía:** continuar sin probar la activación de la skill en un chat nuevo, y pedir cobertura o análisis de código sin especificar la skill.
 - **Por qué la rechacé:** la razón de crear la skill es que, con un prompt simple para analizar código, se ejecute aunque no se haya nombrado. Sin probarlo en un chat nuevo no hay evidencia de que la descripción de la skill funcione.
+
+### Rechazo técnico: Checkstyle 14.4.0
+
+- **Qué propuso la IA:** Checkstyle 14.4.0 en `references/maven-plugins.xml` de la skill (fila 13 de la bitácora).
+- **Cómo lo probé:** en un worktree temporal de `dbddd3a`, cambié la versión a 14.4.0 y ejecuté `checkstyle:check`. Falló con `UnsupportedClassVersionError`: Checkstyle 14.4.0 está compilado para class file 65 (Java 21) y el JDK del proyecto (Java 17) reconoce hasta el 61.
+- **Por qué lo descarté:** el proyecto compila con Java 17 y `maven-checkstyle-plugin` 3.6.0 corre sobre ese JDK. Mantengo Checkstyle 12.3.1, con el motivo documentado en el `pom.xml`. La referencia de la skill se corrigió en `0f5df3f`.
 
 ## 4. Falsos positivos
 
@@ -50,7 +57,7 @@ No identifiqué falsos positivos en esta ejecución. Todos los hallazgos de los 
 
 ## 5. Evidencia
 
-Últimas 15 líneas de `./mvnw -B verify` (ejecutado el 2026-11-07 con `NVD_API_KEY` tomada de `.env`):
+Últimas 15 líneas de `./mvnw -B verify` (ejecutado el 2026-11-08 con `NVD_API_KEY` tomada de `.env`; resultado: 52 pruebas, 0 fallos, BUILD SUCCESS):
 
 ```
 [INFO]
@@ -65,8 +72,8 @@ No identifiqué falsos positivos en esta ejecución. Todos los hallazgos de los 
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  02:06 min
-[INFO] Finished at: 2026-11-07T03:47:58-06:00
+[INFO] Total time:  02:18 min
+[INFO] Finished at: 2026-11-08T14:22:40-06:00
 [INFO] ------------------------------------------------------------------------
 ```
 
