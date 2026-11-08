@@ -44,25 +44,25 @@ La mesa de ayuda necesita un canal único para que el personal reporte incidenci
 
 | ID | Título | Prioridad MoSCoW | Estimación (pts) |
 |---|---|---|---|
-| HU-01 | Crear ticket de soporte | Must | 5 |
-| HU-02 | Consultar mis tickets y su detalle | Must | 3 |
-| HU-03 | Asignar ticket a un agente | Must | 5 |
-| HU-04 | Cambiar estado del ticket asignado | Must | 5 |
-| HU-05 | Consultar historial de un ticket | Should | 2 |
+| HU-TCK-01 | Crear ticket de soporte | Must | 5 |
+| HU-TCK-02 | Consultar mis tickets y su detalle | Must | 3 |
+| HU-TCK-03 | Asignar ticket a un agente | Must | 5 |
+| HU-TCK-04 | Cambiar estado del ticket asignado | Must | 5 |
+| HU-TCK-05 | Consultar historial de un ticket | Should | 2 |
 
-**HU-01 — Crear ticket de soporte.** Como SOLICITANTE quiero registrar una incidencia con título, descripción, categoría y prioridad para que el equipo de soporte la atienda con un plazo definido.
+**HU-TCK-01 — Crear ticket de soporte.** Como SOLICITANTE quiero registrar una incidencia con título, descripción, categoría y prioridad para que el equipo de soporte la atienda con un plazo definido.
 
-**HU-02 — Consultar mis tickets y su detalle.** Como SOLICITANTE quiero listar mis tickets y ver su detalle para dar seguimiento a mis incidencias.
+**HU-TCK-02 — Consultar mis tickets y su detalle.** Como SOLICITANTE quiero listar mis tickets y ver su detalle para dar seguimiento a mis incidencias.
 
-**HU-03 — Asignar ticket a un agente.** Como ADMIN quiero asignar un ticket a un agente para que tenga un responsable claro.
+**HU-TCK-03 — Asignar ticket a un agente.** Como ADMIN quiero asignar un ticket a un agente para que tenga un responsable claro.
 
-**HU-04 — Cambiar estado del ticket asignado.** Como AGENTE quiero avanzar el estado de mis tickets para reflejar el progreso real de la atención.
+**HU-TCK-04 — Cambiar estado del ticket asignado.** Como AGENTE quiero avanzar el estado de mis tickets para reflejar el progreso real de la atención.
 
-**HU-05 — Consultar historial de un ticket.** Como ADMIN quiero consultar el historial de cambios de un ticket para auditar la atención brindada.
+**HU-TCK-05 — Consultar historial de un ticket.** Como ADMIN quiero consultar el historial de cambios de un ticket para auditar la atención brindada.
 
 ## 4. Criterios de aceptación (Gherkin)
 
-### HU-01 — Crear ticket de soporte
+### HU-TCK-01 — Crear ticket de soporte
 
 ```gherkin
 Escenario: Creación exitosa de un ticket con SLA calculado
@@ -86,7 +86,7 @@ Escenario negativo: Título demasiado corto
   Entonces el sistema responde 400 con código "VALIDATION_ERROR" indicando el campo "title"
 ```
 
-### HU-02 — Consultar mis tickets y su detalle
+### HU-TCK-02 — Consultar mis tickets y su detalle
 
 ```gherkin
 Escenario: Listado de tickets propios
@@ -111,7 +111,7 @@ Escenario negativo: Ticket inexistente
   Entonces el sistema responde 404 con código "TICKET_NOT_FOUND"
 ```
 
-### HU-03 — Asignar ticket a un agente
+### HU-TCK-03 — Asignar ticket a un agente
 
 ```gherkin
 Escenario: Asignación exitosa a un agente activo
@@ -134,7 +134,7 @@ Escenario negativo: Asignar un ticket ya resuelto
   Entonces el sistema responde 409 con código "TICKET_INVALID_TRANSITION"
 ```
 
-### HU-04 — Cambiar estado del ticket asignado
+### HU-TCK-04 — Cambiar estado del ticket asignado
 
 ```gherkin
 Escenario: Avance de estado por el agente asignado
@@ -159,7 +159,7 @@ Escenario negativo: Agente no asignado
   Entonces el sistema responde 403 con código "FORBIDDEN"
 ```
 
-### HU-05 — Consultar historial de un ticket
+### HU-TCK-05 — Consultar historial de un ticket
 
 ```gherkin
 Escenario: Historial ordenado cronológicamente
