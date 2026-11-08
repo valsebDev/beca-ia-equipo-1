@@ -1,12 +1,21 @@
 package com.ids.ms_tickets;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 
+@SpringBootTest
+@Testcontainers
 class MsTicketsApplicationTests {
 
+	@Container
+	@ServiceConnection
+	static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16");
+
 	@Test
-	@Disabled("Requiere PostgreSQL activo; el contexto se cubre con pruebas de slice")
 	void contextLoads() {
 	}
 
