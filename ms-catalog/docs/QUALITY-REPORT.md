@@ -35,8 +35,8 @@ Notas sobre la medición:
 ### Hallazgo 3: CVE en swagger-ui (Dependency-Check)
 
 - **Qué era:** la versión de swagger-ui que trae springdoc tenía un CVE: CVE-2026-116803 y CVE-2026-116804, ambos sobre DOMPurify anterior a 3.4.17.
-- **Quién lo detectó:** Dependency-Check 13.0.0, durante un `verify` con `NVD_API_KEY`, antes de fijar el override. La hora exacta de esa ejecución no consta y su log no está en el repositorio. Reportó CVE-2026-116803 y CVE-2026-116804 sobre swagger-ui 5.34.0 (DOMPurify 3.4.16).
-- **Severidad:** en NVD, CVSS v3.1 6.1 (Medio) y v4.0 5.1 (Medio), con estado "Awaiting Analysis". No uso la puntuación de otro log que no pude verificar.
+- **Quién lo detectó:** Dependency-Check 13.0.0, durante un `verify` con `NVD_API_KEY`, antes de fijar el override. Reportó CVE-2026-116803 y CVE-2026-116804 sobre swagger-ui 5.34.0 (DOMPurify 3.4.16).
+- **Severidad:** en NVD, CVSS v3.1 6.1 (Medio) y v4.0 5.1 (Medio), con estado "Awaiting Analysis".
 - **Por qué era un problema:** XSS en la documentación de la API que expone el servicio.
 - **Cómo lo corregí:** fijé `org.webjars:swagger-ui` en 5.34.1 con `dependencyManagement`. Verifiqué en el paquete que 5.34.0 trae DOMPurify 3.4.16 y 5.34.1 trae 3.4.17. En la ejecución del 8 de noviembre de 2026 (14:22), Dependency-Check escaneó 115 dependencias (67 únicas), reportó 0 vulnerables y no lista swagger-ui 5.34.0.
 
