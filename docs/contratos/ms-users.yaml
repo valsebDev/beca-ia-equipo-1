@@ -1,18 +1,18 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
-  title: API de Usuarios y Autenticación (ms-users)
+  title: ms-users API
   version: 1.0.0
-  description: API REST para la gestión de usuarios y autenticación de la Mesa de Ayuda.
-    Cubre HU-USR-01, HU-USR-02, HU-USR-05 y HU-USR-08.
-    Las historias HU-USR-03, HU-USR-04, HU-USR-06 y HU-USR-07 quedan fuera del alcance de P1.
+  description: API de registro, autenticación, perfil y administración de usuarios.
 servers:
   - url: http://localhost:8081
+security:
+  - bearerAuth: []
 paths:
   /api/v1/auth/register:
     post:
       operationId: registerUser
-      security: []
       summary: Registrar un solicitante
+      security: []
       requestBody:
         required: true
         content:
@@ -21,28 +21,20 @@ paths:
               $ref: '#/components/schemas/RegisterUserRequest'
       responses:
         '201':
-          description: Usuario creado
+          description: Usuario registrado.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserResponse'
         '400':
-          description: Datos inválidos
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
+          $ref: '#/components/responses/BadRequest'
         '409':
-          description: Correo ya registrado
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
+          $ref: '#/components/responses/Conflict'
   /api/v1/auth/login:
     post:
       operationId: loginUser
+      summary: Iniciar sesión y obtener JWT
       security: []
-      summary: Autenticarse y obtener un JWT firmado con HS256
       requestBody:
         required: true
         content:
@@ -51,25 +43,23 @@ paths:
               $ref: '#/components/schemas/LoginRequest'
       responses:
         '200':
-          description: Autenticación correcta
+          description: Autenticación exitosa.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
-          description: Credenciales inválidas
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
+          $ref: '#/components/responses/Unauthorized'
         '403':
-          description: Cuenta desactivada
+          description: La cuenta está inactiva.
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
         '423':
-          description: Cuenta bloqueada temporalmente
+          description: La cuenta está bloqueada temporalmente.
           content:
             application/problem+json:
               schema:
@@ -77,33 +67,21 @@ paths:
   /api/v1/users/me:
     get:
       operationId: getMyProfile
-      summary: Obtener el perfil del usuario autenticado
-      security:
-        - bearerAuth: []
+      summary: Consultar el perfil autenticado
       responses:
         '200':
-          description: Perfil del usuario
+          description: Perfil del usuario autenticado.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserResponse'
         '401':
-          description: Token ausente, alterado, inválido o expirado
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
+          $ref: '#/components/responses/Unauthorized'
         '404':
-          description: Usuario del token no encontrado
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
+          $ref: '#/components/responses/NotFound'
     put:
       operationId: updateMyProfile
-      summary: Actualizar el perfil del usuario autenticado
-      security:
-        - bearerAuth: []
+      summary: Actualizar el perfil autenticado
       requestBody:
         required: true
         content:
@@ -112,40 +90,25 @@ paths:
               $ref: '#/components/schemas/UpdateProfileRequest'
       responses:
         '200':
-          description: Perfil actualizado
+          description: Perfil actualizado.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserResponse'
         '400':
-          description: Error de validación
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
+          $ref: '#/components/responses/BadRequest'
         '401':
-          description: Token ausente, alterado, inválido o expirado
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
+          $ref: '#/components/responses/Unauthorized'
         '404':
-          description: Usuario del token no encontrado
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
+          $ref: '#/components/responses/NotFound'
   /api/v1/users/{userIdentifier}/status:
     patch:
-      operationId: changeUserStatus
-      summary: Cambiar el estado de una cuenta (solo ADMIN, HU-USR-08)
-      security:
-        - bearerAuth: []
+      operationId: updateUserStatusByAdmin
+      summary: Cambiar estado de una cuenta (solo ADMIN)
       parameters:
         - name: userIdentifier
           in: path
           required: true
-          description: Identificador público del usuario a actualizar
           schema:
             type: string
       requestBody:
@@ -156,35 +119,19 @@ paths:
               $ref: '#/components/schemas/UpdateUserStatusRequest'
       responses:
         '200':
-          description: Estado actualizado
+          description: Estado actualizado.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserResponse'
         '400':
-          description: Error de validación
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
+          $ref: '#/components/responses/BadRequest'
         '401':
-          description: Token ausente, alterado, inválido o expirado
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
+          $ref: '#/components/responses/Unauthorized'
         '403':
-          description: El token es válido, pero no tiene rol ADMIN
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
+          $ref: '#/components/responses/Forbidden'
         '404':
-          description: Usuario no encontrado
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
+          $ref: '#/components/responses/NotFound'
 components:
   securitySchemes:
     bearerAuth:
@@ -198,83 +145,84 @@ components:
       properties:
         name: { type: string, maxLength: 100 }
         paternalName: { type: string, maxLength: 100 }
-        maternalName: { type: string, nullable: true, maxLength: 100 }
+        maternalName: { type: [string, 'null'], maxLength: 100 }
         email: { type: string, format: email, maxLength: 150 }
-        password: { type: string, minLength: 8, maxLength: 50 }
+        password: { type: string, format: password, minLength: 8, maxLength: 50 }
     LoginRequest:
       type: object
       required: [email, softPassword]
       properties:
         email: { type: string, format: email }
-        softPassword: { type: string }
+        softPassword: { type: string, format: password }
     UpdateProfileRequest:
       type: object
       required: [name, paternalName]
       properties:
         name: { type: string, maxLength: 100 }
         paternalName: { type: string, maxLength: 100 }
-        maternalName: { type: string, nullable: true, maxLength: 100 }
+        maternalName: { type: [string, 'null'], maxLength: 100 }
     UpdateUserStatusRequest:
       type: object
       required: [isActive]
       properties:
         isActive: { type: boolean }
-    UserResponse:
-      type: object
-      properties:
-        userIdentifier: { type: string }
-        name: { type: string }
-        paternalName: { type: string }
-        maternalName: { type: string, nullable: true }
-        email: { type: string, format: email }
-        role: { type: string, enum: [SOLICITANTE, AGENTE, ADMIN] }
-        isActive: { type: boolean }
-        createdAt: { type: string, format: date-time }
     AuthResponse:
       type: object
+      required: [accessToken, tokenType, expiresInSeconds, user]
       properties:
         accessToken: { type: string }
         tokenType: { type: string, example: Bearer }
         expiresInSeconds: { type: integer, format: int64 }
         user:
           $ref: '#/components/schemas/UserResponse'
+    UserResponse:
+      type: object
+      required: [userIdentifier, name, paternalName, email, role, isActive, createdAt]
+      properties:
+        userIdentifier: { type: string }
+        name: { type: string }
+        paternalName: { type: string }
+        maternalName: { type: [string, 'null'] }
+        email: { type: string, format: email }
+        role: { type: string, enum: [SOLICITANTE, AGENTE, ADMIN] }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
     ProblemDetail:
       type: object
-      description: Error en formato RFC 9457 (application/problem+json)
-      required: [type, title, status, detail, instance, code, timestamp]
       properties:
-        type:
-          type: string
-          format: uri
-          example: https://mesa-ayuda.ids/problems/user-not-found
-        title:
-          type: string
-          example: Recurso no encontrado
-        status:
-          type: integer
-          example: 404
-        detail:
-          type: string
-          description: Mensaje en español para el usuario
-          example: No existe un usuario con id 999
-        instance:
-          type: string
-          example: /api/v1/users/999
-        code:
-          type: string
-          example: USER_NOT_FOUND
-        timestamp:
-          type: string
-          format: date-time
-        errors:
-          type: array
-          description: Solo presente en errores 400 de validación
-          items:
-            type: object
-            properties:
-              field:
-                type: string
-                example: name
-              message:
-                type: string
-                example: debe ser un correo válido
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string, format: uri-reference }
+  responses:
+    BadRequest:
+      description: Solicitud inválida.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    Unauthorized:
+      description: Token o credenciales inválidos.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    Forbidden:
+      description: Operación no autorizada para el rol del usuario.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    NotFound:
+      description: Usuario no encontrado.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    Conflict:
+      description: El correo ya está registrado.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'

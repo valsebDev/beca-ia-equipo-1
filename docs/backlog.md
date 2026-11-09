@@ -43,7 +43,7 @@ flowchart LR
 
 | ID | Épica | Objetivo de negocio | Servicio(s) | HU |
 |---|---|---|---|---|
-| EP-01 | Identidad y acceso | Que cada persona entre al sistema con su rol y solo vea lo que le corresponde | ms-users | HU-USR-01 … 08 |
+| EP-01 | Identidad y acceso | Que cada persona entre al sistema con su rol y solo vea lo que le corresponde | ms-users | HU-USR-01 … 05 |
 | EP-02 | Catálogo y SLA | Clasificar los tickets y fijar tiempos de atención por prioridad | ms-catalog | HU-CAT-01 … 07 |
 | EP-03 | Ciclo de vida del ticket | Registrar, asignar, atender y cerrar solicitudes de soporte | ms-tickets | HU-TCK-01 … 06 |
 | EP-04 | Trazabilidad y cumplimiento de SLA | Saber quién cambió qué y cuándo, y detectar tickets vencidos | ms-tickets | HU-TCK-07, 08 |
@@ -57,18 +57,15 @@ flowchart LR
 
 | ID | Historia | Prioridad | Pts | Enlace |
 |---|---|---|---|---|
-| HU-USR-01 | Como **visitante** quiero registrarme con email y contraseña para poder crear tickets como solicitante. | Must | 3 | [detalle](../ms-users/docs/requerimientos.md#hu-usr-01) |
-| HU-USR-02 | Como **usuario registrado** quiero iniciar sesión para obtener un token y usar los servicios. | Must | 5 | [detalle](../ms-users/docs/requerimientos.md#hu-usr-02) |
-| HU-USR-03 | Como **usuario autenticado** quiero renovar mi sesión sin volver a escribir mi contraseña para no interrumpir mi trabajo. | Should | 5 | [detalle](../ms-users/docs/requerimientos.md#hu-usr-03) |
-| HU-USR-04 | Como **usuario autenticado** quiero cerrar sesión para que mi token de renovación deje de servir. | Should | 2 | [detalle](../ms-users/docs/requerimientos.md#hu-usr-04) |
-| HU-USR-05 | Como **usuario autenticado** quiero consultar mi perfil para verificar mis datos y mi rol. | Should | 1 | [detalle](../ms-users/docs/requerimientos.md#hu-usr-05) |
-| HU-USR-06 | Como **administrador** quiero crear usuarios con rol AGENTE o ADMIN para formar el equipo de soporte. | Must | 3 | [detalle](../ms-users/docs/requerimientos.md#hu-usr-06) |
-| HU-USR-07 | Como **administrador** quiero listar usuarios y filtrarlos por rol para elegir a qué agente asignar un ticket. | Must | 2 | [detalle](../ms-users/docs/requerimientos.md#hu-usr-07) |
-| HU-USR-08 | Como **administrador** quiero activar o desactivar un usuario para retirar el acceso sin perder su historial. | Should | 3 | [detalle](../ms-users/docs/requerimientos.md#hu-usr-08) |
+| <a id="hu-usr-01"></a>HU-USR-01 | Como **visitante** quiero registrarme con email y contraseña para poder crear tickets como solicitante. | Must | 3 | [detalle](../ms-users/docs/requerimientos.md#hu-usr-01) |
+| <a id="hu-usr-02"></a>HU-USR-02 | Como **usuario registrado** quiero iniciar sesión para obtener un token y usar los servicios. | Must | 5 | [detalle](../ms-users/docs/requerimientos.md#hu-usr-02) |
+| <a id="hu-usr-03"></a>HU-USR-03 | Como **usuario autenticado** quiero que se bloquee temporalmente mi cuenta tras intentos fallidos para proteger mis credenciales. | Must | 5 | [detalle](../ms-users/docs/requerimientos.md#hu-usr-03) |
+| <a id="hu-usr-04"></a>HU-USR-04 | Como **usuario autenticado** quiero consultar y actualizar mi perfil para mantener mis datos vigentes. | Should | 3 | [detalle](../ms-users/docs/requerimientos.md#hu-usr-04) |
+| <a id="hu-usr-05"></a>HU-USR-05 | Como **administrador** quiero cambiar el estado de una cuenta para retirar su acceso sin perder su historial. | Should | 3 | [detalle](../ms-users/docs/requerimientos.md#hu-usr-05) |
 
 Escenarios negativos mínimos que el detalle debe cubrir: email duplicado (409), credenciales
-inválidas o usuario inactivo (401, mismo mensaje), token de renovación expirado o reutilizado (401),
-rol distinto de ADMIN en HU-USR-06/07/08 (403).
+inválidas o usuario inactivo (401, mismo mensaje), bloqueo temporal tras superar los intentos
+permitidos (423), rol distinto de ADMIN en HU-USR-05 (403).
 
 ### 3.2 ms-catalog — EP-02 Catálogo y SLA (Sebastián)
 
@@ -106,10 +103,10 @@ rol incorrecto para crear o asignar (403).
 
 | Servicio | HU | Must | Should | Puntos |
 |---|---|---|---|---|
-| ms-users | 8 | 4 | 4 | 24 |
+| ms-users | 5 | 3 | 2 | 19 |
 | ms-catalog | 7 | 5 | 2 | 16 |
 | ms-tickets | 8 | 7 | 1 | 29 |
-| **Total** | **23** | **16** | **7** | **69** |
+| **Total** | **20** | **15** | **5** | **64** |
 
 ---
 
