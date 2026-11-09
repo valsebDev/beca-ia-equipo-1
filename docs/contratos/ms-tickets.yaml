@@ -354,6 +354,9 @@ components:
         code:
           type: string
           example: TICKET_NOT_FOUND
+        timestamp:
+          type: string
+          format: date-time
         errors:
           type: array
           items:

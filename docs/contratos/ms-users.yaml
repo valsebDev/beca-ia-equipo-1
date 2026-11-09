@@ -189,12 +189,23 @@ components:
         createdAt: { type: string, format: date-time }
     ProblemDetail:
       type: object
+      description: Error en formato RFC 9457 (application/problem+json)
       properties:
         type: { type: string, format: uri-reference }
         title: { type: string }
         status: { type: integer }
         detail: { type: string }
         instance: { type: string, format: uri-reference }
+        code: { type: string, example: USER_NOT_FOUND }
+        timestamp: { type: string, format: date-time }
+        errors:
+          type: array
+          description: Solo presente en errores 400 de validación
+          items:
+            type: object
+            properties:
+              field: { type: string, example: email }
+              message: { type: string, example: debe tener formato de correo válido }
   responses:
     BadRequest:
       description: Solicitud inválida.
