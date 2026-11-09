@@ -3,6 +3,19 @@
 Fecha: 2026-11-08
 Versión de plataforma: Java 17, Spring Boot 4.1.2
 
+## Antes / Después
+
+| Herramienta | Antes | Después |
+|---|---|---|
+| Checkstyle | 1 violación (LineLength) | 0 violaciones |
+| PMD / CPD | 5 violaciones (literales y números mágicos) | 0 violaciones |
+| SpotBugs | 0 violaciones | 0 violaciones |
+| Dependency-Check | Bloqueado por CVE-2025-7962 (CVSS 7.5) | Aprobado tras supresión justificada |
+| Cobertura JaCoCo | ~70% inicial | Service 86.39%, Controller 76.47% |
+
+La supresión está en `config/dependency-check-suppressions.xml`. El gate `check` de JaCoCo
+exige 70% de instrucciones (BUNDLE) durante `verify`.
+
 ## Métricas de Gates
 
 | Gate | Línea base | Estado final |
