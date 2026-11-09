@@ -1,11 +1,9 @@
 ---
 name: quality-gates-java
 description: >-
-  Ejecuta y audita los quality gates de microservicios Java/Spring Boot:
-  linters (Checkstyle, PMD, SpotBugs con FindSecBugs), cobertura JaCoCo,
-  vulnerabilidades de dependencias (OWASP Dependency-Check, CVE) y
-  `./mvnw -B verify`. Úsala al pedir revisar calidad, corregir violaciones,
-  subir cobertura, tratar CVE o dejar el build en verde.
+  Ejecuta, audita e interpreta los quality gates de los microservicios Java (Checkstyle, PMD,
+  SpotBugs con FindSecBugs, OWASP Dependency-Check y JaCoCo). Usar cuando se requiera verificar
+  la calidad estática del código, resolver vulnerabilidades o preparar entregas.
 ---
 
 # Quality Gates de microservicios Java
