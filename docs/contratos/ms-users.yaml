@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: ms-users API
   version: 1.0.0
-  description: API de registro, autenticación, perfil y administración de usuarios.
+  description: "Cubre HU-USR-01, 02, 05 y 08. HU-USR-03, 04, 06 y 07 quedan fuera del alcance de P1."
 servers:
   - url: http://localhost:8081
 security:
