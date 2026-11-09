@@ -121,7 +121,7 @@ Escenario: Título vacío (negativo)
 |---|---|---|
 | Rol | Sí | — |
 | Contexto | Parcial | Agregué el proyecto, la referencia `#file:` a los requerimientos y el alcance de las HU. Pedí verificar la versión de Spring Boot en `pom.xml`. |
-| Tarea | Sí | Asocié cada clase a la HU que cubre, incluidos `/me` y `/me/status`. |
+| Tarea | Sí | Asocié cada clase a la HU que cubre, incluidos `/{userIdentifier}` y `/{userIdentifier}/status`. |
 | Restricciones | Parcial | Agregué que nunca se expone la entidad JPA, los códigos HTTP esperados y no agregar dependencias sin preguntar. |
 | Formato de salida | Parcial | Pedí un bloque por archivo con ruta completa y una tabla final `Archivo \| Responsabilidad \| HU que cubre` (plantilla de la guía). |
 | Ejemplo | Parcial | Agregué una respuesta de error RFC 9457 de ejemplo. El original solo describe los campos. |
@@ -180,7 +180,7 @@ Genera la arquitectura REST por capas que cumpla las HU de gestión de usuarios:
 2. DTOs de request y response como `record`.
 3. `UserRepository` con Spring Data JPA.
 4. `TokenService` y `UserService` con la lógica de negocio y el bloqueo temporal por intentos fallidos de login.
-5. `AuthController` (registro y login) y `UserController` (`GET /me`, `PUT /me`, `PATCH /me/status`).
+5. `AuthController` (registro y login) y `UserController` (`GET /me`, `PUT /me`, `PATCH /{userIdentifier}/status`).
 6. `GlobalExceptionHandler` con `ProblemDetail` (RFC 9457).
 
 ## 4. RESTRICCIONES

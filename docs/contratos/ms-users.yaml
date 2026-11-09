@@ -2,12 +2,16 @@ openapi: 3.0.3
 info:
   title: API de Usuarios y Autenticación (ms-users)
   version: 1.0.0
-  description: Microservicio de gestión de usuarios, emisión de JWT y perfiles para Mesa de Ayuda.
+  description: API REST para la gestión de usuarios y autenticación de la Mesa de Ayuda.
+    Cubre HU-USR-01, HU-USR-02, HU-USR-05 y HU-USR-08.
+    Las historias HU-USR-03, HU-USR-04, HU-USR-06 y HU-USR-07 quedan fuera del alcance de P1.
 servers:
   - url: http://localhost:8081
 paths:
   /api/v1/auth/register:
     post:
+      operationId: registerUser
+      security: []
       summary: Registrar un solicitante
       requestBody:
         required: true
@@ -24,10 +28,20 @@ paths:
                 $ref: '#/components/schemas/UserResponse'
         '400':
           description: Datos inválidos
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
         '409':
           description: Correo ya registrado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
   /api/v1/auth/login:
     post:
+      operationId: loginUser
+      security: []
       summary: Autenticarse y obtener un JWT firmado con HS256
       requestBody:
         required: true
@@ -44,12 +58,25 @@ paths:
                 $ref: '#/components/schemas/AuthResponse'
         '401':
           description: Credenciales inválidas
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
         '403':
           description: Cuenta desactivada
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
         '423':
           description: Cuenta bloqueada temporalmente
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
   /api/v1/users/me:
     get:
+      operationId: getMyProfile
       summary: Obtener el perfil del usuario autenticado
       security:
         - bearerAuth: []
@@ -62,9 +89,18 @@ paths:
                 $ref: '#/components/schemas/UserResponse'
         '401':
           description: Token ausente, alterado, inválido o expirado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
         '404':
           description: Usuario del token no encontrado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
     put:
+      operationId: updateMyProfile
       summary: Actualizar el perfil del usuario autenticado
       security:
         - bearerAuth: []
@@ -83,12 +119,25 @@ paths:
                 $ref: '#/components/schemas/UserResponse'
         '400':
           description: Error de validación
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
         '401':
           description: Token ausente, alterado, inválido o expirado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
         '404':
           description: Usuario del token no encontrado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
   /api/v1/users/{userIdentifier}/status:
     patch:
+      operationId: changeUserStatus
       summary: Cambiar el estado de una cuenta (solo ADMIN, HU-USR-08)
       security:
         - bearerAuth: []
@@ -114,12 +163,28 @@ paths:
                 $ref: '#/components/schemas/UserResponse'
         '400':
           description: Error de validación
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
         '401':
           description: Token ausente, alterado, inválido o expirado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
         '403':
           description: El token es válido, pero no tiene rol ADMIN
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
         '404':
           description: Usuario no encontrado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
 components:
   securitySchemes:
     bearerAuth:
@@ -173,3 +238,43 @@ components:
         expiresInSeconds: { type: integer, format: int64 }
         user:
           $ref: '#/components/schemas/UserResponse'
+    ProblemDetail:
+      type: object
+      description: Error en formato RFC 9457 (application/problem+json)
+      required: [type, title, status, detail, instance, code, timestamp]
+      properties:
+        type:
+          type: string
+          format: uri
+          example: https://mesa-ayuda.ids/problems/user-not-found
+        title:
+          type: string
+          example: Recurso no encontrado
+        status:
+          type: integer
+          example: 404
+        detail:
+          type: string
+          description: Mensaje en español para el usuario
+          example: No existe un usuario con id 999
+        instance:
+          type: string
+          example: /api/v1/users/999
+        code:
+          type: string
+          example: USER_NOT_FOUND
+        timestamp:
+          type: string
+          format: date-time
+        errors:
+          type: array
+          description: Solo presente en errores 400 de validación
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: name
+              message:
+                type: string
+                example: debe ser un correo válido
