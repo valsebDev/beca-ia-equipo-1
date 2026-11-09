@@ -89,7 +89,7 @@ paths:
           description: Usuario del token no encontrado
   /api/v1/users/{userIdentifier}/status:
     patch:
-      summary: Cambiar el estado de una cuenta (solo ADMIN, HU-05)
+      summary: Cambiar el estado de una cuenta (solo ADMIN, HU-USR-08)
       security:
         - bearerAuth: []
       parameters:
