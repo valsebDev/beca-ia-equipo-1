@@ -1,0 +1,228 @@
+openapi: 3.1.0
+info:
+  title: ms-users API
+  version: 1.0.0
+  description: API de registro, autenticación, perfil y administración de usuarios.
+servers:
+  - url: http://localhost:8081
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/auth/register:
+    post:
+      operationId: registerUser
+      summary: Registrar un solicitante
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterUserRequest'
+      responses:
+        '201':
+          description: Usuario registrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/v1/auth/login:
+    post:
+      operationId: loginUser
+      summary: Iniciar sesión y obtener JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Autenticación exitosa.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: La cuenta está inactiva.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '423':
+          description: La cuenta está bloqueada temporalmente.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+  /api/v1/users/me:
+    get:
+      operationId: getMyProfile
+      summary: Consultar el perfil autenticado
+      responses:
+        '200':
+          description: Perfil del usuario autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      operationId: updateMyProfile
+      summary: Actualizar el perfil autenticado
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Perfil actualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/users/{userIdentifier}/status:
+    patch:
+      operationId: updateUserStatusByAdmin
+      summary: Cambiar estado de una cuenta (solo ADMIN)
+      parameters:
+        - name: userIdentifier
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserStatusRequest'
+      responses:
+        '200':
+          description: Estado actualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    RegisterUserRequest:
+      type: object
+      required: [name, paternalName, email, password]
+      properties:
+        name: { type: string, maxLength: 100 }
+        paternalName: { type: string, maxLength: 100 }
+        maternalName: { type: [string, 'null'], maxLength: 100 }
+        email: { type: string, format: email, maxLength: 150 }
+        password: { type: string, format: password, minLength: 8, maxLength: 50 }
+    LoginRequest:
+      type: object
+      required: [email, softPassword]
+      properties:
+        email: { type: string, format: email }
+        softPassword: { type: string, format: password }
+    UpdateProfileRequest:
+      type: object
+      required: [name, paternalName]
+      properties:
+        name: { type: string, maxLength: 100 }
+        paternalName: { type: string, maxLength: 100 }
+        maternalName: { type: [string, 'null'], maxLength: 100 }
+    UpdateUserStatusRequest:
+      type: object
+      required: [isActive]
+      properties:
+        isActive: { type: boolean }
+    AuthResponse:
+      type: object
+      required: [accessToken, tokenType, expiresInSeconds, user]
+      properties:
+        accessToken: { type: string }
+        tokenType: { type: string, example: Bearer }
+        expiresInSeconds: { type: integer, format: int64 }
+        user:
+          $ref: '#/components/schemas/UserResponse'
+    UserResponse:
+      type: object
+      required: [userIdentifier, name, paternalName, email, role, isActive, createdAt]
+      properties:
+        userIdentifier: { type: string }
+        name: { type: string }
+        paternalName: { type: string }
+        maternalName: { type: [string, 'null'] }
+        email: { type: string, format: email }
+        role: { type: string, enum: [SOLICITANTE, AGENTE, ADMIN] }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    ProblemDetail:
+      type: object
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string, format: uri-reference }
+  responses:
+    BadRequest:
+      description: Solicitud inválida.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    Unauthorized:
+      description: Token o credenciales inválidos.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    Forbidden:
+      description: Operación no autorizada para el rol del usuario.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    NotFound:
+      description: Usuario no encontrado.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    Conflict:
+      description: El correo ya está registrado.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
