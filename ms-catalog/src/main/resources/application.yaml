@@ -1,3 +1,38 @@
 spring:
   application:
     name: ms-catalog
+  datasource:
+    url: jdbc:postgresql://${CATALOG_DB_HOST:localhost}:${CATALOG_DB_PORT:5435}/${CATALOG_DB_NAME:catalog_db}
+    username: ${CATALOG_DB_USER:catalog}
+    password: ${CATALOG_DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: never
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+springdoc:
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:true}
+
+app:
+  sla:
+    max-response-hours: ${CATALOG_SLA_MAX_RESPONSE_HOURS:720}
+    max-resolution-hours: ${CATALOG_SLA_MAX_RESOLUTION_HOURS:2160}
