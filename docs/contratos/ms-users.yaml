@@ -2,7 +2,9 @@ openapi: 3.1.0
 info:
   title: ms-users API
   version: 1.0.0
-  description: API de registro, autenticación, perfil y administración de usuarios.
+  description: "Cubre HU-USR-01, 02, 05 y 08. HU-USR-03, 04, 06 y 07 quedan fuera del alcance de P1."
+  license:
+    name: Uso académico (Práctica 1)
 servers:
   - url: http://localhost:8081
 security:
@@ -189,12 +191,23 @@ components:
         createdAt: { type: string, format: date-time }
     ProblemDetail:
       type: object
+      description: Error en formato RFC 9457 (application/problem+json)
       properties:
         type: { type: string, format: uri-reference }
         title: { type: string }
         status: { type: integer }
         detail: { type: string }
         instance: { type: string, format: uri-reference }
+        code: { type: string, example: USER_NOT_FOUND }
+        timestamp: { type: string, format: date-time }
+        errors:
+          type: array
+          description: Solo presente en errores 400 de validación
+          items:
+            type: object
+            properties:
+              field: { type: string, example: email }
+              message: { type: string, example: debe tener formato de correo válido }
   responses:
     BadRequest:
       description: Solicitud inválida.

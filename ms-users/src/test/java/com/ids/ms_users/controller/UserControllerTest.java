@@ -115,7 +115,8 @@ class UserControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title").value("Error de Validación"))
-                .andExpect(jsonPath("$.invalidParams").exists());
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.errors").exists());
     }
 
     @Test

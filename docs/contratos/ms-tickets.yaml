@@ -5,6 +5,8 @@ info:
   description: >
     Borrador del contrato de ms-tickets. Identidad simulada con los encabezados
     X-User-Id y X-User-Role hasta la Práctica 3 (JWT). Los errores siguen RFC 9457 (ProblemDetail).
+  license:
+    name: Uso académico (Práctica 1)
 servers:
   - url: http://localhost:8080
     description: Desarrollo local
@@ -354,6 +356,9 @@ components:
         code:
           type: string
           example: TICKET_NOT_FOUND
+        timestamp:
+          type: string
+          format: date-time
         errors:
           type: array
           items:
