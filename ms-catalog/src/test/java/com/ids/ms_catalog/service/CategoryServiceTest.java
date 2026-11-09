@@ -7,6 +7,7 @@ import com.ids.ms_catalog.exception.NotFoundException;
 import com.ids.ms_catalog.model.Category;
 import com.ids.ms_catalog.repository.CategoryRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,7 +18,9 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -27,6 +30,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class CategoryServiceTest {
+
+	private static final String SOFTWARE_NAME = "Software";
 
 	@Mock
 	private CategoryRepository categoryRepository;
@@ -40,7 +45,7 @@ class CategoryServiceTest {
 	void setUp() {
 		software = new Category();
 		software.setId(2L);
-		software.setName("Software");
+		software.setName(SOFTWARE_NAME);
 		software.setDescription("Errores de aplicaciones");
 		software.setActive(true);
 	}
@@ -56,18 +61,30 @@ class CategoryServiceTest {
 
 		CategoryResponse response = categoryService.create(new CategoryRequest("Redes", "Problemas de red"));
 
-		assertThat(response.id()).isEqualTo(10L);
-		assertThat(response.active()).isTrue();
-		assertThat(response.name()).isEqualTo("Redes");
+		assertThat(response).usingRecursiveComparison()
+				.isEqualTo(new CategoryResponse(10L, "Redes", "Problemas de red", true));
 	}
 
 	@Test
 	void createLanzaConflictoCuandoElNombreYaExiste() {
-		when(categoryRepository.existsByName("Software")).thenReturn(true);
+		when(categoryRepository.existsByName(SOFTWARE_NAME)).thenReturn(true);
 
-		assertThatThrownBy(() -> categoryService.create(new CategoryRequest("Software", null)))
-				.isInstanceOfSatisfying(ConflictException.class,
-						ex -> assertThat(ex.getCode()).isEqualTo("CATEGORY_ALREADY_EXISTS"));
+		CategoryRequest request = new CategoryRequest(SOFTWARE_NAME, null);
+
+		assertThatExceptionOfType(ConflictException.class)
+				.isThrownBy(() -> categoryService.create(request))
+				.extracting(ConflictException::getCode)
+				.isEqualTo("CATEGORY_ALREADY_EXISTS");
+	}
+
+	@Test
+	void createNoGuardaCategoriaCuandoElNombreYaExiste() {
+		when(categoryRepository.existsByName(SOFTWARE_NAME)).thenReturn(true);
+
+		CategoryRequest request = new CategoryRequest(SOFTWARE_NAME, null);
+
+		crearEsperandoConflicto(request);
+
 		verify(categoryRepository, never()).save(any(Category.class));
 	}
 
@@ -77,7 +94,7 @@ class CategoryServiceTest {
 
 		List<CategoryResponse> result = categoryService.findAll(true);
 
-		assertThat(result).extracting(CategoryResponse::name).containsExactly("Software");
+		assertThat(result).extracting(CategoryResponse::name).containsExactly(SOFTWARE_NAME);
 	}
 
 	@Test
@@ -101,9 +118,10 @@ class CategoryServiceTest {
 		when(categoryRepository.findById(3L)).thenReturn(Optional.of(software));
 		when(categoryRepository.existsByNameAndIdNot(anyString(), anyLong())).thenReturn(true);
 
-		assertThatThrownBy(() -> categoryService.update(3L, new CategoryRequest("Hardware", null)))
+		CategoryRequest request = new CategoryRequest("Hardware", null);
+
+		assertThatThrownBy(() -> categoryService.update(3L, request))
 				.isInstanceOf(ConflictException.class);
-		assertThat(software.getName()).isEqualTo("Software");
 	}
 
 	@Test
@@ -113,26 +131,72 @@ class CategoryServiceTest {
 
 		CategoryResponse response = categoryService.update(2L, new CategoryRequest("Software y licencias", "Nuevo texto"));
 
-		assertThat(response.name()).isEqualTo("Software y licencias");
-		assertThat(response.description()).isEqualTo("Nuevo texto");
+		assertThat(response).usingRecursiveComparison()
+				.isEqualTo(new CategoryResponse(2L, "Software y licencias", "Nuevo texto", true));
 	}
 
-	@Test
-	void deactivateMarcaInactivaSinBorrarElRegistro() {
-		when(categoryRepository.findById(2L)).thenReturn(Optional.of(software));
-
-		categoryService.deactivate(2L);
-
-		assertThat(software.isActive()).isFalse();
-		verify(categoryRepository, never()).delete(any(Category.class));
-		verify(categoryRepository, never()).deleteById(anyLong());
+	private void crearEsperandoConflicto(CategoryRequest request) {
+		try {
+			categoryService.create(request);
+			fail("Se esperaba ConflictException");
+		} catch (ConflictException expected) {
+			// El tipo y el código de la excepción se verifican en createLanzaConflictoCuandoElNombreYaExiste.
+		}
 	}
 
-	@Test
-	void deactivateLanzaNotFoundCuandoLaCategoriaNoExiste() {
-		when(categoryRepository.findById(999L)).thenReturn(Optional.empty());
+	@Nested
+	class Deactivate {
 
-		assertThatThrownBy(() -> categoryService.deactivate(999L)).isInstanceOf(NotFoundException.class);
-		verify(categoryRepository, never()).deleteById(anyLong());
+		private void desactivarEsperandoNotFound(long id) {
+			try {
+				categoryService.deactivate(id);
+				fail("Se esperaba NotFoundException");
+			} catch (NotFoundException expected) {
+				// El tipo de excepción se verifica en deactivateLanzaNotFoundCuandoLaCategoriaNoExiste.
+			}
+		}
+
+		@Test
+		void deactivateMarcaInactivaSinBorrarElRegistro() {
+			when(categoryRepository.findById(2L)).thenReturn(Optional.of(software));
+
+			categoryService.deactivate(2L);
+
+			assertThat(software.isActive()).isFalse();
+		}
+
+		@Test
+		void deactivateNoLlamaDeleteDelRepositorio() {
+			when(categoryRepository.findById(2L)).thenReturn(Optional.of(software));
+
+			categoryService.deactivate(2L);
+
+			verify(categoryRepository, never()).delete(any(Category.class));
+		}
+
+		@Test
+		void deactivateNoBorraElRegistroFisicamente() {
+			when(categoryRepository.findById(2L)).thenReturn(Optional.of(software));
+
+			categoryService.deactivate(2L);
+
+			verify(categoryRepository, never()).deleteById(anyLong());
+		}
+
+		@Test
+		void deactivateLanzaNotFoundCuandoLaCategoriaNoExiste() {
+			when(categoryRepository.findById(999L)).thenReturn(Optional.empty());
+
+			assertThatThrownBy(() -> categoryService.deactivate(999L)).isInstanceOf(NotFoundException.class);
+		}
+
+		@Test
+		void deactivateNoLlamaDeleteIdCuandoLaCategoriaNoExiste() {
+			when(categoryRepository.findById(999L)).thenReturn(Optional.empty());
+
+			desactivarEsperandoNotFound(999L);
+
+			verify(categoryRepository, never()).deleteById(anyLong());
+		}
 	}
 }

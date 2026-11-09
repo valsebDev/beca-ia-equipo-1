@@ -24,6 +24,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CategoryController {
 
+	private static final String ID_PATH = "/{id}";
+
 	private final CategoryService categoryService;
 
 	@GetMapping
@@ -31,7 +33,7 @@ public class CategoryController {
 		return categoryService.findAll(active);
 	}
 
-	@GetMapping("/{id}")
+	@GetMapping(ID_PATH)
 	public CategoryResponse get(@PathVariable Long id) {
 		return categoryService.findById(id);
 	}
@@ -40,15 +42,15 @@ public class CategoryController {
 	public ResponseEntity<CategoryResponse> create(@Valid @RequestBody CategoryRequest request) {
 		CategoryResponse created = categoryService.create(request);
 		return ResponseEntity.created(ServletUriComponentsBuilder.fromCurrentRequest()
-				.path("/{id}").buildAndExpand(created.id()).toUri()).body(created);
+				.path(ID_PATH).buildAndExpand(created.id()).toUri()).body(created);
 	}
 
-	@PutMapping("/{id}")
+	@PutMapping(ID_PATH)
 	public CategoryResponse update(@PathVariable Long id, @Valid @RequestBody CategoryRequest request) {
 		return categoryService.update(id, request);
 	}
 
-	@DeleteMapping("/{id}")
+	@DeleteMapping(ID_PATH)
 	public ResponseEntity<Void> deactivate(@PathVariable Long id) {
 		categoryService.deactivate(id);
 		return ResponseEntity.noContent().build();
