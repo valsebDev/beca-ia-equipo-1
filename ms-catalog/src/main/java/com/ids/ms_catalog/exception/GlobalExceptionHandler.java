@@ -22,10 +22,19 @@ public class GlobalExceptionHandler {
 
 	private static final Logger LOG = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 	private static final String PROBLEM_BASE_URI = "https://mesa-ayuda.ids/problems/";
+	private static final String NOT_FOUND_TITLE = "Recurso no encontrado";
+	private static final Map<Integer, String> FRAMEWORK_TITLES = Map.of(
+			404, NOT_FOUND_TITLE,
+			405, "Método no permitido",
+			415, "Tipo de contenido no soportado");
+	private static final Map<Integer, String> FRAMEWORK_DETAILS = Map.of(
+			404, NOT_FOUND_TITLE,
+			405, "Método HTTP no permitido para este recurso",
+			415, "Tipo de contenido no soportado");
 
 	@ExceptionHandler(NotFoundException.class)
 	ProblemDetail handleNotFound(NotFoundException ex, HttpServletRequest request) {
-		return build(HttpStatus.NOT_FOUND, ex.getCode(), "Recurso no encontrado", ex.getMessage(), request);
+		return build(HttpStatus.NOT_FOUND, ex.getCode(), NOT_FOUND_TITLE, ex.getMessage(), request);
 	}
 
 	@ExceptionHandler(ConflictException.class)

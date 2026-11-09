@@ -2,6 +2,10 @@
 # Maven
 # =========================
 target/
+*.jar
+*.war
+*.ear
+*.class
 
 # =========================
 # IntelliJ IDEA
@@ -31,11 +35,21 @@ out/
 # =========================
 *.log
 logs/
+checkstyle-cachefile
+checkstyle-checker.xml
+checkstyle-result.xml
+pmd.xml
+cpd.xml
+spotbugsXml.xml
+dependency-check-report.html
+dependency-check-report.xml
+dependency-check-report.json
 
 # =========================
 # Environment variables / secrets
 # =========================
 .env
+*.env.local
 .env.*
 !.env.example
 
@@ -88,3 +102,8 @@ docker-compose.override.yml
 # Reports
 # =========================
 htmlReport/
+
+# =========================
+# Historial de herramientas de locales
+# =========================
+.github/modernize/

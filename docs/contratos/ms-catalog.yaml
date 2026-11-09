@@ -5,11 +5,14 @@ info:
   description: >-
     Gestión de categorías, prioridades y políticas SLA de la mesa de ayuda.
     En la Práctica 1 no hay autenticación; la seguridad JWT se añade en la Práctica 3.
+  license:
+    name: Uso académico (Práctica 1)
 servers:
   - url: http://localhost:8083
     description: Desarrollo local (puerto host de docker-compose)
   - url: http://localhost:8080
     description: Ejecución directa con ./mvnw spring-boot:run
+security: []
 tags:
   - name: Categorías
     description: Clasificación de incidencias. Se desactivan, nunca se borran.
@@ -37,6 +40,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/CategoryResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
     post:
       tags: [Categorías]
       operationId: createCategory
@@ -128,6 +133,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/PriorityResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
     post:
       tags: [Prioridades]
       operationId: createPriority
