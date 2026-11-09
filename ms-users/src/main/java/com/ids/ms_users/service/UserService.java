@@ -11,6 +11,7 @@ import com.ids.ms_users.dto.UserResponse;
 import com.ids.ms_users.exception.AccountInactiveException;
 import com.ids.ms_users.exception.AccountLockedException;
 import com.ids.ms_users.exception.EmailAlreadyExistsException;
+import com.ids.ms_users.exception.ForbiddenOperationException;
 import com.ids.ms_users.exception.InvalidCredentialsException;
 import com.ids.ms_users.exception.UserNotFoundException;
 import com.ids.ms_users.repository.UserRepository;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -129,7 +131,9 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponse updateStatus(String userIdentifier, UpdateUserStatusRequest request) {
+    public UserResponse updateStatusByAdmin(
+            String userIdentifier, UpdateUserStatusRequest request, List<String> requesterRoles) {
+        requireAdmin(requesterRoles);
         User user = userRepository.findByUserIdentifier(userIdentifier)
             .orElseThrow(() -> new UserNotFoundException(
                 "Usuario no encontrado con identificador: " + userIdentifier));
@@ -141,6 +145,12 @@ public class UserService {
 
         User updated = userRepository.save(user);
         return mapToResponse(updated);
+    }
+
+    private void requireAdmin(List<String> roles) {
+        if (roles == null || !roles.contains(Role.ADMIN.name())) {
+            throw new ForbiddenOperationException("Solo un usuario con rol ADMIN puede cambiar estados");
+        }
     }
 
     private UserResponse mapToResponse(User user) {

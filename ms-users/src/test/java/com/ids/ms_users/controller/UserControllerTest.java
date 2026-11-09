@@ -26,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -185,8 +186,8 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("HU-05: PATCH /api/v1/users/me/status - Desactivación lógica devuelve 200 OK")
-    void updateMyStatus_desactivacionExitosa_devuelve200Ok() throws Exception {
+        @DisplayName("HU-USR-05: PATCH /api/v1/users/{id}/status - ADMIN actualiza estado")
+        void updateUserStatusByAdmin_adminActualizaEstado_devuelve200Ok() throws Exception {
         String tokenHeader = "Bearer mock-token-admin";
         String userIdentifier = "uuid-target";
         UpdateUserStatusRequest request = new UpdateUserStatusRequest(false);
@@ -195,10 +196,12 @@ class UserControllerTest {
                 Role.AGENTE, false, LocalDateTime.now()
         );
 
-        given(tokenService.extractUserIdentifier(tokenHeader)).willReturn(userIdentifier);
-        given(userService.updateStatus(eq(userIdentifier), any(UpdateUserStatusRequest.class))).willReturn(response);
+        given(tokenService.extractRoles(tokenHeader)).willReturn(List.of("ADMIN"));
+        given(userService.updateStatusByAdmin(
+                eq(userIdentifier), any(UpdateUserStatusRequest.class), eq(List.of("ADMIN"))))
+                .willReturn(response);
 
-        mockMvc.perform(patch("/api/v1/users/me/status")
+        mockMvc.perform(patch("/api/v1/users/{userIdentifier}/status", userIdentifier)
                         .header("Authorization", tokenHeader)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))

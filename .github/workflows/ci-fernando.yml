@@ -1,0 +1,22 @@
+name: ci-fernando
+on:
+  push:
+    branches: ["practica-*-fernando"]
+    paths: ["ms-users/**", ".github/workflows/ci-fernando.yml"]
+  pull_request:
+    branches: [main]
+    paths: ["ms-users/**", ".github/workflows/ci-fernando.yml"]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ms-users
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+      - name: Quality gates y pruebas (mvn verify)
+        run: chmod +x mvnw && ./mvnw -B verify
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}

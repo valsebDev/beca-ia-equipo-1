@@ -1,6 +1,7 @@
 package com.ids.ms_users.controller;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -15,12 +16,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.ids.ms_users.config.JwtConfiguration;
 import com.ids.ms_users.domain.Role;
 import com.ids.ms_users.domain.User;
 import com.ids.ms_users.dto.UpdateUserStatusRequest;
 import com.ids.ms_users.dto.UserResponse;
 import com.ids.ms_users.exception.GlobalExceptionHandler;
+import com.ids.ms_users.exception.ForbiddenOperationException;
 import com.ids.ms_users.exception.UserNotFoundException;
 import com.ids.ms_users.service.TokenService;
 import com.ids.ms_users.service.UserService;
@@ -31,7 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(controllers = UserController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import({GlobalExceptionHandler.class, JwtConfiguration.class, TokenService.class})
+@Import({GlobalExceptionHandler.class, TokenService.class})
 class UserControllerJwtSecurityTest {
 
     private static final String USER_IDENTIFIER = "c2bc24d7-923d-4383-9425-c3b1573dd005";
@@ -51,7 +52,8 @@ class UserControllerJwtSecurityTest {
     void tokenAdminValido_actualizaEstado_yResponde200() throws Exception {
         String targetIdentifier = "uuid-target";
         UpdateUserStatusRequest request = new UpdateUserStatusRequest(false);
-        given(userService.updateStatus(eq(targetIdentifier), any(UpdateUserStatusRequest.class)))
+        given(userService.updateStatusByAdmin(
+            eq(targetIdentifier), any(UpdateUserStatusRequest.class), eq(List.of("ADMIN"))))
                 .willReturn(response(targetIdentifier, false));
 
         mockMvc.perform(patch("/api/v1/users/{userIdentifier}/status", targetIdentifier)
@@ -88,6 +90,9 @@ class UserControllerJwtSecurityTest {
     @Test
     void tokenDeUsuarioNormal_responde403() throws Exception {
         UpdateUserStatusRequest request = new UpdateUserStatusRequest(false);
+        given(userService.updateStatusByAdmin(
+            eq("uuid-target"), any(UpdateUserStatusRequest.class), eq(List.of("SOLICITANTE"))))
+            .willThrow(new ForbiddenOperationException("Solo ADMIN puede cambiar estados"));
 
         mockMvc.perform(patch("/api/v1/users/{userIdentifier}/status", "uuid-target")
                         .header("Authorization", "Bearer " + tokenFor(Role.SOLICITANTE))
@@ -100,7 +105,8 @@ class UserControllerJwtSecurityTest {
     void usuarioNoExistente_conTokenAdmin_responde404() throws Exception {
         String targetIdentifier = "uuid-no-existe";
         UpdateUserStatusRequest request = new UpdateUserStatusRequest(false);
-        given(userService.updateStatus(eq(targetIdentifier), any(UpdateUserStatusRequest.class)))
+        given(userService.updateStatusByAdmin(
+            eq(targetIdentifier), any(UpdateUserStatusRequest.class), eq(List.of("ADMIN"))))
                 .willThrow(new UserNotFoundException("Usuario no encontrado con identificador: " + targetIdentifier));
 
         mockMvc.perform(patch("/api/v1/users/{userIdentifier}/status", targetIdentifier)

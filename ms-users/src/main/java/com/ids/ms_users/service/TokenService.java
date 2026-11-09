@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import com.ids.ms_users.domain.User;
 import com.ids.ms_users.exception.InvalidCredentialsException;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -27,6 +28,9 @@ public class TokenService {
     private final String issuer;
     private final String audience;
 
+    @SuppressFBWarnings(
+            value = "CT_CONSTRUCTOR_THROW",
+            justification = "Se rechaza al iniciar una configuración JWT inválida")
     @Autowired
     public TokenService(
             @Value("${app.security.jwt.secret}") String secret,
@@ -36,7 +40,10 @@ public class TokenService {
         this(createSigningKey(secret), expirationMinutes, issuer, audience);
     }
 
-    public TokenService(
+        @SuppressFBWarnings(
+            value = "CT_CONSTRUCTOR_THROW",
+            justification = "Se rechaza al iniciar una clave JWT nula")
+        public TokenService(
             SecretKey signingKey,
             long expirationMinutes,
             String issuer,
@@ -85,7 +92,8 @@ public class TokenService {
         try {
             Long.parseLong(claims.getSubject());
         } catch (NumberFormatException ex) {
-            throw new InvalidCredentialsException("Token JWT inválido o sin identificador de usuario");
+            throw new InvalidCredentialsException(
+                    "Token JWT inválido o sin identificador de usuario", ex);
         }
         return userIdentifier;
     }
@@ -94,13 +102,13 @@ public class TokenService {
         Claims claims = extractAllClaims(bearerHeader);
         Object rolesClaim = claims.get("roles");
         if (!(rolesClaim instanceof List<?> roleClaims)) {
-            return null;
+            return List.of();
         }
 
         List<String> roles = new ArrayList<>();
         for (Object role : roleClaims) {
             if (!(role instanceof String roleName)) {
-                return null;
+                return List.of();
             }
             roles.add(roleName);
         }
@@ -121,7 +129,7 @@ public class TokenService {
                     .parseSignedClaims(token)
                     .getPayload();
         } catch (JwtException | IllegalArgumentException ex) {
-            throw new InvalidCredentialsException("Token JWT inválido o expirado");
+            throw new InvalidCredentialsException("Token JWT inválido o expirado", ex);
         }
     }
 

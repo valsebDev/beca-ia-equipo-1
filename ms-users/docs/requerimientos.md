@@ -53,15 +53,16 @@ Representa la cuenta de identidad y acceso al ecosistema de la Mesa de Ayuda.
 ### Tabla Resumen de HU
 | ID | Título | Prioridad (MoSCoW) | Estimación (Story Points) |
 | :--- | :--- | :--- | :--- |
-| **HU-01** | Registro de nuevo solicitante | Must Have | 3 |
-| **HU-02** | Autenticación con correo y contraseña (JWT) | Must Have | 5 |
-| **HU-03** | Bloqueo temporal por intentos fallidos de login | Must Have | 5 |
-| **HU-04** | Consulta y actualización de perfil de usuario | Should Have | 3 |
-| **HU-05** | Desactivación lógica de cuentas por el Administrador | Should Have | 3 |
+| **HU-USR-01** | Registro de nuevo solicitante | Must Have | 3 |
+| **HU-USR-02** | Autenticación con correo y contraseña (JWT) | Must Have | 5 |
+| **HU-USR-03** | Bloqueo temporal por intentos fallidos de login | Must Have | 5 |
+| **HU-USR-04** | Consulta y actualización de perfil de usuario | Should Have | 3 |
+| **HU-USR-05** | Desactivación lógica de cuentas por el Administrador | Should Have | 3 |
 
 ---
 
-### HU-01: Registro de nuevo solicitante
+### HU-USR-01: Registro de nuevo solicitante
+[Volver al backlog](../../docs/backlog.md#hu-usr-01)
 **Como** usuario anónimo  
 **Quiero** registrarme ingresando mis nombres, apellidos, correo y contraseña  
 **Para** acceder al sistema de Mesa de Ayuda con una cuenta de rol solicitante.
@@ -83,7 +84,8 @@ Representa la cuenta de identidad y acceso al ecosistema de la Mesa de Ayuda.
 
 ---
 
-### HU-02: Autenticación con correo y contraseña (JWT)
+### HU-USR-02: Autenticación con correo y contraseña (JWT)
+[Volver al backlog](../../docs/backlog.md#hu-usr-02)
 **Como** usuario registrado  
 **Quiero** iniciar sesión con mi correo electrónico y contraseña  
 **Para** obtener un token JWT que acredite mi identidad en los microservicios del sistema.
@@ -105,8 +107,9 @@ Representa la cuenta de identidad y acceso al ecosistema de la Mesa de Ayuda.
 
 ---
 
-### HU-03: Bloqueo temporal por intentos fallidos de login
-**Como** oficial de seguridad del sistema  
+### HU-USR-03: Bloqueo temporal por intentos fallidos de login
+[Volver al backlog](../../docs/backlog.md#hu-usr-03)
+**Como** usuario autenticado  
 **Quiero** que la cuenta se bloquee automáticamente tras 5 intentos fallidos consecutivos de login  
 **Para** mitigar vulnerabilidades y ataques de fuerza bruta contra las credenciales.
 
@@ -127,7 +130,8 @@ Representa la cuenta de identidad y acceso al ecosistema de la Mesa de Ayuda.
 
 ---
 
-### HU-04: Consulta y actualización de perfil de usuario
+### HU-USR-04: Consulta y actualización de perfil de usuario
+[Volver al backlog](../../docs/backlog.md#hu-usr-04)
 **Como** usuario autenticado  
 **Quiero** consultar y actualizar mis datos básicos de perfil (nombre y apellido)  
 **Para** mantener actualizada mi información personal en la mesa de ayuda.
@@ -149,23 +153,24 @@ Representa la cuenta de identidad y acceso al ecosistema de la Mesa de Ayuda.
 
 ---
 
-### HU-05: Desactivación lógica de cuentas por el Administrador
+### HU-USR-05: Desactivación lógica de cuentas por el Administrador
+[Volver al backlog](../../docs/backlog.md#hu-usr-05)
 **Como** Administrador  
 **Quiero** desactivar la cuenta de un usuario específico  
 **Para** suspender su acceso de manera indefinida sin eliminar su historial de tickets.
 
 * **Escenario 1 (Positivo): Desactivación exitosa realizada por un ADMIN**
   * **Dado** que un usuario con rol `ADMIN` se encuentra debidamente autenticado
-  * **Cuando** envía una petición `PATCH /api/v1/users/{id}/deactivate` con el ID de un usuario existente
-  * **Entonces** el sistema actualiza el registro con `activo = false` y responde con código HTTP `204 No Content`.
+  * **Cuando** envía `PATCH /api/v1/users/{userIdentifier}/status` con `isActive = false`
+  * **Entonces** el sistema actualiza el estado y responde con código HTTP `200 OK` y el perfil actualizado.
 
 * **Escenario 2 (Negativo): Intento de desactivación por un rol no autorizado**
-  * **Dado** que un usuario autenticado con rol `SOLICITANTE` o `AGENTE` invoca `PATCH /api/v1/users/{id}/deactivate`
+  * **Dado** que un usuario autenticado con rol `SOLICITANTE` o `AGENTE` invoca `PATCH /api/v1/users/{userIdentifier}/status`
   * **Cuando** el evaluador de autorización RBAC verifica los claims del token
   * **Entonces** la solicitud es rechazada y el servicio responde con código HTTP `403 Forbidden`.
 
 * **Escenario 3 (Negativo): Desactivación de un ID de usuario inexistente**
-  * **Dado** que un `ADMIN` invoca `PATCH /api/v1/users/{id}/deactivate` enviando un UUID inexistente
+  * **Dado** que un `ADMIN` invoca `PATCH /api/v1/users/{userIdentifier}/status` enviando un identificador inexistente
   * **Cuando** el servicio busca al usuario en la base de datos
   * **Entonces** el sistema no encuentra el recurso y responde con código HTTP `404 Not Found`.
 

@@ -2,6 +2,7 @@ package com.ids.ms_users.service;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -77,5 +78,20 @@ class TokenServiceTest {
         assertThrows(InvalidCredentialsException.class, () -> tokenService.extractUserIdentifier(null));
         assertThrows(InvalidCredentialsException.class, () -> tokenService.extractUserIdentifier("Basic token"));
         assertThrows(InvalidCredentialsException.class, () -> tokenService.extractUserIdentifier("Bearer invalid"));
+    }
+
+    @Test
+    void extractRoles_sinClaimDeRoles_devuelveListaVacia() {
+        Date now = new Date();
+        String tokenWithoutRoles = Jwts.builder()
+                .issuer(ISSUER)
+                .audience().add(AUDIENCE).and()
+                .subject("42")
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + 60_000))
+                .signWith(Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8)), Jwts.SIG.HS256)
+                .compact();
+
+        assertEquals(List.of(), tokenService.extractRoles("Bearer " + tokenWithoutRoles));
     }
 }

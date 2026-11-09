@@ -11,6 +11,7 @@ import com.ids.ms_users.dto.UserResponse;
 import com.ids.ms_users.exception.AccountInactiveException;
 import com.ids.ms_users.exception.AccountLockedException;
 import com.ids.ms_users.exception.EmailAlreadyExistsException;
+import com.ids.ms_users.exception.ForbiddenOperationException;
 import com.ids.ms_users.exception.InvalidCredentialsException;
 import com.ids.ms_users.exception.UserNotFoundException;
 import com.ids.ms_users.repository.UserRepository;
@@ -24,6 +25,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -180,12 +182,21 @@ class UserServiceTest {
         given(userRepository.save(any(User.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         // When
-        UserResponse response = userService.updateStatus(identifier, new UpdateUserStatusRequest(false));
+        UserResponse response = userService.updateStatusByAdmin(
+            identifier, new UpdateUserStatusRequest(false), List.of("ADMIN"));
 
         // Then
         assertFalse(response.isActive());
         assertNull(user.getJwtId());
         assertNull(user.getJwtExpiresAt());
         then(userRepository).should().save(user);
+    }
+
+    @Test
+    @DisplayName("HU-USR-05: un rol distinto de ADMIN no puede cambiar el estado")
+    void updateStatusByAdmin_sinRolAdmin_lanzaForbiddenOperationException() {
+        assertThrows(ForbiddenOperationException.class, () -> userService.updateStatusByAdmin(
+                "uuid-agente", new UpdateUserStatusRequest(false), List.of("SOLICITANTE")));
+        then(userRepository).shouldHaveNoInteractions();
     }
 }
