@@ -100,7 +100,7 @@ public class GlobalExceptionHandler {
         problem.setTitle("Error Interno del Servidor");
         problem.setType(URI.create("https://ids.com/errors/internal-server-error"));
         problem.setProperty("code", "INTERNAL_ERROR");
-        problem.setProperty("timestamp", Instant.now());
+        problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return problem;
     }
 
