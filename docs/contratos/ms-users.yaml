@@ -3,6 +3,8 @@ info:
   title: ms-users API
   version: 1.0.0
   description: "Cubre HU-USR-01, 02, 05 y 08. HU-USR-03, 04, 06 y 07 quedan fuera del alcance de P1."
+  license:
+    name: Uso académico (Práctica 1)
 servers:
   - url: http://localhost:8081
 security:
