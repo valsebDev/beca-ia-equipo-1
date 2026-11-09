@@ -22,7 +22,7 @@ import jakarta.servlet.http.HttpServletRequest;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-	private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 	private static final String MALFORMED_DETAIL = "La solicitud no es válida o tiene un formato incorrecto";
 
 	@ExceptionHandler(DomainException.class)
@@ -54,7 +54,7 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(Exception.class)
 	public ProblemDetail handleUnexpected(Exception ex, HttpServletRequest request) {
-		log.error("Error no controlado en {}", request.getRequestURI(), ex);
+		LOGGER.error("Error no controlado en {}", request.getRequestURI(), ex);
 		return build(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno", "INTERNAL_ERROR",
 				"Ocurrió un error inesperado", request, null);
 	}
