@@ -27,7 +27,7 @@
         <maven-pmd-plugin.version>3.26.0</maven-pmd-plugin.version>
         <spotbugs-maven-plugin.version>4.9.3.0</spotbugs-maven-plugin.version>
         <findsecbugs-plugin.version>1.14.0</findsecbugs-plugin.version>
-        <dependency-check-maven.version>10.0.4</dependency-check-maven.version>
+        <dependency-check-maven.version>13.0.0</dependency-check-maven.version>
         <jacoco-maven-plugin.version>0.8.12</jacoco-maven-plugin.version>
     </properties>
 
@@ -254,6 +254,7 @@
                     <failBuildOnCVSS>7.0</failBuildOnCVSS>
                     <ossindexAnalyzerEnabled>false</ossindexAnalyzerEnabled>
                     <suppressionFile>config/dependency-check-suppressions.xml</suppressionFile>
+                    <nvdApiKeyEnvironmentVariable>NVD_API_KEY</nvdApiKeyEnvironmentVariable>
                 </configuration>
                 <executions>
                     <execution>
