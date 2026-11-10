@@ -35,11 +35,15 @@ class CategoryErrorResponseTest {
 	private static final String BASE_PATH = "/api/v1/categories";
 	private static final String CODE_PATH = "$.code";
 
-	@Autowired
-	private MockMvc mockMvc;
+	private final MockMvc mockMvc;
 
 	@MockitoBean
 	private CategoryService categoryService;
+
+	@Autowired
+	CategoryErrorResponseTest(MockMvc mockMvc) {
+		this.mockMvc = mockMvc;
+	}
 
 	@Test
 	void createDevuelve400ConErroresDeValidacion() throws Exception {

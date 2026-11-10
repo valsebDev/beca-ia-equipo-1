@@ -40,11 +40,15 @@ class PriorityControllerTest {
 	private static final String CODE_PATH = "$.code";
 	private static final String ALTA_NAME = "Alta";
 
-	@Autowired
-	private MockMvc mockMvc;
+	private final MockMvc mockMvc;
 
 	@MockitoBean
 	private PriorityService priorityService;
+
+	@Autowired
+	PriorityControllerTest(MockMvc mockMvc) {
+		this.mockMvc = mockMvc;
+	}
 
 	@Test
 	void updateSlaDevuelve200ConLasNuevasHoras() throws Exception {
