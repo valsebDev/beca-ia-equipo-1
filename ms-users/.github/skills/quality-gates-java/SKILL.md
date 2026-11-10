@@ -1,64 +1,48 @@
 ---
 name: quality-gates-java
 description: >-
-  Ejecuta y audita los quality gates del microservicio (Checkstyle, PMD,
-  SpotBugs con FindSecBugs, OWASP Dependency-Check y JaCoCo), interpreta
-  reportes y corrige violaciones en lotes hasta que el build esté en verde.
+  Ejecuta, audita e interpreta los quality gates de los microservicios Java (Checkstyle, PMD,
+  SpotBugs con FindSecBugs, OWASP Dependency-Check y JaCoCo). Usar cuando se requiera verificar
+  la calidad estática del código, resolver vulnerabilidades o preparar entregas. No la uses para 
+  escribir lógica de negocio ni para cambiar versiones del stack.
 ---
 
-# Quality Gates de ms-users
+# Quality Gates de microservicios Java
 
-Ejecuta este flujo desde la carpeta `ms-users/`. Revisa `AGENTS.md` y los
-archivos de `references/` antes de cambiar reglas. No alteres lógica de negocio
-fuera del alcance de las violaciones encontradas.
+Ejecuta este flujo desde la carpeta del microservicio (`ms-users/`, `ms-tickets/`
+o `ms-catalog/`). Lee `AGENTS.md` y `references/` antes de cambiar reglas.
 
-## Flujo de ejecución
+## Pasos
 
-1. Ejecuta los analizadores individualmente para localizar los hallazgos:
+1. Ejecuta cada analizador por separado para localizar hallazgos:
+   `./mvnw -B checkstyle:check`, `./mvnw -B pmd:check` y `./mvnw -B spotbugs:check`.
+2. Ejecuta pruebas y cobertura: `./mvnw -B test jacoco:report`. Revisa
+   `target/site/jacoco/index.html`; el mínimo es 70% (0.70) y se mide, no se infiere.
+3. Analiza dependencias: `./mvnw -B dependency-check:check`. Requiere la variable de
+   entorno `NVD_API_KEY` (`nvdApiKeyEnvironmentVariable`); sin ella la descarga del NVD
+   es lenta y puede agotar el tiempo. Si no puedes ejecutarlo, documenta el bloqueo.
+4. Lee la regla y el archivo de cada hallazgo y corrige en lotes pequeños,
+   volviendo a ejecutar el analizador afectado y las pruebas.
+5. Documenta línea base, resultado final, hallazgos y rechazos en
+   `docs/QUALITY-REPORT.md`.
+6. Ejecuta `./mvnw -B verify` como validación final.
 
-   - `./mvnw -B checkstyle:check`
-   - `./mvnw -B pmd:check`
-   - `./mvnw -B spotbugs:check`
+## Prohibiciones
 
-   SpotBugs usa la configuración del proyecto y FindSecBugs.
-
-2. Ejecuta pruebas y genera el reporte de JaCoCo:
-
-   - `./mvnw -B test jacoco:report`
-   - Inspecciona `target/site/jacoco/index.html` y los reportes XML/CSV.
-   - Verifica cobertura de service y controllers por separado y en conjunto.
-   - El umbral requerido es al menos 70%; no infieras cobertura desde el
-     número de pruebas.
-
-3. Analiza vulnerabilidades de dependencias con OWASP Dependency-Check:
-
-   - `./mvnw -B dependency-check:check`
-   - Revisa el resumen y el reporte generado en `target/`.
-   - Si la base de vulnerabilidades o la red no están disponibles, documenta
-     ese bloqueo; no presentes un análisis incompleto como aprobado.
-   - Acepta una supresión solo con paquete y CVE acotados, justificación de riesgo
-     y revisión programada; no uses supresiones para ocultar análisis incompletos.
-
-4. Diagnostica y corrige en lotes pequeños:
-
-   - Lee el archivo y la regla que reporta cada hallazgo antes de editar.
-   - Corrige el código o configuración de manera compatible con la intención
-     de la regla; no suprimas, excluyas ni rebajes Checkstyle o PMD para ocultar fallos.
-   - Para dependencias vulnerables, confirma compatibilidad y ejecuta de nuevo
-     pruebas y analizadores afectados.
-   - Actualiza `docs/QUALITY-REPORT.md` con línea base, resultado final,
-     hallazgos y decisiones de exclusión o rechazo.
+- No suprimas, excluyas ni rebajes reglas de Checkstyle, PMD o SpotBugs.
+- No bajes el umbral de JaCoCo ni `failBuildOnCVSS` (7.0).
+- No suprimas un CVE sin coordenada Maven exacta, justificación y fecha de revisión.
+- No declares aprobado un análisis incompleto, omitido o con la base NVD sin descargar.
+- No cambies versiones del stack ni lógica de negocio fuera del alcance del hallazgo.
+- No incluyas secretos ni credenciales en código o configuración versionada.
 
 ## Criterio de terminado
 
-La tarea termina solo cuando `./mvnw -B verify` finaliza en `BUILD SUCCESS`,
-sin violaciones y con cobertura JaCoCo de al menos 70% en service y controllers.
-Registra métricas y evidencia en `docs/QUALITY-REPORT.md`. Si algún análisis no
-pudo ejecutarse, informa el bloqueo y no declares el gate aprobado.
+`./mvnw -B verify` termina en `BUILD SUCCESS`, con cero violaciones, cobertura
+JaCoCo de al menos 70% y Dependency-Check ejecutado (o su bloqueo informado).
 
 ## Referencias
 
-- [`references/maven-plugins.xml`](references/maven-plugins.xml): fragmentos de
-  configuración Maven vigentes.
+- [`references/maven-plugins.xml`](references/maven-plugins.xml): configuración Maven.
 - [`references/checkstyle.xml`](references/checkstyle.xml): reglas Checkstyle.
 - [`references/pmd-ruleset.xml`](references/pmd-ruleset.xml): reglas PMD.

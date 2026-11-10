@@ -27,7 +27,7 @@
         <maven-pmd-plugin.version>3.26.0</maven-pmd-plugin.version>
         <spotbugs-maven-plugin.version>4.9.3.0</spotbugs-maven-plugin.version>
         <findsecbugs-plugin.version>1.14.0</findsecbugs-plugin.version>
-        <dependency-check-maven.version>10.0.4</dependency-check-maven.version>
+        <dependency-check-maven.version>13.0.0</dependency-check-maven.version>
         <jacoco-maven-plugin.version>0.8.12</jacoco-maven-plugin.version>
     </properties>
 
@@ -146,6 +146,27 @@
                             <goal>report</goal>
                         </goals>
                     </execution>
+                    <execution>
+                        <id>check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.70</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
             <!-- 1. Checkstyle: verificación de formato, longitud de métodos y complejidad -->
@@ -227,12 +248,13 @@
             <plugin>
                 <groupId>org.owasp</groupId>
                 <artifactId>dependency-check-maven</artifactId>
-                <version>${dependency-check-maven.version}</version>
+                <version>13.0.0</version>
                 <configuration>
                     <format>ALL</format>
                     <failBuildOnCVSS>7.0</failBuildOnCVSS>
                     <ossindexAnalyzerEnabled>false</ossindexAnalyzerEnabled>
                     <suppressionFile>config/dependency-check-suppressions.xml</suppressionFile>
+                    <nvdApiKeyEnvironmentVariable>NVD_API_KEY</nvdApiKeyEnvironmentVariable>
                 </configuration>
                 <executions>
                     <execution>
