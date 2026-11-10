@@ -80,3 +80,25 @@ No identifiqué falsos positivos en esta ejecución. Todos los hallazgos de los 
 Captura de SonarQube for IDE:
 - Antes: [sonarqube-servicio.png](img/sonarqube-servicio.png) (errores iniciales).
 - Después: [sonarqube-servicio-limpio.png](img/sonarqube-servicio-limpio.png) (0 hallazgos de Sonar).
+
+## 6. Alineación con la skill compartida `quality-gates-java`
+
+Se reemplazaron `config/checkstyle/checkstyle.xml` y `config/pmd/ruleset.xml` por los de `.github/skills/quality-gates-java/references/`, que unifican las reglas de ms-catalog, ms-tickets y ms-users. El `pom.xml` no cambió.
+
+Con esas reglas aparecieron hallazgos nuevos que se corrigieron en el código (commit `48d4396`), sin desactivar reglas:
+
+| Herramienta | Regla | Antes | Después | Archivos |
+|---|---|---|---|---|
+| Checkstyle | LineLength (máx. 120) | 4 líneas | 0 | `GlobalExceptionHandler`, `PriorityService` |
+| PMD | AvoidDuplicateLiterals | 4 literales en pruebas | 0 | `PriorityControllerTest`, `CategoryServiceTest`, `PriorityServiceTest` |
+
+Resultado de la verificación del 2026-11-09:
+
+| Gate | Resultado |
+|---|---|
+| Checkstyle, PMD y CPD | 0 hallazgos (`checkstyle:check`, `pmd:check`, `pmd:cpd-check`) |
+| SpotBugs + FindSecBugs | 0 hallazgos (`spotbugs:check`) |
+| Pruebas | 51 de 52 pasan. `MsCatalogApplicationTests` no se ejecutó: usa Testcontainers y no había Docker en el entorno |
+| JaCoCo | 96.05 % de líneas (170/177), medido sin `MsCatalogApplicationTests` |
+| Dependency-Check | Pendiente: no había `NVD_API_KEY` |
+| `./mvnw -B verify` completo | Pendiente: requiere Docker y `NVD_API_KEY` |
