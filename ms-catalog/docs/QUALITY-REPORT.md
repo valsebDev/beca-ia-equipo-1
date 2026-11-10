@@ -104,3 +104,13 @@ Resultado de `./mvnw -B verify` completo del 2026-11-09 (con Docker y `NVD_API_K
 | Dependency-Check | Sin fallos con `failBuildOnCVSS=7` |
 
 Avisos de PMD 7.29.0 (no bloquean el build): `UnnecessaryLocalBeforeReturn` y `AvoidLosingExceptionInformation` están marcadas para eliminación en PMD 8.0.0. Hay que reemplazarlas en la skill cuando se migre a PMD 8.
+
+### Ajuste a las instrucciones globales (`.github/copilot-instructions.md`)
+
+Se revisó ms-catalog contra la regla 8 de las instrucciones globales, que prohíbe `@Autowired` en campos. Las tres pruebas de controller (`CategoryControllerTest`, `CategoryErrorResponseTest`, `PriorityControllerTest`) inyectaban `MockMvc` por campo. Ahora el campo es `private final` y el constructor de la prueba lleva `@Autowired`. Las aserciones no cambiaron.
+
+| Herramienta | Regla | Antes | Después |
+|---|---|---|---|
+| Pruebas | `@Autowired` por campo | 3 archivos | 0 |
+| `verify` | Build | BUILD SUCCESS | BUILD SUCCESS (52 de 52 pruebas) |
+
