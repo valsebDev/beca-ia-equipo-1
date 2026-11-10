@@ -10,15 +10,17 @@
 | D1 | Estilo | Microservicios, cada uno **MVC por capas** (controller → service → repository) | Menos aislamiento del dominio que hexagonal; a cambio, alineado con la guía y simple |
 | D2 | Runtime | **Java 17**, Spring Boot **4.1.2** (pom actual) | Docker usa `eclipse-temurin:17`; la guía muestra 21 |
 | D3 | Persistencia | **Base de datos por servicio**, **3 contenedores** `postgres:16` | Más RAM; aislamiento total y configuración sin scripts |
-| D4 | Comunicación | **Solo REST síncrono** (OpenFeign) | Acoplamiento temporal: si un servicio cae, sus dependientes responden 503 |
+| D4 | Comunicación | **Solo REST síncrono** con **Spring HTTP Interface (`@HttpExchange`) sobre `RestClient`** (nativo de Spring Framework 7, sin Spring Cloud ni Feign) | Acoplamiento temporal: si un servicio cae, sus dependientes responden 503 |
 | D5 | Identidad | JWT **HS256** con llave compartida (`JWT_SECRET`), **access + refresh token** | Toda la llave está en los 3 servicios; aceptable en la beca, no en producción |
 | D6 | Ciclo del ticket | ABIERTO → ASIGNADO → EN_PROGRESO → RESUELTO → CERRADO; CANCELADO desde ABIERTO/ASIGNADO | — |
 | D7 | Permisos | SOLICITANTE crea/ve los suyos; AGENTE ve asignados y cambia estado; ADMIN asigna, catálogo y usuarios | — |
 | D8 | Registro | Público → SOLICITANTE; ADMIN crea AGENTE/ADMIN; ADMIN inicial por env al arrancar | — |
 | D9 | Integridad entre servicios | ms-tickets valida asignado contra ms-users y catálogo contra ms-catalog | Dos dependencias síncronas |
 | D10 | SLA | ms-tickets **copia el SLA** y calcula fechas límite al crear | Datos duplicados, pero históricos estables y sin llamadas para "vencidos" |
-| D11 | Extras | Solo lo que pide la guía: Actuator (`health`), ProblemDetail, Flyway, quality gates, Docker, CI. **Sin** rate limiting, Resilience4j, correlation-id, Testcontainers ni paginación | Menos robustez operativa; alcance acotado a la beca |
+| D11 | Extras | Solo lo que pide la guía: Actuator (`health`), ProblemDetail, Flyway, quality gates, Docker, CI. **Sin** rate limiting, Resilience4j, correlation-id ni paginación. Las pruebas de repositorio usan Testcontainers (`postgres:16`) | Menos robustez operativa; alcance acotado a la beca |
 | D12 | Código compartido | **Sin librería común**; cada servicio replica su config de JWT (~3 clases) | Duplicación pequeña a cambio de despliegue independiente |
+| D13 | Integración P3 por servicio | ms-tickets → ms-catalog y ms-users; **ms-catalog → ms-users** (en `POST/PUT/DELETE` valida que el ADMIN autenticado siga activo); **ms-users no consume ningún servicio** (excepción a la rúbrica de integración, acordada con el instructor) | Cierra la ventana de 15 min de un access token de un ADMIN desactivado; añade una dependencia síncrona a ms-catalog |
+| D14 | Entrega P3 | Un agente revisor por servicio (`.github/agents/revisor-seguridad-<ms>.agent.md`); tag final `p3-entrega-<nombre>` | Más archivos, pero sin conflictos de merge |
 
 ## 1. Patrón de arquitectura y topología
 
@@ -27,7 +29,7 @@
 | Contexto | Servicio | Dueño de los datos | Consume |
 |---|---|---|---|
 | Identidad y acceso | ms-users | usuarios, roles, refresh tokens | — |
-| Catálogo de servicio | ms-catalog | categorías, prioridades, políticas SLA | (solo valida JWT) |
+| Catálogo de servicio | ms-catalog | categorías, prioridades, políticas SLA | ms-users (solo `GET /users/{sub}`, D13) |
 | Gestión de tickets | ms-tickets | tickets, historial | ms-catalog, ms-users |
 
 Regla: **ningún servicio lee la base de otro**; las referencias externas son IDs (`category_id`, `requester_id`…) sin FK física.
@@ -44,8 +46,9 @@ flowchart LR
       U[ms-users :8080<br/>emite y valida JWT] --- DBU[(db-users<br/>postgres:16)]
       K[ms-catalog :8080<br/>valida JWT] --- DBK[(db-catalog<br/>postgres:16)]
       T[ms-tickets :8080<br/>valida JWT] --- DBT[(db-tickets<br/>postgres:16)]
-      T -->|Feign + JWT propagado<br/>GET categories/priorities| K
-      T -->|Feign + JWT propagado<br/>GET users/id| U
+      T -->|RestClient + JWT propagado<br/>GET categories/priorities| K
+      T -->|RestClient + JWT propagado<br/>GET users/id| U
+      K -->|RestClient + JWT propagado<br/>GET users/sub en mutaciones| U
     end
 ```
 
@@ -292,7 +295,7 @@ HistoryResponse     { "eventType", "fromStatus"?, "toStatus"?, "fromAssigneeId"?
 | 503 | `DEPENDENCY_UNAVAILABLE` | Timeout / 5xx / conexión rechazada de ms-users o ms-catalog |
 | 500 | `INTERNAL_ERROR` | Genérico, **sin stack trace ni mensaje interno** (se loguea con detalle) |
 
-Mapeo Feign (ms-tickets, `ErrorDecoder`): 404 del proveedor → 422 de negocio; 401/403 del proveedor → 503 (es un fallo de integración, no del usuario) con log WARN; 5xx/`RetryableException` → 503.
+Mapeo de errores del cliente (ms-tickets, `defaultStatusHandler` de `RestClient`): 404 del proveedor → 422 de negocio; 401/403 del proveedor → 503 (es un fallo de integración, no del usuario) con log WARN; 5xx y `ResourceAccessException` (timeout o conexión rechazada) → 503.
 
 ## 4. Diagramas de secuencia
 
@@ -371,7 +374,7 @@ beca-ia-equipo-1/
 │   ├── docs/ requerimientos.md · QUALITY-REPORT.md · SECURITY-REPORT.md
 │   ├── prompts/ · .github/skills/ · config/checkstyle/ · config/pmd/
 ├── docs/  backlog.md · prompt-review.md · contratos/ms-*.yaml · herramientas.md · seguridad.md · plan-contenedores.md
-├── .github/ pull_request_template.md · skills/{quality-gates-java,docker-springboot}/ · agents/devops.agent.md · workflows/ci.yml
+├── .github/ pull_request_template.md · skills/{quality-gates-java,docker-springboot}/ · agents/{devops,revisor-seguridad-<ms>}.agent.md · workflows/ci.yml
 ├── AGENTS.md · docker-compose.yml · .env.example · .gitignore · README-EQUIPO.md
 ```
 
@@ -380,7 +383,7 @@ beca-ia-equipo-1/
 ```
 src/main/java/com/ids/ms_tickets/
 ├── MsTicketsApplication.java
-├── config/          SecurityConfig, JwtDecoderConfig, OpenApiConfig, FeignConfig,
+├── config/          SecurityConfig, JwtDecoderConfig, OpenApiConfig, RestClientConfig,
 │                    properties/ (JwtProperties, ClientsProperties  — records @ConfigurationProperties)
 ├── security/        JwtRolesConverter, CurrentUser (sub + roles desde el Jwt),
 │                    ProblemAuthenticationEntryPoint, ProblemAccessDeniedHandler
@@ -391,7 +394,7 @@ src/main/java/com/ids/ms_tickets/
 ├── dto/request/     CreateTicketRequest, AssignRequest, ChangeStatusRequest   (records)
 ├── dto/response/    TicketResponse, HistoryResponse                           (records)
 ├── mapper/          TicketMapper (manual, estático)
-├── client/          CatalogClient, UsersClient (@FeignClient), client/dto/, FeignErrorDecoder,
+├── client/          CatalogClient, UsersClient (@HttpExchange), client/dto/, ClientErrorHandler,
 │                    BearerTokenRelayInterceptor
 └── exception/       NotFoundException, BusinessRuleException, InvalidTransitionException,
                      DependencyUnavailableException, GlobalExceptionHandler
@@ -400,7 +403,7 @@ src/test/java/...    espejo: controller/ (@WebMvcTest), service/ (Mockito), clie
                      security/ (401/403/200)
 ```
 
-ms-users añade `service/TokenService` (emite JWT con `NimbusJwtEncoder`), `service/RefreshTokenService`, `config/PasswordEncoderConfig`, `bootstrap/AdminBootstrap`. ms-catalog no tiene `client/`.
+ms-users añade `service/TokenService` (emite JWT con `NimbusJwtEncoder`), `service/RefreshTokenService`, `config/PasswordEncoderConfig`, `bootstrap/AdminBootstrap`. ms-catalog añade `client/UsersClient` (+ `client/dto`, `ClientErrorHandler`, `BearerTokenRelayInterceptor`, `ClientsProperties`); ms-users no tiene `client/` (D13).
 
 ### 5.3 Convenciones
 
@@ -428,10 +431,10 @@ ms-users añade `service/TokenService` (emite JWT con `NimbusJwtEncoder`), `serv
 | `jti` | UUID | Trazabilidad |
 
 - Firma: `JWT_SECRET` ≥ 32 bytes (256 bits). Al arrancar se valida la longitud y el servicio falla si es más corta. Solo se lee de una variable de entorno, nunca de `application.yaml` en claro.
-- Emisión solo en ms-users (`NimbusJwtEncoder` + `MacAlgorithm.HS256`). Validación en los 3 con `spring-boot-starter-oauth2-resource-server` (`NimbusJwtDecoder.withSecretKey`) + validadores de `iss` y `aud`.
+- Emisión solo en ms-users (`NimbusJwtEncoder` + `MacAlgorithm.HS256`). Validación en los 3 con `spring-boot-starter-security-oauth2-resource-server` (nombre de Boot 4; el anterior `spring-boot-starter-oauth2-resource-server` está deprecado) y `NimbusJwtDecoder.withSecretKey` + validadores de `iss` y `aud`.
 - **Refresh token**: opaco (32 bytes aleatorios con `SecureRandom`, Base64URL), TTL de **7 días**, guardado como SHA-256. Se rota en cada uso; si se detecta reutilización se revocan todos los tokens del usuario. `logout` revoca el token, y desactivar un usuario revoca todos los suyos (el access token sigue vigente un máximo de 15 min, trade-off aceptado).
 - Contraseñas: BCrypt (costo configurable, por defecto 10); longitud de 8 a 72 caracteres, porque BCrypt trunca a partir de 72 bytes.
-- **Propagación servicio a servicio**: `BearerTokenRelayInterceptor` (Feign `RequestInterceptor`) copia el `Authorization` del `SecurityContext`. No hay credenciales de servicio, así que la llamada se autoriza con los permisos del usuario original.
+- **Propagación servicio a servicio**: `BearerTokenRelayInterceptor` (`ClientHttpRequestInterceptor` de `RestClient`) copia el `Authorization` del `SecurityContext`. No hay credenciales de servicio, así que la llamada se autoriza con los permisos del usuario original.
 
 ### 6.2 SecurityFilterChain (común)
 
@@ -439,6 +442,7 @@ ms-users añade `service/TokenService` (emite JWT con `NimbusJwtEncoder`), `serv
 - Públicos: `/actuator/health`, `/v3/api-docs/**`, `/swagger-ui/**` (este último activable con `SWAGGER_ENABLED`, por defecto `true`), y en ms-users además `/api/v1/auth/register`, `/auth/login` y `/auth/refresh`.
 - Actuator: `management.endpoints.web.exposure.include=health` y `show-details=never`.
 - `server.error.include-stacktrace=never`, `include-message=never`.
+- **Pruebas de 401** (por servicio, con `MockMvc`): sin token, token con firma alterada, token expirado, y token con `iss` o `aud` incorrectos → 401 `UNAUTHORIZED` en formato ProblemDetail. Para `jwt()` de `spring-security-test` se usa `spring-boot-starter-security-test`.
 - **CORS**: deshabilitado por defecto, porque el consumo es servidor a servidor o desde Swagger en el mismo origen. Si se necesita, se configura un `CorsConfigurationSource` con `app.cors.allowed-origins=${CORS_ALLOWED_ORIGINS:}` y nunca `*`.
 - **Rate limiting**: fuera de alcance (D11). Queda como riesgo documentado en SECURITY-REPORT para `/auth/login`.
 - **Sanitización**: Bean Validation (`@NotBlank`, `@Size`, `@Email`, `@Pattern`, `@Positive`) en todos los DTOs; tamaño máximo en cada campo de texto; `email` normalizado a minúsculas; solo Spring Data o `@Query` con `:param`; la API solo devuelve JSON (sin HTML), así que el XSS se mitiga del lado del consumidor; los DTOs evitan mass assignment.
@@ -467,19 +471,21 @@ Un recurso ajeno responde **403**, como pide la guía en sus pruebas. La regla d
 
 `.env` (en `.gitignore`) contiene `JWT_SECRET`, `USERS_DB_USER/PASSWORD`, `TICKETS_DB_USER/PASSWORD`, `CATALOG_DB_USER/PASSWORD`, `ADMIN_EMAIL` y `ADMIN_PASSWORD`. Se versiona `.env.example` con valores de ejemplo. En CI, `NVD_API_KEY` se guarda como secret de GitHub. Los 3 servicios comparten `JWT_SECRET`; cada base tiene credenciales distintas.
 
-## 7. Integración (ms-tickets)
+## 7. Integración (ms-tickets y ms-catalog)
 
-- Spring Cloud OpenFeign: `@EnableFeignClients`, `url = "${clients.catalog.url}"` y `"${clients.users.url}"`.
+- Spring HTTP Interface sobre `RestClient` (`spring-boot-starter-restclient`): `CatalogClient` y `UsersClient` son interfaces `@HttpExchange` creadas con `HttpServiceProxyFactory` y `RestClientAdapter`, con `baseUrl` desde `${clients.catalog.url}` y `${clients.users.url}`. No se usa Spring Cloud.
 - Timeouts en la configuración (`connect-timeout` 2 s, `read-timeout` 3 s), sin reintentos (D11).
 - Los DTOs del cliente están en `client/dto` y son propios de ms-tickets, para no acoplarse a las clases del proveedor. El contrato se valida contra `docs/contratos/*.yaml` (prueba de contrato de P3).
-- ⚠ **Riesgo de compatibilidad**: Spring Boot 4.1.2 necesita un release train de Spring Cloud que lo soporte. La tarea 0 lo verifica en start.spring.io. Si no hay ninguno compatible, la alternativa es usar **Spring HTTP Interface (`@HttpExchange`) + RestClient**, nativo de Spring Framework 7: la estructura de `client/` es la misma y no se necesita Spring Cloud. Esta decisión queda pendiente para Isaac.
+- Decisión tomada: HTTP Interface + `RestClient` en lugar de Feign. Evita depender de un release train de Spring Cloud compatible con Boot 4.1.2 y reduce dependencias.
+- **ms-catalog → ms-users (D13)**: `UsersClient` (`GET /api/v1/users/{id}`, `baseUrl` `${clients.users.url}` ← `SERVICES_USERS_URL`) con el mismo `BearerTokenRelayInterceptor`, timeouts y sin reintentos. Antes de `POST/PUT/DELETE` en categorías y prioridades se consulta el `sub` del JWT. Mapeo: 200 con `active=true` → continúa; 404 o `active=false` → 403 `FORBIDDEN`; 401/403 del proveedor, 5xx o timeout/conexión rechazada → 503 `DEPENDENCY_UNAVAILABLE`. Los `GET` de ms-catalog no llaman a ms-users (siguen funcionando si ms-users cae). En compose, ms-catalog tampoco depende del arranque de ms-users.
+- **ms-users** no consume servicios (excepción documentada a la rúbrica de integración, D13).
 
 ## 8. Backlog técnico priorizado
 
 Responsables: **F** = Fernando (ms-users), **I** = Isaac (ms-tickets), **S** = Sebastián (ms-catalog), **EQ** = equipo (con el rol rotativo indicado). Entre paréntesis va la práctica o el día de la guía.
 
 ### Fase 1: Core y datos (P1, días 1–2)
-1. **EQ** Verificar la compatibilidad de las dependencias con Boot 4.1.2 (Spring Cloud/OpenFeign, `spring-boot-starter-flyway`, `oauth2-resource-server`, SpringDoc 3.x, Lombok). Fijar Java 17 y anotar el resultado en `AGENTS.md`.
+1. **EQ** Verificar la compatibilidad de las dependencias con Boot 4.1.2 (`spring-boot-starter-restclient`, `spring-boot-starter-flyway`, `spring-boot-starter-security-oauth2-resource-server`, `spring-boot-starter-security-test`, SpringDoc 3.x, Lombok). Fijar Java 17 y anotar el resultado en `AGENTS.md`.
 2. **EQ** Limpiar el repo: revisar si existe el módulo residual `ms-users/users/`, completar `.gitignore` (target/, .env, .idea/) y crear `README-EQUIPO.md` y `.github/pull_request_template.md`.
 3. **EQ** `docs/backlog.md`: épicas, HU por servicio y glosario (ticket, SLA, prioridad, asignación, estados, roles).
 4. **F / I / S** `docs/requerimientos.md` de cada servicio: ≥ 5 HU, Gherkin con escenario negativo, 3 RNF y preguntas abiertas.
@@ -500,16 +506,17 @@ Responsables: **F** = Fernando (ms-users), **I** = Isaac (ms-tickets), **S** = S
 17. **I** Chequeos de propiedad (dueño/asignado) y filtrado por rol en `GET /tickets`.
 
 ### Fase 3: Integraciones (P3, día 8)
-18. **I** `CatalogClient` y `UsersClient` (Feign o HTTP Interface según la tarea 1), `BearerTokenRelayInterceptor`, `FeignErrorDecoder` (404→422, 5xx/timeout→503) y timeouts en la configuración.
+18. **I** `CatalogClient` y `UsersClient` (HTTP Interface sobre `RestClient`), `BearerTokenRelayInterceptor`, `ClientErrorHandler` (404→422, 5xx/timeout→503) y timeouts en la configuración.
 19. **I** Integrar en la creación (categoría y prioridad con snapshot de SLA) y en la asignación (asignado activo y con rol AGENTE).
-20. **F + S** Confirmar que `GET /users/{id}` y `GET /categories|priorities/{id}` cumplen el contrato que consume ms-tickets (prueba de contrato P3-E).
+20. **F + S** Confirmar que `GET /users/{id}` y `GET /categories|priorities/{id}` cumplen el contrato que consume ms-tickets y ms-catalog (prueba de contrato P3-E).
+20b. **S** `UsersClient` en ms-catalog y validación del ADMIN activo en las mutaciones (D13), con pruebas WireMock 200 / 404 / sin respuesta.
 
 ### Fase 4: Calidad, pruebas, contenedores y observabilidad (P1 día 3, P2 días 4–5, P3, P4 días 9–10)
 21. **Todos** Pruebas: ≥ 8 por servicio en P1 (Mockito en el service, `@WebMvcTest` en el controller, positivos y negativos). Pruebas de la máquina de estados en ms-tickets y de rotación y reutilización en ms-users.
 22. **Todos** Pruebas de seguridad: 401, 403 y éxito por endpoint (JWT de prueba o `jwt()` de spring-security-test), más una prueba del `JwtRolesConverter`.
 23. **I** Prueba de los clientes con WireMock: respuestas 200, 404 → 422 y 500/timeout → 503.
 24. **EQ** `AGENTS.md` común y skill `quality-gates-java` compartida (P2-E). Cada servicio llega a `mvn -B verify` en verde con cobertura ≥ 70 % y genera `QUALITY-REPORT.md`.
-25. **Todos** Agente `revisor-seguridad` sobre su propio servicio y revisión cruzada en PR. Corregir los hallazgos CRÍTICOS y ALTOS y documentarlos en `SECURITY-REPORT.md`.
+25. **Todos** Agente `revisor-seguridad-<ms>` (`.github/agents/revisor-seguridad-<ms>.agent.md`, uno por servicio, D14) sobre su propio servicio y revisión cruzada en PR. Corregir los hallazgos CRÍTICOS y ALTOS y documentarlos en `SECURITY-REPORT.md`.
 26. **Todos** Skill `docker-springboot`: Dockerfile multi-stage con `eclipse-temurin:17-jdk` y `17-jre`, usuario no root, `.dockerignore` e imagen etiquetada con la versión.
 27. **EQ** Completar el `docker-compose.yml` con los 3 servicios, healthchecks, `depends_on` en su DB y variables de entorno desde `.env`. Verificar que `docker compose up -d` deja todo en UP.
 28. **EQ** Agente `devops` y `.github/workflows/ci.yml` con una matriz `[ms-users, ms-tickets, ms-catalog]` que corre `./mvnw -B verify` y `docker build`, con el secret `NVD_API_KEY`. Guardar `docs/plan-contenedores.md`.
@@ -519,7 +526,7 @@ Dependencias críticas: 1 → (5,6,7) → (10,11,12) → 15 → 16 → 18 → 19
 
 ## 9. Riesgos y notas
 
-- **Compatibilidad entre Boot 4.1.2 y Spring Cloud**: es el bloqueante principal de ms-tickets (alternativa en §7).
+- **Starters de Boot 4**: varios nombres cambiaron (`spring-boot-starter-web` → `spring-boot-starter-webmvc`, `oauth2-resource-server` → `security-oauth2-resource-server`) y Flyway, RestClient y los tests de seguridad requieren su propio starter. Verificar cada dependencia sugerida por la IA contra la guía de migración de Boot 4.
 - Boot 4 usa Jackson 3 (`tools.jackson`) y starters modulares, y muchos ejemplos de la guía o de la IA están escritos para Boot 3. Hay que validar cada dependencia sugerida.
 - La guía muestra Java 21 en el Dockerfile y en CI; el equipo usa 17, así que hay que ajustar las plantillas.
 - La llave HS256 compartida implica que cualquier servicio podría emitir tokens. Se documenta como riesgo aceptado en SECURITY-REPORT.
