@@ -2,9 +2,9 @@ openapi: 3.1.0
 info:
   title: ms-users API
   version: 1.0.0
-  description:  API REST para la gestión de usuarios y autenticación de la Mesa de Ayuda.
-    Cubre HU-USR-01, HU-USR-02, HU-USR-05 y HU-USR-08.
-    Las historias HU-USR-03, HU-USR-04, HU-USR-06 y HU-USR-07 quedan fuera del alcance de P1.
+  description: "Cubre HU-USR-01, 02, 05 y 08. HU-USR-03, 04, 06 y 07 quedan fuera del alcance de P1."
+  license:
+    name: Uso académico (Práctica 1)
 servers:
   - url: http://localhost:8081
 security:
@@ -191,53 +191,23 @@ components:
         createdAt: { type: string, format: date-time }
     ProblemDetail:
       type: object
-      required:
-        - type
-        - title
-        - status
-        - detail
-        - instance
-        - code
-        - timestamp
+      description: Error en formato RFC 9457 (application/problem+json)
       properties:
-        type:
-          type: string
-          format: uri
-          example: "about:blank"
-        title:
-          type: string
-          example: "Bad Request"
-        status:
-          type: integer
-          example: 400
-        detail:
-          type: string
-          example: "El correo electrónico ya se encuentra registrado."
-        instance:
-          type: string
-          format: uri
-          example: "/api/v1/auth/register"
-        code:
-          type: string
-          description: Código de error de negocio estandarizado.
-          example: "EMAIL_ALREADY_EXISTS"
-        timestamp:
-          type: string
-          format: date-time
-          description: Marca de tiempo en formato ISO-8601 en que ocurrió el error.
-          example: "2026-11-08T22:00:00Z"
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string, format: uri-reference }
+        code: { type: string, example: USER_NOT_FOUND }
+        timestamp: { type: string, format: date-time }
         errors:
           type: array
-          description: Lista opcional de errores detallados por campo (para validaciones).
+          description: Solo presente en errores 400 de validación
           items:
             type: object
             properties:
-              field:
-                type: string
-                example: "email"
-              message:
-                type: string
-                example: "no debe estar vacío"
+              field: { type: string, example: email }
+              message: { type: string, example: debe tener formato de correo válido }
   responses:
     BadRequest:
       description: Solicitud inválida.
