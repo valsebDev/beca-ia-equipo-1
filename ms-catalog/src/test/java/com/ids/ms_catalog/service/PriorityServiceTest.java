@@ -37,6 +37,7 @@ class PriorityServiceTest {
 
 	private static final String MEDIA_NAME = "Media";
 	private static final String ALTA_NAME = "Alta";
+	private static final String RESOLUTION_HOURS_FIELD = "resolutionHours";
 
 	@Mock
 	private PriorityRepository priorityRepository;
@@ -162,7 +163,7 @@ class PriorityServiceTest {
 			assertThatExceptionOfType(DomainValidationException.class)
 					.isThrownBy(() -> priorityService.create(request))
 					.extracting(DomainValidationException::getField)
-					.isEqualTo("resolutionHours");
+					.isEqualTo(RESOLUTION_HOURS_FIELD);
 		}
 
 		@Test
@@ -227,7 +228,7 @@ class PriorityServiceTest {
 			assertThatExceptionOfType(DomainValidationException.class)
 					.isThrownBy(() -> priorityService.updateSla(2L, sla))
 					.extracting(DomainValidationException::getField)
-					.isEqualTo("resolutionHours");
+					.isEqualTo(RESOLUTION_HOURS_FIELD);
 		}
 
 		@Test
@@ -239,7 +240,7 @@ class PriorityServiceTest {
 			assertThatExceptionOfType(DomainValidationException.class)
 					.isThrownBy(() -> priorityService.updateSla(2L, sla))
 					.extracting(DomainValidationException::getField)
-					.isEqualTo("resolutionHours");
+					.isEqualTo(RESOLUTION_HOURS_FIELD);
 		}
 	}
 }
