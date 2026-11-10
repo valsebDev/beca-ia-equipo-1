@@ -14,23 +14,19 @@ import org.springframework.stereotype.Service;
 import com.ids.ms_users.domain.User;
 import com.ids.ms_users.exception.InvalidCredentialsException;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
 @Service
-public class TokenService {
+public final class TokenService {
 
     private final SecretKey signingKey;
     private final long expirationMinutes;
     private final String issuer;
     private final String audience;
 
-    @SuppressFBWarnings(
-            value = "CT_CONSTRUCTOR_THROW",
-            justification = "Se rechaza al iniciar una configuración JWT inválida")
     @Autowired
     public TokenService(
             @Value("${app.security.jwt.secret}") String secret,
@@ -40,9 +36,6 @@ public class TokenService {
         this(createSigningKey(secret), expirationMinutes, issuer, audience);
     }
 
-        @SuppressFBWarnings(
-            value = "CT_CONSTRUCTOR_THROW",
-            justification = "Se rechaza al iniciar una clave JWT nula")
         public TokenService(
             SecretKey signingKey,
             long expirationMinutes,

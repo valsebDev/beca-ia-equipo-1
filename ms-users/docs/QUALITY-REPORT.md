@@ -3,6 +3,19 @@
 Fecha: 2026-11-08
 Versión de plataforma: Java 17, Spring Boot 4.1.2
 
+## Antes / Después
+
+| Herramienta | Antes | Después |
+|---|---|---|
+| Checkstyle | 1 violación (LineLength) | 0 violaciones |
+| PMD / CPD | 5 violaciones (literales y números mágicos) | 0 violaciones |
+| SpotBugs | 0 violaciones | 0 violaciones |
+| Dependency-Check | Bloqueado por CVE-2025-7962 (CVSS 7.5) | Aprobado tras supresión justificada |
+| Cobertura JaCoCo | ~70% inicial | Service 86.39%, Controller 76.47% |
+
+La supresión está en `config/dependency-check-suppressions.xml`. El gate `check` de JaCoCo
+exige 70% de instrucciones (BUNDLE) durante `verify`.
+
 ## Métricas de Gates
 
 | Gate | Línea base | Estado final |
@@ -15,7 +28,7 @@ Versión de plataforma: Java 17, Spring Boot 4.1.2
 | JaCoCo: controllers | No medido en la línea base | 13/17 líneas; 76.47% |
 | JaCoCo: service | No medido en la línea base | 127/147 líneas; 86.39% |
 
-El escaneo final aún reporta CVE-2025-15104 en `hibernate-validator`; su severidad
+El scan final aún reporta CVE-2025-15104 en `hibernate-validator`; su severidad
 no alcanza `failBuildOnCVSS=7.0`, por lo que Dependency-Check no bloquea el build.
 
 ## Hallazgos
@@ -33,7 +46,7 @@ cero violaciones de Checkstyle y cero hallazgos de PMD/CPD.
 La comprobación de rol dentro del controlador mezcla el protocolo HTTP con una regla
 de negocio, dificulta reutilizarla y probarla sin MVC. El controlador ahora extrae los
 roles del JWT y delega; `UserService` aplica la política ADMIN y lanza
-`ForbiddenOperationException` si el rol no está autorizado. Las pruebas cubren 401,
+`ForbiddenOperationException` si el rol no tiene permiso/autorización. Las pruebas cubren 401,
 403 y 200.
 
 ### 3. CVE-2025-7962 en angus-activation
@@ -44,7 +57,7 @@ bloqueo porque el umbral del plugin es 7.0. La dependencia es transitiva de runt
 (`spring-boot-starter-data-jpa` → Hibernate → JAXB) y no se expone directamente a
 datos no confiables en `ms-users`. Se acepta el riesgo de forma acotada en
 `config/dependency-check-suppressions.xml`, por coordenada Maven exacta y solo para
-este CVE. Debe revisarse si cambian la versión o el uso del componente.
+este CVE. Debe revisarse si se cambia la versión o se mantiene.
 
 ## Decisión de Rechazo
 
@@ -61,3 +74,4 @@ Comandos ejecutados desde `ms-users/`:
 - `./mvnw -B test jacoco:report`: BUILD SUCCESS; 26 pruebas correctas.
 - `./mvnw -B dependency-check:check`: BUILD SUCCESS; suppression file leído, sin consulta OSS Index.
 - `./mvnw -B verify`: BUILD SUCCESS; 26 pruebas correctas y todos los gates completados.
+

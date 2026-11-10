@@ -9,5 +9,11 @@
     <module name="TreeWalker">
         <module name="UnusedImports"/>
         <module name="NeedBraces"/>
+        <module name="MethodLength">
+            <property name="max" value="30"/>
+        </module>
+        <module name="CyclomaticComplexity">
+            <property name="max" value="10"/>
+        </module>
     </module>
 </module>

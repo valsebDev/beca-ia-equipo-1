@@ -97,6 +97,7 @@
             <failBuildOnCVSS>7.0</failBuildOnCVSS>
             <ossIndexAnalyzerEnabled>false</ossIndexAnalyzerEnabled>
             <suppressionFile>config/dependency-check-suppressions.xml</suppressionFile>
+            <nvdApiKeyEnvironmentVariable>NVD_API_KEY</nvdApiKeyEnvironmentVariable>
         </configuration>
         <executions>
             <execution>

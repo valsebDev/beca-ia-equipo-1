@@ -7,29 +7,34 @@
 - H2 en memoria para pruebas automatizadas; las pruebas no requieren PostgreSQL.
 - No cambies versiones ni tecnologías del stack sin autorización explícita.
 
-## Umbrales de calidad
+## Reglas verificables
 
-- Máximo 30 líneas por método y complejidad ciclomática máxima de 10.
-- Máximo 400 líneas por archivo y 120 caracteres por línea de código.
-- Cobertura JaCoCo mínima obligatoria de 70% en las capas service y controllers.
-- Consulta los reportes de calidad y no declares éxito si una métrica no está verificada.
+Cada regla se valida con Sí/No. Una respuesta No bloquea la entrega.
 
-## Diseño y convenciones
+### Arquitectura y diseño
 
-- Los DTOs deben ser `record` de Java.
-- Para entidades, Lombok se limita a `@Getter`, `@Setter` y `@NoArgsConstructor`.
-- No uses `@Data` en entidades JPA.
-- Usa inyección por constructor; evita la inyección por campos.
-- Devuelve errores mediante `ProblemDetail`, conforme a RFC 9457.
+1. **MVC estricto:** ¿El Controller solo maneja HTTP y delega la lógica de negocio al Service,
+   y el acceso a datos queda solo en el Repository?
+2. **Métodos cortos:** ¿Todo método tiene 30 líneas o menos?
+3. **Complejidad ciclomática:** ¿Todo método tiene complejidad ciclomática de 10 o menos?
+4. **DTOs inmutables:** ¿Todos los DTOs son `record` de Java?
 
-## Seguridad y configuración
+### Pruebas y cobertura
 
-- No codifiques secretos, contraseñas ni credenciales en el código o configuración versionada.
-- Inyecta el secreto JWT mediante `${JWT_SECRET}`.
-- Inyecta la contraseña de datasource mediante `${SPRING_DATASOURCE_PASSWORD}`.
-- Usa variables de entorno o mecanismos de secretos del entorno de ejecución.
+5. **MockMvc standalone:** ¿Los tests de controllers usan `MockMvcBuilders.standaloneSetup(...)`
+   en lugar de levantar el contexto completo de Spring?
+6. **Cobertura mínima:** ¿JaCoCo reporta cobertura de instrucciones de 70% o más
+   (gate `check` en `verify`)?
 
-## Regla de cierre
+### Seguridad
 
-Antes de considerar terminado cualquier cambio, ejecuta `./mvnw -B verify` desde `ms-users/`.
-Si el comando falla, informa la causa y no afirmes que la entrega está verificada.
+7. **Cero secretos en duro:** ¿Las credenciales y secretos se leen con `${VAR}`
+   (p. ej. `${JWT_SECRET}`, `${SPRING_DATASOURCE_PASSWORD}`) sin valores reales versionados?
+8. **Sin fuga de errores:** ¿`application.yaml` define `server.error.include-message: never`
+   para no exponer mensajes ni stack traces?
+
+### Estilo y quality gates
+
+9. **Longitud de línea:** ¿Ninguna línea supera 120 caracteres (regla de Checkstyle)?
+10. **Verificación final:** ¿`./mvnw -B verify` desde `ms-users/` termina en `BUILD SUCCESS`
+    antes de entregar? Si falla, informa la causa y no declares la entrega verificada.

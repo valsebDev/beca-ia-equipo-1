@@ -1,13 +1,2 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
-    <suppress>
-        <notes><![CDATA[
-        Riesgo aceptado: angus-activation 2.0.3 es una dependencia transitiva de runtime
-        de JAXB y no se expone directamente a datos no confiables en ms-users. El hallazgo
-        CVE-2025-7962 procede de una asociación CPE amplia con Jakarta Mail. La supresión
-        se limita al paquete Maven y CVE exactos; revisar si cambia la versión o el uso.
-        ]]></notes>
-        <packageUrl regex="true">^pkg:maven/org\.eclipse\.angus/angus-activation@2\.0\.3$</packageUrl>
-        <cve>CVE-2025-7962</cve>
-    </suppress>
-</suppressions>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd"></suppressions>
