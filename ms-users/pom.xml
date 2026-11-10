@@ -255,7 +255,6 @@
                     <ossindexAnalyzerEnabled>false</ossindexAnalyzerEnabled>
                     <suppressionFile>config/dependency-check-suppressions.xml</suppressionFile>
                     <nvdApiKeyEnvironmentVariable>NVD_API_KEY</nvdApiKeyEnvironmentVariable>
-                    <failOnError>false</failOnError>
                 </configuration>
                 <executions>
                     <execution>

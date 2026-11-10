@@ -73,33 +73,14 @@ public class UserService {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new InvalidCredentialsException("Credenciales no válidas"));
 
-        if (Boolean.FALSE.equals(user.getIsActive())) {
-            throw new AccountInactiveException("La cuenta está desactivada");
-        }
-
-        if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now())) {
-            throw new AccountLockedException("La cuenta está bloqueada temporalmente por intentos fallidos");
-        }
-
-        if (!passwordEncoder.matches(request.softPassword(), user.getPassword())) {
-            int attempts = user.getFailedAttempts() + 1;
-            user.setFailedAttempts(attempts);
-            if (attempts >= maxFailedAttempts) {
-                user.setLockedUntil(LocalDateTime.now().plusMinutes(lockDurationMinutes));
-                userRepository.save(user);
-                throw new AccountLockedException("La cuenta se ha bloqueado tras superar el número máximo de intentos");
-            }
-            userRepository.save(user);
-            throw new InvalidCredentialsException("Credenciales no válidas");
-        }
+        validateAccountStatus(user);
+        validatePassword(user, request.softPassword());
 
         user.setFailedAttempts(0);
         user.setLockedUntil(null);
 
         String token = tokenService.generateToken(user);
-        user.setJwtId(UUID.randomUUID().toString());
-        user.setJwtExpiresAt(LocalDateTime.now().plusSeconds(tokenService.getExpirationSeconds()));
-        userRepository.save(user);
+        storeTokenMetadata(user);
 
         return new AuthResponse(
                 token,
@@ -107,6 +88,40 @@ public class UserService {
                 tokenService.getExpirationSeconds(),
                 mapToResponse(user)
         );
+    }
+
+    private void validateAccountStatus(User user) {
+        if (Boolean.FALSE.equals(user.getIsActive())) {
+            throw new AccountInactiveException("La cuenta está desactivada");
+        }
+
+        if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now())) {
+            throw new AccountLockedException("La cuenta está bloqueada temporalmente por intentos fallidos");
+        }
+    }
+
+    private void validatePassword(User user, String providedPassword) {
+        if (!passwordEncoder.matches(providedPassword, user.getPassword())) {
+            handleFailedLoginAttempt(user);
+        }
+    }
+
+    private void handleFailedLoginAttempt(User user) {
+        int attempts = user.getFailedAttempts() + 1;
+        user.setFailedAttempts(attempts);
+        if (attempts >= maxFailedAttempts) {
+            user.setLockedUntil(LocalDateTime.now().plusMinutes(lockDurationMinutes));
+            userRepository.save(user);
+            throw new AccountLockedException("La cuenta se ha bloqueado tras superar el número máximo de intentos");
+        }
+        userRepository.save(user);
+        throw new InvalidCredentialsException("Credenciales no válidas");
+    }
+
+    private void storeTokenMetadata(User user) {
+        user.setJwtId(UUID.randomUUID().toString());
+        user.setJwtExpiresAt(LocalDateTime.now().plusSeconds(tokenService.getExpirationSeconds()));
+        userRepository.save(user);
     }
 
     @Transactional(readOnly = true)

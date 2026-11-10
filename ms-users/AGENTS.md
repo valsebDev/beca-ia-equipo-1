@@ -28,7 +28,7 @@ Cada regla se valida con Sí/No. Una respuesta No bloquea la entrega.
 
 ### Seguridad
 
-7. **Cero secretos en duro:** ¿Las credenciales y secretos se leen con `${VAR:default}`
+7. **Cero secretos en duro:** ¿Las credenciales y secretos se leen con `${VAR}`
    (p. ej. `${JWT_SECRET}`, `${SPRING_DATASOURCE_PASSWORD}`) sin valores reales versionados?
 8. **Sin fuga de errores:** ¿`application.yaml` define `server.error.include-message: never`
    para no exponer mensajes ni stack traces?

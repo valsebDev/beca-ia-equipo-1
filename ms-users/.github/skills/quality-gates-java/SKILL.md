@@ -3,7 +3,8 @@ name: quality-gates-java
 description: >-
   Ejecuta, audita e interpreta los quality gates de los microservicios Java (Checkstyle, PMD,
   SpotBugs con FindSecBugs, OWASP Dependency-Check y JaCoCo). Usar cuando se requiera verificar
-  la calidad estática del código, resolver vulnerabilidades o preparar entregas.
+  la calidad estática del código, resolver vulnerabilidades o preparar entregas. No la uses para 
+  escribir lógica de negocio ni para cambiar versiones del stack.
 ---
 
 # Quality Gates de microservicios Java
