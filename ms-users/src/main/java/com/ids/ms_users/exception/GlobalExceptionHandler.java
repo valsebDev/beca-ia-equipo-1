@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final String FIELD_CODE = "code";
     private static final String TIMESTAMP_PROPERTY = "timestamp";
 
     @ExceptionHandler(EmailAlreadyExistsException.class)
