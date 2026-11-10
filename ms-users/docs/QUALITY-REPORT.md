@@ -1,6 +1,6 @@
 # Reporte de Calidad - ms-users
 
-Fecha: 2026-11-08
+Fecha: 2026-11-10
 Versión de plataforma: Java 17, Spring Boot 4.1.2
 
 ## Antes / Después
@@ -10,11 +10,11 @@ Versión de plataforma: Java 17, Spring Boot 4.1.2
 | Checkstyle | 1 violación (LineLength) | 0 violaciones |
 | PMD / CPD | 5 violaciones (literales y números mágicos) | 0 violaciones |
 | SpotBugs | 0 violaciones | 0 violaciones |
-| Dependency-Check | Bloqueado por CVE-2025-7962 (CVSS 7.5) | Aprobado tras supresión justificada |
-| Cobertura JaCoCo | ~70% inicial | Service 86.39%, Controller 76.47% |
+| Dependency-Check | Bloqueado inicialmente por CVE-2025-7962 (CVSS 7.5) | PASS: 0 CVEs reportados en CI |
+| Cobertura JaCoCo | No medida en la línea base | 74% de instrucciones cubiertas en BUNDLE |
 
-La supresión está en `config/dependency-check-suppressions.xml`. El gate `check` de JaCoCo
-exige 70% de instrucciones (BUNDLE) durante `verify`.
+El gate `check` de JaCoCo exige 70% de instrucciones cubiertas en BUNDLE durante `verify`.
+El resultado final del CI fue 74%.
 
 ## Métricas de Gates
 
@@ -23,13 +23,15 @@ exige 70% de instrucciones (BUNDLE) durante `verify`.
 | Pruebas | 26/26 correctas | 26/26 correctas |
 | Checkstyle | 0 violaciones; PASS | 0 violaciones; PASS |
 | PMD / CPD | 0 hallazgos; PASS | 0 hallazgos; PASS |
-| SpotBugs | 0 hallazgos; PASS | 0 hallazgos; PASS |
-| Dependency-Check | FAIL: CVE-2025-7962 (7.5); OSS 401 | PASS: CVE acotado; OSS Index OFF |
-| JaCoCo: controllers | No medido en la línea base | 13/17 líneas; 76.47% |
-| JaCoCo: service | No medido en la línea base | 127/147 líneas; 86.39% |
+| SpotBugs | 0 hallazgos; PASS | 0 hallazgos; PASS, sin exclusiones |
+| Dependency-Check | FAIL inicial por CVE-2025-7962; OSS 401 | PASS: 0 CVEs reportados; OSS Index OFF |
+| JaCoCo: instrucciones BUNDLE | No medido en la línea base | 74% cubierto; PASS (umbral: 70%) |
 
-El scan final aún reporta CVE-2025-15104 en `hibernate-validator`; su severidad
-no alcanza `failBuildOnCVSS=7.0`, por lo que Dependency-Check no bloquea el build.
+`CVE-2025-15104` en `hibernate-validator` se observó puntualmente en una ejecución local
+el 2026-11-08; no afecta el CI. El escaneo final del CI reportó 0 CVEs.
+
+SpotBugs terminó sin exclusiones: se retiraron las anotaciones `@SuppressFBWarnings` al
+sellar `TokenService` como `public final class TokenService`.
 
 ## Hallazgos
 
@@ -49,23 +51,19 @@ roles del JWT y delega; `UserService` aplica la política ADMIN y lanza
 `ForbiddenOperationException` si el rol no tiene permiso/autorización. Las pruebas cubren 401,
 403 y 200.
 
-### 3. CVE-2025-7962 en angus-activation
+### 3. Dependency-Check: supresión retirada
 
-Dependency-Check asociaba CVE-2025-7962 (CVSS 7.5), un aviso de inyección SMTP de
-Jakarta Mail, con `angus-activation-2.0.3` mediante una coincidencia CPE amplia. Era un
-bloqueo porque el umbral del plugin es 7.0. La dependencia es transitiva de runtime
-(`spring-boot-starter-data-jpa` → Hibernate → JAXB) y no se expone directamente a
-datos no confiables en `ms-users`. Se acepta el riesgo de forma acotada en
-`config/dependency-check-suppressions.xml`, por coordenada Maven exacta y solo para
-este CVE. Debe revisarse si se cambia la versión o se mantiene.
+Una ejecución anterior asoció CVE-2025-7962 con `angus-activation` mediante una coincidencia
+CPE amplia. La supresión temporal se retiró porque el analizador reportó 0 coincidencias
+(*zero matches*). El archivo `config/dependency-check-suppressions.xml` quedó sin supresiones
+activas y el escaneo final del CI terminó con 0 CVEs reportados.
 
 ## Decisión de Rechazo
 
 Se rechazó fijar arbitrariamente versiones transitivas administradas por Spring Boot.
-Los overrides aislados rompían la compatibilidad entre módulos de Spring Boot 4.1.2 y
-sus dependencias alineadas, con riesgo de fallos de enlace o configuración en runtime.
-Se mantiene la plataforma administrada y se usa una supresión estrecha para el hallazgo
-aceptado, en lugar de alterar el grafo de dependencias principal.
+Los overrides aislados podían romper la compatibilidad entre módulos de Spring Boot 4.1.2.
+Se mantuvo la plataforma administrada y se retiró la supresión temporal al confirmarse
+*zero matches*, sin alterar el grafo principal de dependencias.
 
 ## Evidencia
 
@@ -74,4 +72,8 @@ Comandos ejecutados desde `ms-users/`:
 - `./mvnw -B test jacoco:report`: BUILD SUCCESS; 26 pruebas correctas.
 - `./mvnw -B dependency-check:check`: BUILD SUCCESS; suppression file leído, sin consulta OSS Index.
 - `./mvnw -B verify`: BUILD SUCCESS; 26 pruebas correctas y todos los gates completados.
+- Dependency-Check en CI: escaneo final con 0 CVEs reportados.
+- JaCoCo en CI: 74% de instrucciones cubiertas en BUNDLE (umbral: 70%).
+- SonarQube for IDE: análisis limpio en `UserService`.
+	Captura: [sonarqube-userservice.png](img/sonarqube-userservice.png).
 

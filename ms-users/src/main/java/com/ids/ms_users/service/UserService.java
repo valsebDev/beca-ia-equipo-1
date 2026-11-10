@@ -27,6 +27,8 @@ import java.util.UUID;
 @Service
 public class UserService {
 
+    private static final String USER_NOT_FOUND_MESSAGE = "Usuario no encontrado con identificador: ";
+
     private final UserRepository userRepository;
     private final TokenService tokenService;
     private final BCryptPasswordEncoder passwordEncoder;
@@ -128,7 +130,7 @@ public class UserService {
     public UserResponse getProfile(String userIdentifier) {
         User user = userRepository.findByUserIdentifier(userIdentifier)
             .orElseThrow(() -> new UserNotFoundException(
-                "Usuario no encontrado con identificador: " + userIdentifier));
+                USER_NOT_FOUND_MESSAGE + userIdentifier));
         return mapToResponse(user);
     }
 
@@ -136,7 +138,7 @@ public class UserService {
     public UserResponse updateProfile(String userIdentifier, UpdateProfileRequest request) {
         User user = userRepository.findByUserIdentifier(userIdentifier)
             .orElseThrow(() -> new UserNotFoundException(
-                "Usuario no encontrado con identificador: " + userIdentifier));
+                USER_NOT_FOUND_MESSAGE + userIdentifier));
         user.setName(request.name());
         user.setPaternalName(request.paternalName());
         user.setMaternalName(request.maternalName());
@@ -151,7 +153,7 @@ public class UserService {
         requireAdmin(requesterRoles);
         User user = userRepository.findByUserIdentifier(userIdentifier)
             .orElseThrow(() -> new UserNotFoundException(
-                "Usuario no encontrado con identificador: " + userIdentifier));
+                USER_NOT_FOUND_MESSAGE + userIdentifier));
         user.setIsActive(request.isActive());
         if (Boolean.FALSE.equals(request.isActive())) {
             user.setJwtId(null);

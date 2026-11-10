@@ -1,42 +1,38 @@
 package com.ids.ms_users.service;
 
-import com.ids.ms_users.domain.Role;
-import com.ids.ms_users.domain.User;
-import com.ids.ms_users.dto.AuthResponse;
-import com.ids.ms_users.dto.LoginRequest;
-import com.ids.ms_users.dto.RegisterUserRequest;
-import com.ids.ms_users.dto.UpdateProfileRequest;
-import com.ids.ms_users.dto.UpdateUserStatusRequest;
-import com.ids.ms_users.dto.UserResponse;
-import com.ids.ms_users.exception.AccountInactiveException;
-import com.ids.ms_users.exception.AccountLockedException;
-import com.ids.ms_users.exception.EmailAlreadyExistsException;
-import com.ids.ms_users.exception.ForbiddenOperationException;
-import com.ids.ms_users.exception.InvalidCredentialsException;
-import com.ids.ms_users.exception.UserNotFoundException;
-import com.ids.ms_users.repository.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import org.mockito.Mock;
 import static org.mockito.Mockito.never;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.ids.ms_users.domain.Role;
+import com.ids.ms_users.domain.User;
+import com.ids.ms_users.dto.AuthResponse;
+import com.ids.ms_users.dto.LoginRequest;
+import com.ids.ms_users.dto.RegisterUserRequest;
+import com.ids.ms_users.dto.UpdateUserStatusRequest;
+import com.ids.ms_users.dto.UserResponse;
+import com.ids.ms_users.exception.AccountLockedException;
+import com.ids.ms_users.exception.EmailAlreadyExistsException;
+import com.ids.ms_users.exception.ForbiddenOperationException;
+import com.ids.ms_users.exception.InvalidCredentialsException;
+import com.ids.ms_users.exception.UserNotFoundException;
+import com.ids.ms_users.repository.UserRepository;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
