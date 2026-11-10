@@ -92,13 +92,15 @@ Con esas reglas aparecieron hallazgos nuevos que se corrigieron en el código (c
 | Checkstyle | LineLength (máx. 120) | 4 líneas | 0 | `GlobalExceptionHandler`, `PriorityService` |
 | PMD | AvoidDuplicateLiterals | 4 literales en pruebas | 0 | `PriorityControllerTest`, `CategoryServiceTest`, `PriorityServiceTest` |
 
-Resultado de la verificación del 2026-11-09:
+Resultado de `./mvnw -B verify` completo del 2026-11-09 (con Docker y `NVD_API_KEY`): BUILD SUCCESS.
 
 | Gate | Resultado |
 |---|---|
-| Checkstyle, PMD y CPD | 0 hallazgos (`checkstyle:check`, `pmd:check`, `pmd:cpd-check`) |
+| Checkstyle | 0 violaciones |
+| PMD y CPD | 0 violaciones |
 | SpotBugs + FindSecBugs | 0 hallazgos (`spotbugs:check`) |
-| Pruebas | 51 de 52 pasan. `MsCatalogApplicationTests` no se ejecutó: usa Testcontainers y no había Docker en el entorno |
-| JaCoCo | 96.05 % de líneas (170/177), medido sin `MsCatalogApplicationTests` |
-| Dependency-Check | Pendiente: no había `NVD_API_KEY` |
-| `./mvnw -B verify` completo | Pendiente: requiere Docker y `NVD_API_KEY` |
+| Pruebas | 52 de 52 pasan, incluida `MsCatalogApplicationTests` con Testcontainers |
+| JaCoCo | 96.05 % de líneas (170/177), mínimo 70 %; `jacoco:check` cumplido |
+| Dependency-Check | Sin fallos con `failBuildOnCVSS=7` |
+
+Avisos de PMD 7.29.0 (no bloquean el build): `UnnecessaryLocalBeforeReturn` y `AvoidLosingExceptionInformation` están marcadas para eliminación en PMD 8.0.0. Hay que reemplazarlas en la skill cuando se migre a PMD 8.
