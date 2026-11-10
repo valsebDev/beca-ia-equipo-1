@@ -178,6 +178,25 @@ Escenario negativo: Prioridad inexistente
   Entonces recibo 404 con code PRIORITY_NOT_FOUND
 ```
 
+### 3.2 Equivalencias de numeración
+
+Las migraciones citan las HU con la numeración anterior a la renumeración de `121280c` (`HU-01` a `HU-06`). `V1__create_catalog_tables.sql` no se edita porque Flyway valida su checksum. Esta tabla traza cada referencia a la HU vigente.
+
+| HU antigua (citada en V1) | Título antiguo | HU vigente |
+|---|---|---|
+| HU-01 | Crear categorías de servicio | HU-CAT-02 |
+| HU-02 | Consultar categorías activas | HU-CAT-01 |
+| HU-03 | Modificar una categoría | HU-CAT-03 |
+| HU-04 | Desactivar una categoría sin perder historial | HU-CAT-04 |
+| HU-05 | Consultar y registrar prioridades | HU-CAT-05 (consultar), HU-CAT-06 (registrar) |
+| HU-06 | Definir el SLA de una prioridad | HU-CAT-07 |
+
+Índices de V1 que citan HU antiguas y su HU vigente:
+- Línea 11: HU-01 y HU-03 → HU-CAT-02 y HU-CAT-03 (unicidad de nombre al crear y al renombrar).
+- Línea 15: HU-02 → HU-CAT-01 (listado de categorías activas ordenado por nombre).
+- Líneas 26 y 28: HU-05 → HU-CAT-06 (registro: código único y nivel único).
+- Línea 41: HU-06 y HU-05 → HU-CAT-07 y HU-CAT-06 (SLA único por prioridad).
+
 ## 4. Requerimientos no funcionales
 
 | ID | Atributo | Requerimiento medible | Verificación |

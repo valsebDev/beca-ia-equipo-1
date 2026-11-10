@@ -21,15 +21,19 @@ import lombok.Setter;
 @NoArgsConstructor
 public class Priority {
 
+	public static final int CODE_MAX_LENGTH = 20;
+	public static final int NAME_MAX_LENGTH = 50;
+	public static final int LEVEL_MAX = 10;
+
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
 	@Enumerated(EnumType.STRING)
-	@Column(name = "code", nullable = false, length = 20, unique = true)
+	@Column(name = "code", nullable = false, length = CODE_MAX_LENGTH, unique = true)
 	private PriorityCode code;
 
-	@Column(name = "name", nullable = false, length = 50)
+	@Column(name = "name", nullable = false, length = NAME_MAX_LENGTH)
 	private String name;
 
 	@Column(name = "level", nullable = false, unique = true)

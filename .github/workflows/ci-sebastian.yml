@@ -1,0 +1,22 @@
+name: ci-sebastian
+on:
+  push:
+    branches: ["practica-*-sebastian"]
+    paths: ["ms-catalog/**", ".github/workflows/ci-sebastian.yml"]
+  pull_request:
+    branches: [main]
+    paths: ["ms-catalog/**", ".github/workflows/ci-sebastian.yml"]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ms-catalog
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17', cache: maven }
+      - name: Quality gates y pruebas (mvn verify)
+        run: chmod +x mvnw && ./mvnw -B verify
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}

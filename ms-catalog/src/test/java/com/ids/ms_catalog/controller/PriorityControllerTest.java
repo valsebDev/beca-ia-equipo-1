@@ -1,7 +1,9 @@
 package com.ids.ms_catalog.controller;
 
+import com.ids.ms_catalog.dto.request.SlaRequest;
 import com.ids.ms_catalog.dto.response.PriorityResponse;
 import com.ids.ms_catalog.dto.response.SlaResponse;
+import com.ids.ms_catalog.exception.ConflictException;
 import com.ids.ms_catalog.exception.DomainValidationException;
 import com.ids.ms_catalog.exception.NotFoundException;
 import com.ids.ms_catalog.model.PriorityCode;
@@ -13,12 +15,19 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
+
+import static org.hamcrest.Matchers.endsWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -26,7 +35,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PriorityControllerTest {
 
 	private static final String JSON = MediaType.APPLICATION_JSON_VALUE;
+	private static final String BASE_PATH = "/api/v1/priorities";
 	private static final String SLA_PATH = "/api/v1/priorities/2/sla";
+	private static final String CODE_PATH = "$.code";
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -43,6 +54,7 @@ class PriorityControllerTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.sla.responseHours").value(2))
 				.andExpect(jsonPath("$.sla.resolutionHours").value(8));
+		verify(priorityService).updateSla(2L, new SlaRequest(2, 8));
 	}
 
 	@Test
@@ -55,6 +67,7 @@ class PriorityControllerTest {
 				.andExpect(content().contentTypeCompatibleWith("application/problem+json"))
 				.andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
 				.andExpect(jsonPath("$.errors[0].field").value("resolutionHours"));
+		verify(priorityService).updateSla(anyLong(), any());
 	}
 
 	@Test
@@ -62,6 +75,7 @@ class PriorityControllerTest {
 		mockMvc.perform(put(SLA_PATH).contentType(JSON).content("{\"responseHours\":0,\"resolutionHours\":5}"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.errors[0].field").value("responseHours"));
+		verify(priorityService, never()).updateSla(anyLong(), any());
 	}
 
 	@Test
@@ -73,6 +87,7 @@ class PriorityControllerTest {
 						.content("{\"responseHours\":2,\"resolutionHours\":8}"))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("PRIORITY_NOT_FOUND"));
+		verify(priorityService).updateSla(999L, new SlaRequest(2, 8));
 	}
 
 	@Test
@@ -80,8 +95,58 @@ class PriorityControllerTest {
 		String body = "{\"code\":\"URGENTE\",\"name\":\"Urgente\",\"level\":5,"
 				+ "\"sla\":{\"responseHours\":1,\"resolutionHours\":2}}";
 
-		mockMvc.perform(post("/api/v1/priorities").contentType(JSON).content(body))
+		mockMvc.perform(post(BASE_PATH).contentType(JSON).content(body))
 				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
+				.andExpect(jsonPath(CODE_PATH).value("MALFORMED_REQUEST"));
+		verify(priorityService, never()).create(any());
+	}
+
+	@Test
+	void listDevuelve200ConPrioridadesOrdenadas() throws Exception {
+		when(priorityService.findAll()).thenReturn(List.of(
+				new PriorityResponse(2L, PriorityCode.ALTA, "Alta", 2, true, new SlaResponse(2, 8))));
+
+		mockMvc.perform(get(BASE_PATH))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].code").value("ALTA"));
+		verify(priorityService).findAll();
+	}
+
+	@Test
+	void getDevuelve200ConLaPrioridadSolicitada() throws Exception {
+		when(priorityService.findById(2L)).thenReturn(
+				new PriorityResponse(2L, PriorityCode.ALTA, "Alta", 2, true, new SlaResponse(2, 8)));
+
+		mockMvc.perform(get(BASE_PATH + "/2"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.level").value(2));
+		verify(priorityService).findById(2L);
+	}
+
+	@Test
+	void createDevuelve201ConCabeceraLocation() throws Exception {
+		when(priorityService.create(any())).thenReturn(
+				new PriorityResponse(3L, PriorityCode.MEDIA, "Media", 3, true, new SlaResponse(4, 24)));
+
+		mockMvc.perform(post(BASE_PATH).contentType(JSON).content(
+						"{\"code\":\"MEDIA\",\"name\":\"Media\",\"level\":3,"
+								+ "\"sla\":{\"responseHours\":4,\"resolutionHours\":24}}"))
+				.andExpect(status().isCreated())
+				.andExpect(header().string("Location", endsWith(BASE_PATH + "/3")))
+				.andExpect(jsonPath(CODE_PATH).value("MEDIA"));
+		verify(priorityService).create(any());
+	}
+
+	@Test
+	void createDevuelve409CuandoElCodigoYaExiste() throws Exception {
+		when(priorityService.create(any())).thenThrow(
+				new ConflictException("PRIORITY_ALREADY_EXISTS", "Ya existe una prioridad con código ALTA"));
+
+		mockMvc.perform(post(BASE_PATH).contentType(JSON).content(
+						"{\"code\":\"ALTA\",\"name\":\"Alta\",\"level\":5,"
+								+ "\"sla\":{\"responseHours\":1,\"resolutionHours\":2}}"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath(CODE_PATH).value("PRIORITY_ALREADY_EXISTS"));
+		verify(priorityService).create(any());
 	}
 }

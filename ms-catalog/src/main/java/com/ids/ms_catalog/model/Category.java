@@ -21,14 +21,17 @@ import java.time.Instant;
 @NoArgsConstructor
 public class Category {
 
+	public static final int NAME_MAX_LENGTH = 80;
+	public static final int DESCRIPTION_MAX_LENGTH = 255;
+
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@Column(name = "name", nullable = false, length = 80, unique = true)
+	@Column(name = "name", nullable = false, length = NAME_MAX_LENGTH, unique = true)
 	private String name;
 
-	@Column(name = "description", length = 255)
+	@Column(name = "description", length = DESCRIPTION_MAX_LENGTH)
 	private String description;
 
 	@Column(name = "active", nullable = false)
