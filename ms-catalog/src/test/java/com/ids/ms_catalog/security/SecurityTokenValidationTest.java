@@ -18,7 +18,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -47,11 +49,12 @@ class SecurityTokenValidationTest {
 	private static final String BODY = "{\"name\":\"Redes\",\"description\":\"Problemas de red\"}";
 	private static final String CODE_PATH = "$.code";
 	private static final String UNAUTHORIZED_CODE = "UNAUTHORIZED";
-	private static final String OTHER_SECRET = "otro-secreto-de-prueba-distinto-0123456789-abcdefgh";
 	private static final String OTHER_ISSUER = "ms-otro";
 	private static final String OTHER_AUDIENCE = "otra-audiencia";
+	private static final int SECRET_LENGTH_BYTES = 32;
 	private static final long FUTURE_SECONDS = 60;
 	private static final long EXPIRED_AGO_SECONDS = 3600;
+	private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
 	private final MockMvc mockMvc;
 
@@ -67,11 +70,17 @@ class SecurityTokenValidationTest {
 		Instant future = Instant.now().plusSeconds(FUTURE_SECONDS);
 		List<String> roles = List.of(ADMIN_ROLE);
 		return Stream.of(
-				Arguments.of("firma alterada", signedToken(OTHER_SECRET, ISSUER, AUDIENCE, future, roles)),
+				Arguments.of("firma alterada", signedToken(randomSecret(), ISSUER, AUDIENCE, future, roles)),
 				Arguments.of("expirado", signedToken(TEST_SECRET, ISSUER, AUDIENCE,
 						Instant.now().minusSeconds(EXPIRED_AGO_SECONDS), roles)),
 				Arguments.of("iss incorrecto", signedToken(TEST_SECRET, OTHER_ISSUER, AUDIENCE, future, roles)),
 				Arguments.of("aud incorrecto", signedToken(TEST_SECRET, ISSUER, OTHER_AUDIENCE, future, roles)));
+	}
+
+	private static String randomSecret() {
+		byte[] secret = new byte[SECRET_LENGTH_BYTES];
+		SECURE_RANDOM.nextBytes(secret);
+		return Base64.getEncoder().encodeToString(secret);
 	}
 
 	@Test
