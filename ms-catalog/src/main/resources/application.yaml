@@ -33,6 +33,11 @@ springdoc:
     enabled: ${SWAGGER_ENABLED:true}
 
 app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET}
+      issuer: ${JWT_ISSUER:ms-users}
+      audience: ${JWT_AUDIENCE:mesa-ayuda}
   sla:
     max-response-hours: ${CATALOG_SLA_MAX_RESPONSE_HOURS:720}
     max-resolution-hours: ${CATALOG_SLA_MAX_RESOLUTION_HOURS:2160}
