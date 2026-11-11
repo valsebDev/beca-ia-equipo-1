@@ -48,7 +48,8 @@ Modificadas:
 - Ajustar `CategoryControllerTest`, `PriorityControllerTest` y `CategoryErrorResponseTest` (importar seguridad y autenticar como ADMIN). `MsCatalogApplicationTests` recibe un `JWT_SECRET` de prueba.
 - Meta: `./mvnw -B verify` en verde (Checkstyle, PMD, SpotBugs/FindSecBugs, Dependency-Check, JaCoCo ≥ 70 %).
 
-## Fase B — D13: validar ADMIN activo contra ms-users (backlog 20b)
+## Fase B — DIFERIDA (decisión del usuario): validar ADMIN activo contra ms-users (D13, backlog 20b)
+Fuera del alcance de esta entrega; se documenta como riesgo aceptado en `docs/SECURITY-REPORT.md`.
 - Dependencia: `spring-boot-starter-restclient` (+ WireMock o `MockRestServiceServer` en test).
 - Clases: `client/UsersClient` (`@HttpExchange GET /api/v1/users/{id}`), `client/dto/UserSummary`, `config/ClientsConfig` (timeouts 2 s / 3 s), `BearerTokenRelayInterceptor`, `ClientErrorHandler`, `service/AdminGuard` (solo en mutaciones) y `DependencyUnavailableException` → 503 `DEPENDENCY_UNAVAILABLE`.
 - Mapeo: 200 con `active=true` → continúa; 404 o `active=false` → 403; 401/403/5xx/timeout → 503. Los GET no llaman a ms-users.
@@ -66,9 +67,10 @@ Modificadas:
 8. Sin rate limiting (D11) y sin CORS (§6.2).
 9. ms-users debe permitir a ADMIN `GET /users/{id}` para la Fase B (§6.3 ya lo permite).
 
-## Decisiones tomadas
+## Decisiones tomadas (confirmadas por el usuario)
+1. Solo Fase A; Fase B diferida. Dependencias `oauth2-resource-server` y `security-test` aprobadas.
+2. GET para cualquier usuario autenticado; compatibilidad con claims de ARCHITECTURE §6.1 sin tocar ms-users.
 Por defecto, salvo que se indique lo contrario:
-1. Fase A primero; Fase B cuando ms-users esté listo.
 2. Reglas de rol con `@PreAuthorize` en controllers.
 3. Swagger y `/v3/api-docs` públicos (§6.2), apagados en prod con `SWAGGER_ENABLED=false`.
 4. AGENTE y SOLICITANTE solo leen.
@@ -83,4 +85,4 @@ Por defecto, salvo que se indique lo contrario:
 - [ ] A5 Pruebas 401/403/200, conversor y ajuste de tests existentes
 - [ ] A6 Config yaml/templates, OpenAPI, contrato, `docs/seguridad.md`, README
 - [ ] A7 `./mvnw -B verify` en verde
-- [ ] B Cliente ms-users, guard de ADMIN activo, pruebas WireMock
+- [ ] B (diferida) Cliente ms-users, guard de ADMIN activo, pruebas WireMock
