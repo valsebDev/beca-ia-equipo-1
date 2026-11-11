@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -49,6 +50,12 @@ public class GlobalExceptionHandler {
 				HttpStatus.BAD_REQUEST, ex.getCode(), "Error de validación", ex.getMessage(), request);
 		problem.setProperty("errors", List.of(new FieldViolation(ex.getField(), ex.getMessage())));
 		return problem;
+	}
+
+	@ExceptionHandler(AccessDeniedException.class)
+	ProblemDetail handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+		return build(HttpStatus.FORBIDDEN, "FORBIDDEN", "Acceso denegado",
+				"No tiene permisos para realizar esta operación", request);
 	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
