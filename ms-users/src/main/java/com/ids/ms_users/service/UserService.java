@@ -14,6 +14,7 @@ import com.ids.ms_users.exception.EmailAlreadyExistsException;
 import com.ids.ms_users.exception.ForbiddenOperationException;
 import com.ids.ms_users.exception.InvalidCredentialsException;
 import com.ids.ms_users.exception.UserNotFoundException;
+import com.ids.ms_users.mapper.UserMapper;
 import com.ids.ms_users.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -67,7 +68,7 @@ public class UserService {
         );
 
         User saved = userRepository.save(user);
-        return mapToResponse(saved);
+        return UserMapper.toResponse(saved);
     }
 
     @Transactional
@@ -88,7 +89,7 @@ public class UserService {
                 token,
                 "Bearer",
                 tokenService.getExpirationSeconds(),
-                mapToResponse(user)
+                UserMapper.toResponse(user)
         );
     }
 
@@ -131,7 +132,7 @@ public class UserService {
         User user = userRepository.findByUserIdentifier(userIdentifier)
             .orElseThrow(() -> new UserNotFoundException(
                 USER_NOT_FOUND_MESSAGE + userIdentifier));
-        return mapToResponse(user);
+        return UserMapper.toResponse(user);
     }
 
     @Transactional
@@ -144,7 +145,7 @@ public class UserService {
         user.setMaternalName(request.maternalName());
 
         User updated = userRepository.save(user);
-        return mapToResponse(updated);
+        return UserMapper.toResponse(updated);
     }
 
     @Transactional
@@ -161,7 +162,7 @@ public class UserService {
         }
 
         User updated = userRepository.save(user);
-        return mapToResponse(updated);
+        return UserMapper.toResponse(updated);
     }
 
     @Transactional(readOnly = true)
@@ -170,7 +171,7 @@ public class UserService {
         User user = userRepository.findByUserIdentifier(userIdentifier)
             .orElseThrow(() -> new UserNotFoundException(
                 USER_NOT_FOUND_MESSAGE + userIdentifier));
-        return mapToResponse(user);
+        return UserMapper.toResponse(user);
     }
 
     private void requireAdmin(List<String> roles) {
@@ -179,16 +180,4 @@ public class UserService {
         }
     }
 
-    private UserResponse mapToResponse(User user) {
-        return new UserResponse(
-                user.getUserIdentifier(),
-                user.getName(),
-                user.getPaternalName(),
-                user.getMaternalName(),
-                user.getEmail(),
-                user.getRole(),
-                user.getIsActive(),
-                user.getCreatedAt()
-        );
-    }
 }
