@@ -40,8 +40,8 @@ app:
       duration-minutes: ${LOCK_DURATION_MINUTES:15}
   bootstrap:
     admin:
-      email: ${ADMIN_EMAIL:}
-      password: ${ADMIN_PASSWORD:}
+      email: ${ADMIN_EMAIL}
+      password: ${ADMIN_PASSWORD}
 
 management:
   endpoints:

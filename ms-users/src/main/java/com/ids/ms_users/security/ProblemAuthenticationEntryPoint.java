@@ -22,7 +22,7 @@ public class ProblemAuthenticationEntryPoint implements AuthenticationEntryPoint
     private final ObjectMapper objectMapper;
 
     public ProblemAuthenticationEntryPoint(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
+        this.objectMapper = objectMapper.rebuild().build();
     }
 
     @Override

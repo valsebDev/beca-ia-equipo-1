@@ -3,6 +3,7 @@ package com.ids.ms_users.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -25,6 +26,8 @@ import com.ids.ms_users.domain.User;
 import com.ids.ms_users.dto.request.LoginRequest;
 import com.ids.ms_users.dto.request.UpdateUserStatusRequest;
 import com.ids.ms_users.dto.response.TokenResponse;
+import com.ids.ms_users.exception.AccountInactiveException;
+import com.ids.ms_users.exception.AccountLockedException;
 import com.ids.ms_users.exception.InvalidCredentialsException;
 import com.ids.ms_users.repository.UserRepository;
 
@@ -96,8 +99,7 @@ class UserServiceTest {
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
 
         assertThatThrownBy(() -> userService.login(new LoginRequest(EMAIL, PASSWORD)))
-                .isInstanceOf(InvalidCredentialsException.class)
-                .hasMessage("Credenciales inválidas");
+                .isInstanceOf(AccountLockedException.class);
         verify(passwordEncoder, never()).matches(anyString(), anyString());
     }
 
@@ -121,27 +123,42 @@ class UserServiceTest {
     }
 
     @Test
-    void inactiveUserGetsSameInvalidCredentialsAsWrongPassword() {
+    void inactiveUserWithCorrectPasswordGetsForbidden() {
         User user = user(1L, false);
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, user.getPassword())).thenReturn(true);
 
         assertThatThrownBy(() -> userService.login(new LoginRequest(EMAIL, PASSWORD)))
-                .isInstanceOf(InvalidCredentialsException.class)
-                .hasMessage("Credenciales inválidas");
+                .isInstanceOf(AccountInactiveException.class);
         verify(tokenService, never()).generateToken(any(User.class));
     }
 
     @Test
     void deactivatingUserRevokesAllRefreshTokens() {
         User user = user(9L, true);
-        when(userRepository.findById(9L)).thenReturn(Optional.of(user));
+        when(userRepository.findByUserIdentifier("uid-9")).thenReturn(Optional.of(user));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        userService.updateStatusByAdmin(9L, new UpdateUserStatusRequest(false));
+        userService.updateStatusByAdmin("uid-9", new UpdateUserStatusRequest(false));
 
         assertThat(user.getIsActive()).isFalse();
         verify(refreshTokenService).revokeAllForUser(eq(9L));
+    }
+
+    @Test
+    void reactivatingUserClearsLockSoLoginWorks() {
+        User user = user(9L, false);
+        user.setFailedAttempts(MAX_FAILED_ATTEMPTS);
+        user.setLockedUntil(LocalDateTime.now().plusMinutes(10));
+        when(userRepository.findByUserIdentifier("uid-9")).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        userService.updateStatusByAdmin("uid-9", new UpdateUserStatusRequest(true));
+
+        assertThat(user.getIsActive()).isTrue();
+        assertThat(user.getFailedAttempts()).isZero();
+        assertThat(user.getLockedUntil()).isNull();
+        verify(refreshTokenService, never()).revokeAllForUser(anyLong());
     }
 
     private static User user(Long id, boolean active) {

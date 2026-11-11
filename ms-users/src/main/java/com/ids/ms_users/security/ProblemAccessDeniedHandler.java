@@ -21,7 +21,7 @@ public class ProblemAccessDeniedHandler implements AccessDeniedHandler {
     private final ObjectMapper objectMapper;
 
     public ProblemAccessDeniedHandler(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
+        this.objectMapper = objectMapper.rebuild().build();
     }
 
     @Override

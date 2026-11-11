@@ -1,0 +1,148 @@
+package com.ids.ms_users.controller;
+
+import static org.mockito.Mockito.doThrow;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.time.Instant;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import com.ids.ms_users.config.JwtDecoderConfig;
+import com.ids.ms_users.config.JwtEncoderConfig;
+import com.ids.ms_users.config.SecurityConfig;
+import com.ids.ms_users.exception.AccountInactiveException;
+import com.ids.ms_users.exception.AccountLockedException;
+import com.ids.ms_users.exception.InvalidCredentialsException;
+import com.ids.ms_users.security.JwtRolesConverter;
+import com.ids.ms_users.security.ProblemAccessDeniedHandler;
+import com.ids.ms_users.security.ProblemAuthenticationEntryPoint;
+import com.ids.ms_users.security.UnmappedRouteAuthorizationManager;
+import com.ids.ms_users.service.UserService;
+
+@WebMvcTest(controllers = AuthController.class)
+@Import({SecurityConfig.class, JwtEncoderConfig.class, JwtDecoderConfig.class,
+        ProblemAuthenticationEntryPoint.class, ProblemAccessDeniedHandler.class,
+        JwtRolesConverter.class, UnmappedRouteAuthorizationManager.class})
+class AuthControllerSecurityTest {
+
+    private static final String LOGIN_PATH = "/api/v1/auth/login";
+    private static final String LOGOUT_PATH = "/api/v1/auth/logout";
+    private static final String REFRESH_PATH = "/api/v1/auth/refresh";
+    private static final String LOGIN_BODY = "{\"email\":\"ana@ids.com\",\"password\":\"Passw0rd!\"}";
+    private static final String REFRESH_BODY = "{\"refreshToken\":\"rt-123\"}";
+    private static final String LOGOUT_BODY = "{\"refreshToken\":\"rt-123\"}";
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private JwtEncoder jwtEncoder;
+
+    @Value("${app.security.jwt.issuer}")
+    private String issuer;
+
+    @Value("${app.security.jwt.audience}")
+    private String audience;
+
+    @MockitoBean
+    private UserService userService;
+
+    @Test
+    void loginWithValidCredentialsReturns200() throws Exception {
+        mockMvc.perform(post(LOGIN_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(LOGIN_BODY))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void loginWithWrongCredentialsReturns401() throws Exception {
+        doThrow(new InvalidCredentialsException("Credenciales inválidas")).when(userService)
+                .login(org.mockito.ArgumentMatchers.any());
+
+        mockMvc.perform(post(LOGIN_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(LOGIN_BODY))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
+    }
+
+    @Test
+    void loginWithInactiveAccountReturns403() throws Exception {
+        doThrow(new AccountInactiveException("La cuenta está inactiva")).when(userService)
+                .login(org.mockito.ArgumentMatchers.any());
+
+        mockMvc.perform(post(LOGIN_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(LOGIN_BODY))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCOUNT_INACTIVE"));
+    }
+
+    @Test
+    void loginWithLockedAccountReturns423() throws Exception {
+        doThrow(new AccountLockedException("La cuenta está bloqueada temporalmente")).when(userService)
+                .login(org.mockito.ArgumentMatchers.any());
+
+        mockMvc.perform(post(LOGIN_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(LOGIN_BODY))
+                .andExpect(status().isLocked())
+                .andExpect(jsonPath("$.code").value("ACCOUNT_LOCKED"));
+    }
+
+    @Test
+    void refreshWithoutAccessTokenIsAllowedAndReturns200() throws Exception {
+        mockMvc.perform(post(REFRESH_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(REFRESH_BODY))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void logoutWithoutTokenReturns401() throws Exception {
+        mockMvc.perform(post(LOGOUT_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(LOGOUT_BODY))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void logoutWithValidTokenReturns204() throws Exception {
+        String token = token("SOLICITANTE", Instant.now().plusSeconds(60));
+
+        mockMvc.perform(post(LOGOUT_PATH)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(LOGOUT_BODY))
+                .andExpect(status().isNoContent());
+    }
+
+    private String token(String role, Instant expiresAt) {
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .issuer(issuer)
+                .audience(List.of(audience))
+                .subject("1")
+                .issuedAt(expiresAt.minusSeconds(900))
+                .expiresAt(expiresAt)
+                .claim("roles", List.of(role))
+                .build();
+        JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
+        return jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
+    }
+}

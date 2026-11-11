@@ -9,6 +9,8 @@ import com.ids.ms_users.dto.request.UpdateProfileRequest;
 import com.ids.ms_users.dto.request.UpdateUserStatusRequest;
 import com.ids.ms_users.dto.response.TokenResponse;
 import com.ids.ms_users.dto.response.UserResponse;
+import com.ids.ms_users.exception.AccountInactiveException;
+import com.ids.ms_users.exception.AccountLockedException;
 import com.ids.ms_users.exception.EmailAlreadyExistsException;
 import com.ids.ms_users.exception.InvalidCredentialsException;
 import com.ids.ms_users.exception.UserNotFoundException;
@@ -28,6 +30,8 @@ public class UserService {
 
     private static final String USER_NOT_FOUND_MESSAGE = "Usuario no encontrado con identificador: ";
     private static final String INVALID_CREDENTIALS_MESSAGE = "Credenciales inválidas";
+    private static final String ACCOUNT_LOCKED_MESSAGE = "Cuenta bloqueada temporalmente por intentos fallidos";
+    private static final String ACCOUNT_INACTIVE_MESSAGE = "Cuenta inactiva; contacte al administrador";
     private static final String TOKEN_TYPE = "Bearer";
 
     private final UserRepository userRepository;
@@ -60,8 +64,9 @@ public class UserService {
 
     @Transactional
     public UserResponse createByAdmin(CreateUserRequest request) {
-        return persistNewUser(request.name(), request.paternalName(), request.maternalName(),
-                request.email(), request.password(), request.role());
+        RegisterUserRequest data = request.user();
+        return persistNewUser(data.name(), data.paternalName(), data.maternalName(),
+                data.email(), data.password(), request.role());
     }
 
     @Transactional
@@ -77,7 +82,7 @@ public class UserService {
         validateNotLocked(user);
         validatePassword(user, request.password());
         if (Boolean.FALSE.equals(user.getIsActive())) {
-            throw new InvalidCredentialsException(INVALID_CREDENTIALS_MESSAGE);
+            throw new AccountInactiveException(ACCOUNT_INACTIVE_MESSAGE);
         }
 
         user.setFailedAttempts(0);
@@ -88,7 +93,8 @@ public class UserService {
     @Transactional(noRollbackFor = InvalidCredentialsException.class)
     public TokenResponse refresh(String rawRefreshToken) {
         RefreshTokenService.RotatedToken rotated = refreshTokenService.rotate(rawRefreshToken);
-        String accessToken = tokenService.generateToken(rotated.user());
+        User user = findUser(rotated.userId());
+        String accessToken = tokenService.generateToken(user);
         return new TokenResponse(accessToken, rotated.refreshToken(), TOKEN_TYPE,
                 tokenService.getAccessTtlSeconds());
     }
@@ -113,18 +119,21 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponse updateStatusByAdmin(Long id, UpdateUserStatusRequest request) {
-        User user = findUser(id);
+    public UserResponse updateStatusByAdmin(String userIdentifier, UpdateUserStatusRequest request) {
+        User user = findUserByIdentifier(userIdentifier);
         user.setIsActive(request.isActive());
-        if (Boolean.FALSE.equals(request.isActive())) {
-            refreshTokenService.revokeAllForUser(id);
+        if (Boolean.TRUE.equals(request.isActive())) {
+            user.setFailedAttempts(0);
+            user.setLockedUntil(null);
+        } else {
+            refreshTokenService.revokeAllForUser(user.getId());
         }
         return UserMapper.toResponse(userRepository.save(user));
     }
 
     @Transactional(readOnly = true)
-    public UserResponse getUserByIdByAdmin(Long id) {
-        return UserMapper.toResponse(findUser(id));
+    public UserResponse getUserByIdentifierByAdmin(String userIdentifier) {
+        return UserMapper.toResponse(findUserByIdentifier(userIdentifier));
     }
 
     @Transactional(readOnly = true)
@@ -160,7 +169,7 @@ public class UserService {
 
     private void validateNotLocked(User user) {
         if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now())) {
-            throw new InvalidCredentialsException(INVALID_CREDENTIALS_MESSAGE);
+            throw new AccountLockedException(ACCOUNT_LOCKED_MESSAGE);
         }
     }
 
@@ -185,5 +194,10 @@ public class UserService {
     private User findUser(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND_MESSAGE + id));
+    }
+
+    private User findUserByIdentifier(String userIdentifier) {
+        return userRepository.findByUserIdentifier(userIdentifier)
+                .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND_MESSAGE + userIdentifier));
     }
 }

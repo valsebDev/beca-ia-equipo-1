@@ -107,3 +107,6 @@ htmlReport/
 # Historial de herramientas de locales
 # =========================
 .github/modernize/
+
+# Prompts
+/docs/p3-prompt-maestro.md

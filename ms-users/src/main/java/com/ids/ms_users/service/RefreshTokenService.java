@@ -17,6 +17,7 @@ import com.ids.ms_users.domain.RefreshToken;
 import com.ids.ms_users.domain.User;
 import com.ids.ms_users.exception.InvalidCredentialsException;
 import com.ids.ms_users.repository.RefreshTokenRepository;
+import com.ids.ms_users.repository.UserRepository;
 
 @Service
 public class RefreshTokenService {
@@ -25,11 +26,14 @@ public class RefreshTokenService {
     private static final String INVALID_REFRESH_MESSAGE = "Refresh token inválido o expirado";
 
     private final RefreshTokenRepository refreshTokenRepository;
+    private final UserRepository userRepository;
     private final long refreshTtlDays;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public RefreshTokenService(RefreshTokenRepository refreshTokenRepository, JwtProperties properties) {
+    public RefreshTokenService(RefreshTokenRepository refreshTokenRepository,
+                               UserRepository userRepository, JwtProperties properties) {
         this.refreshTokenRepository = refreshTokenRepository;
+        this.userRepository = userRepository;
         this.refreshTtlDays = properties.refreshTtlDays();
     }
 
@@ -38,7 +42,7 @@ public class RefreshTokenService {
         String rawToken = generateRawToken();
         Instant now = Instant.now();
         refreshTokenRepository.save(new RefreshToken(
-                user, hash(rawToken), now.plus(refreshTtlDays, ChronoUnit.DAYS), now));
+                user.getId(), hash(rawToken), now.plus(refreshTtlDays, ChronoUnit.DAYS), now));
         return rawToken;
     }
 
@@ -51,19 +55,21 @@ public class RefreshTokenService {
         RefreshToken stored = refreshTokenRepository.findByTokenHash(hash(rawToken))
                 .orElseThrow(() -> new InvalidCredentialsException(INVALID_REFRESH_MESSAGE));
         Instant now = Instant.now();
+        Long userId = stored.getUserId();
         if (stored.getRevokedAt() != null) {
-            refreshTokenRepository.revokeAllActiveByUserId(stored.getUser().getId(), now);
+            refreshTokenRepository.revokeAllActiveByUserId(userId, now);
             throw new InvalidCredentialsException(INVALID_REFRESH_MESSAGE);
         }
         if (!stored.getExpiresAt().isAfter(now)) {
             throw new InvalidCredentialsException(INVALID_REFRESH_MESSAGE);
         }
         stored.setRevokedAt(now);
-        User user = stored.getUser();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new InvalidCredentialsException(INVALID_REFRESH_MESSAGE));
         if (Boolean.FALSE.equals(user.getIsActive())) {
             throw new InvalidCredentialsException(INVALID_REFRESH_MESSAGE);
         }
-        return new RotatedToken(user, issue(user));
+        return new RotatedToken(userId, issue(user));
     }
 
     @Transactional
@@ -78,7 +84,7 @@ public class RefreshTokenService {
         refreshTokenRepository.revokeAllActiveByUserId(userId, Instant.now());
     }
 
-    public record RotatedToken(User user, String refreshToken) {
+    public record RotatedToken(Long userId, String refreshToken) {
     }
 
     private String generateRawToken() {

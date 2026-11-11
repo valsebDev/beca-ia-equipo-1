@@ -23,29 +23,32 @@ public class SecurityConfig {
                                             JwtRolesConverter jwtRolesConverter,
                                             ProblemAuthenticationEntryPoint entryPoint,
                                             ProblemAccessDeniedHandler accessDeniedHandler,
-                                            UnmappedRouteAuthorizationManager unmappedRouteAuthorizationManager)
-            throws Exception {
+                                            UnmappedRouteAuthorizationManager unmappedRouteAuthorizationManager) {
         JwtAuthenticationConverter authenticationConverter = new JwtAuthenticationConverter();
         authenticationConverter.setJwtGrantedAuthoritiesConverter(jwtRolesConverter);
 
-        return http
-                .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health").permitAll()
-                        .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login",
-                                "/api/v1/auth/refresh").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").authenticated()
-                        .requestMatchers("/api/v1/users/**").authenticated()
-                        .anyRequest().access(unmappedRouteAuthorizationManager))
-                .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt.jwtAuthenticationConverter(authenticationConverter))
-                        .authenticationEntryPoint(entryPoint)
-                        .accessDeniedHandler(accessDeniedHandler))
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(entryPoint)
-                        .accessDeniedHandler(accessDeniedHandler))
-                .build();
+        try {
+            return http
+                    .csrf(csrf -> csrf.ignoringRequestMatchers("/api/v1/**"))
+                    .sessionManagement(session -> session
+                            .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                    .authorizeHttpRequests(auth -> auth
+                            .requestMatchers("/actuator/health").permitAll()
+                            .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login",
+                                    "/api/v1/auth/refresh").permitAll()
+                            .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").authenticated()
+                            .requestMatchers("/api/v1/users/**").authenticated()
+                            .anyRequest().access(unmappedRouteAuthorizationManager))
+                    .oauth2ResourceServer(oauth2 -> oauth2
+                            .jwt(jwt -> jwt.jwtAuthenticationConverter(authenticationConverter))
+                            .authenticationEntryPoint(entryPoint)
+                            .accessDeniedHandler(accessDeniedHandler))
+                    .exceptionHandling(ex -> ex
+                            .authenticationEntryPoint(entryPoint)
+                            .accessDeniedHandler(accessDeniedHandler))
+                    .build();
+        } catch (Exception ex) {
+            throw new IllegalStateException("No se pudo construir la cadena de seguridad", ex);
+        }
     }
 }

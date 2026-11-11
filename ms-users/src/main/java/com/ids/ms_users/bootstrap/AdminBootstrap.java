@@ -22,8 +22,8 @@ public class AdminBootstrap implements ApplicationRunner {
 
     public AdminBootstrap(UserRepository userRepository,
                           UserService userService,
-                          @Value("${app.bootstrap.admin.email:}") String adminEmail,
-                          @Value("${app.bootstrap.admin.password:}") String adminPassword) {
+                          @Value("${app.bootstrap.admin.email}") String adminEmail,
+                          @Value("${app.bootstrap.admin.password}") String adminPassword) {
         this.userRepository = userRepository;
         this.userService = userService;
         this.adminEmail = adminEmail;

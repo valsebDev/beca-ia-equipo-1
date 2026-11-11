@@ -27,6 +27,7 @@ import com.ids.ms_users.domain.Role;
 import com.ids.ms_users.domain.User;
 import com.ids.ms_users.exception.InvalidCredentialsException;
 import com.ids.ms_users.repository.RefreshTokenRepository;
+import com.ids.ms_users.repository.UserRepository;
 
 @ExtendWith(MockitoExtension.class)
 class RefreshTokenServiceTest {
@@ -34,11 +35,14 @@ class RefreshTokenServiceTest {
     @Mock
     private RefreshTokenRepository refreshTokenRepository;
 
+    @Mock
+    private UserRepository userRepository;
+
     private RefreshTokenService refreshTokenService;
 
     @BeforeEach
     void setUp() {
-        refreshTokenService = new RefreshTokenService(refreshTokenRepository,
+        refreshTokenService = new RefreshTokenService(refreshTokenRepository, userRepository,
                 new JwtProperties("unused-secret-unused-secret-unused-00", 15, 7, "ms-users", "mesa-ayuda"));
     }
 
@@ -63,12 +67,13 @@ class RefreshTokenServiceTest {
         RefreshToken stored = storedToken(user, "old-token", Instant.now().plus(1, ChronoUnit.DAYS));
         when(refreshTokenRepository.findByTokenHash(RefreshTokenService.hash("old-token")))
                 .thenReturn(Optional.of(stored));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(inv -> inv.getArgument(0));
 
         RefreshTokenService.RotatedToken rotated = refreshTokenService.rotate("old-token");
 
         assertThat(stored.getRevokedAt()).isNotNull();
-        assertThat(rotated.user()).isSameAs(user);
+        assertThat(rotated.userId()).isEqualTo(1L);
         assertThat(rotated.refreshToken()).isNotEqualTo("old-token");
     }
 
@@ -113,6 +118,7 @@ class RefreshTokenServiceTest {
         RefreshToken stored = storedToken(user, "inactive", Instant.now().plus(1, ChronoUnit.DAYS));
         when(refreshTokenRepository.findByTokenHash(RefreshTokenService.hash("inactive")))
                 .thenReturn(Optional.of(stored));
+        when(userRepository.findById(3L)).thenReturn(Optional.of(user));
 
         assertThatThrownBy(() -> refreshTokenService.rotate("inactive"))
                 .isInstanceOf(InvalidCredentialsException.class);
@@ -140,6 +146,6 @@ class RefreshTokenServiceTest {
     }
 
     private static RefreshToken storedToken(User user, String raw, Instant expiresAt) {
-        return new RefreshToken(user, RefreshTokenService.hash(raw), expiresAt, Instant.now());
+        return new RefreshToken(user.getId(), RefreshTokenService.hash(raw), expiresAt, Instant.now());
     }
 }

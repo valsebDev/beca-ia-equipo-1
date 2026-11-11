@@ -58,17 +58,17 @@ public class UserController {
         return userService.createByAdmin(request);
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{userIdentifier}")
     @PreAuthorize("hasRole('ADMIN')")
-    public UserResponse getUserById(@PathVariable Long id) {
-        return userService.getUserByIdByAdmin(id);
+    public UserResponse getUserByIdentifier(@PathVariable String userIdentifier) {
+        return userService.getUserByIdentifierByAdmin(userIdentifier);
     }
 
-    @PatchMapping("/{id}/status")
+    @PatchMapping("/{userIdentifier}/status")
     @PreAuthorize("hasRole('ADMIN')")
-    public UserResponse updateStatus(@PathVariable Long id,
+    public UserResponse updateStatus(@PathVariable String userIdentifier,
                                      @Valid @RequestBody UpdateUserStatusRequest request) {
-        return userService.updateStatusByAdmin(id, request);
+        return userService.updateStatusByAdmin(userIdentifier, request);
     }
 
     private static Long currentUserId(Jwt jwt) {
