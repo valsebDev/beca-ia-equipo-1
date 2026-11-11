@@ -6,9 +6,12 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -36,12 +39,24 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
-    @ExceptionHandler(AccountLockedException.class)
-    public ProblemDetail handleAccountLocked(AccountLockedException ex) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.LOCKED, ex.getMessage());
-        problem.setTitle("Cuenta Bloqueada Temporalmente");
-        problem.setType(URI.create("https://ids.com/errors/account-locked"));
-        problem.setProperty(FIELD_CODE, "ACCOUNT_LOCKED");
+    @ExceptionHandler(AccessDeniedException.class)
+    public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.FORBIDDEN, "No tiene permisos para realizar esta operación");
+        problem.setTitle("Acceso Denegado");
+        problem.setType(URI.create("https://ids.com/errors/forbidden"));
+        problem.setProperty(FIELD_CODE, "FORBIDDEN_OPERATION");
+        problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
+        return problem;
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ProblemDetail handleAuthentication(AuthenticationException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.UNAUTHORIZED, "Autenticación requerida o token inválido");
+        problem.setTitle("No Autenticado");
+        problem.setType(URI.create("https://ids.com/errors/unauthorized"));
+        problem.setProperty(FIELD_CODE, "UNAUTHENTICATED");
         problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return problem;
     }
@@ -91,6 +106,16 @@ public class GlobalExceptionHandler {
             .toList();
 
         problem.setProperty("errors", errors);
+        return problem;
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ProblemDetail handleNoResourceFound(NoResourceFoundException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, "Recurso no encontrado");
+        problem.setTitle("Recurso No Encontrado");
+        problem.setType(URI.create("https://ids.com/errors/not-found"));
+        problem.setProperty(FIELD_CODE, "NOT_FOUND");
+        problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return problem;
     }
 

@@ -9,5 +9,5 @@ public record LoginRequest(
     String email,
 
     @NotBlank(message = "La contraseña es obligatoria")
-    String softPassword
+    String password
 ) {}

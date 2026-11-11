@@ -4,6 +4,7 @@ import com.ids.ms_users.domain.Role;
 import java.time.LocalDateTime;
 
 public record UserResponse(
+    Long id,
     String userIdentifier,
     String name,
     String paternalName,

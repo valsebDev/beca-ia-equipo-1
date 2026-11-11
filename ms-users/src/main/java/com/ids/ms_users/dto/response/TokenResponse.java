@@ -1,8 +1,8 @@
 package com.ids.ms_users.dto.response;
 
-public record AuthResponse(
+public record TokenResponse(
     String accessToken,
+    String refreshToken,
     String tokenType,
-    long expiresInSeconds,
-    UserResponse user
+    long expiresInSeconds
 ) {}

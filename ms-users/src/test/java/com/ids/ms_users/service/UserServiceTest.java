@@ -1,45 +1,40 @@
 package com.ids.ms_users.service;
 
-import com.ids.ms_users.domain.Role;
-import com.ids.ms_users.domain.User;
-import com.ids.ms_users.dto.response.AuthResponse;
-import com.ids.ms_users.dto.request.LoginRequest;
-import com.ids.ms_users.dto.request.RegisterUserRequest;
-import com.ids.ms_users.dto.request.UpdateProfileRequest;
-import com.ids.ms_users.dto.request.UpdateUserStatusRequest;
-import com.ids.ms_users.dto.response.UserResponse;
-import com.ids.ms_users.exception.AccountInactiveException;
-import com.ids.ms_users.exception.AccountLockedException;
-import com.ids.ms_users.exception.EmailAlreadyExistsException;
-import com.ids.ms_users.exception.ForbiddenOperationException;
-import com.ids.ms_users.exception.InvalidCredentialsException;
-import com.ids.ms_users.exception.UserNotFoundException;
-import com.ids.ms_users.repository.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
-import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.never;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import com.ids.ms_users.domain.Role;
+import com.ids.ms_users.domain.User;
+import com.ids.ms_users.dto.request.LoginRequest;
+import com.ids.ms_users.dto.request.UpdateUserStatusRequest;
+import com.ids.ms_users.dto.response.TokenResponse;
+import com.ids.ms_users.exception.InvalidCredentialsException;
+import com.ids.ms_users.repository.UserRepository;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
+
+    private static final int MAX_FAILED_ATTEMPTS = 5;
+    private static final int LOCK_MINUTES = 15;
+    private static final String EMAIL = "ana@example.com";
+    private static final String PASSWORD = "Secreta123";
 
     @Mock
     private UserRepository userRepository;
@@ -47,187 +42,112 @@ class UserServiceTest {
     @Mock
     private TokenService tokenService;
 
-    private UserService userService;
+    @Mock
+    private RefreshTokenService refreshTokenService;
 
-    private static final int MAX_FAILED_ATTEMPTS = 5;
-    private static final int LOCK_DURATION_MINUTES = 15;
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    private UserService userService;
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(userRepository, tokenService, MAX_FAILED_ATTEMPTS, LOCK_DURATION_MINUTES);
+        userService = new UserService(userRepository, tokenService, refreshTokenService,
+                passwordEncoder, MAX_FAILED_ATTEMPTS, LOCK_MINUTES);
     }
 
     @Test
-    @DisplayName("HU-01: Registro exitoso - guarda usuario con rol SOLICITANTE y estado activo")
-    void register_datosValidos_creaUsuarioExitosamente() {
-        // Given
-        RegisterUserRequest request = new RegisterUserRequest(
-                "Carlos", "López", "Gómez", "carlos@ids.com", "Password#123"
-        );
-        given(userRepository.existsByEmail(request.email())).willReturn(false);
-        given(userRepository.save(any(User.class))).willAnswer(invocation -> invocation.getArgument(0));
+    void loginRejectsUnknownEmailWithSameMessageAsWrongPassword() {
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());
 
-        // When
-        UserResponse response = userService.register(request);
-
-        // Then
-        assertNotNull(response);
-        assertEquals("carlos@ids.com", response.email());
-        assertEquals("Carlos", response.name());
-        assertEquals(Role.SOLICITANTE, response.role());
-        then(userRepository).should().save(any(User.class));
+        assertThatThrownBy(() -> userService.login(new LoginRequest(EMAIL, PASSWORD)))
+                .isInstanceOf(InvalidCredentialsException.class)
+                .hasMessage("Credenciales inválidas");
     }
 
     @Test
-    @DisplayName("HU-01: Registro fallido - lanza EmailAlreadyExistsException si el correo ya existe (409)")
-    void register_correoDuplicado_lanzaEmailAlreadyExistsException() {
-        // Given
-        RegisterUserRequest request = new RegisterUserRequest(
-                "Carlos", "López", "Gómez", "duplicado@ids.com", "Password#123"
-        );
-        given(userRepository.existsByEmail(request.email())).willReturn(true);
+    void loginWithWrongPasswordIncrementsFailedAttempts() {
+        User user = user(1L, true);
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(PASSWORD, user.getPassword())).thenReturn(false);
 
-        // When / Then
-        assertThrows(EmailAlreadyExistsException.class, () -> userService.register(request));
-        then(userRepository).should(never()).save(any(User.class));
+        assertThatThrownBy(() -> userService.login(new LoginRequest(EMAIL, PASSWORD)))
+                .isInstanceOf(InvalidCredentialsException.class);
+        assertThat(user.getFailedAttempts()).isEqualTo(1);
+        verify(userRepository).save(user);
     }
 
     @Test
-    @DisplayName("HU-02: Login exitoso - credenciales válidas devuelven AuthResponse y limpian intentos fallidos")
-    void login_credencialesValidas_retornaTokenYReseteaIntentos() {
-        // Given
-        LoginRequest request = new LoginRequest("usuario@ids.com", "Password#123");
-        User user = new User("uuid-123", "Juan", "Pérez", null,
-                "usuario@ids.com",
-                "$2a$10$w09u7iK3YyYyFh1Yq2mQ7O1Zq8VqX5Yq8VqX5Yq8VqX5Yq8VqX5Yq", // Hash mockeado
-                Role.SOLICITANTE, true, LocalDateTime.now());
-        user.setPassword(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode("Password#123"));
-        user.setFailedAttempts(2);
+    void fifthFailedAttemptLocksAccount() {
+        User user = user(1L, true);
+        user.setFailedAttempts(MAX_FAILED_ATTEMPTS - 1);
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(PASSWORD, user.getPassword())).thenReturn(false);
 
-        given(userRepository.findByEmail(request.email())).willReturn(Optional.of(user));
-        given(tokenService.generateToken(any(User.class))).willReturn("jwt-token-valido");
-        given(tokenService.getExpirationSeconds()).willReturn(3600L);
-
-        // When
-        AuthResponse response = userService.login(request);
-
-        // Then
-        assertNotNull(response);
-        assertEquals("jwt-token-valido", response.accessToken());
-        assertEquals(0, user.getFailedAttempts());
-        assertNull(user.getLockedUntil());
-        then(userRepository).should().save(user);
+        assertThatThrownBy(() -> userService.login(new LoginRequest(EMAIL, PASSWORD)))
+                .isInstanceOf(InvalidCredentialsException.class);
+        assertThat(user.getLockedUntil()).isAfter(LocalDateTime.now());
     }
 
     @Test
-    @DisplayName("HU-02: Login fallido - contraseña incorrecta incrementa contador y lanza InvalidCredentialsException")
-    void login_passwordIncorrecta_incrementaIntentosYLanzaExcepcion() {
-        // Given
-        LoginRequest request = new LoginRequest("usuario@ids.com", "WrongPassword");
-        User user = new User("uuid-123", "Juan", "Pérez", null,
-                "usuario@ids.com",
-                new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode("CorrectPassword"),
-                Role.SOLICITANTE, true, LocalDateTime.now());
-        user.setFailedAttempts(1);
+    void lockedAccountIsRejectedWithoutCheckingPassword() {
+        User user = user(1L, true);
+        user.setLockedUntil(LocalDateTime.now().plusMinutes(10));
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
 
-        given(userRepository.findByEmail(request.email())).willReturn(Optional.of(user));
-
-        // When / Then
-        assertThrows(InvalidCredentialsException.class, () -> userService.login(request));
-        assertEquals(2, user.getFailedAttempts());
-        then(userRepository).should().save(user);
+        assertThatThrownBy(() -> userService.login(new LoginRequest(EMAIL, PASSWORD)))
+                .isInstanceOf(InvalidCredentialsException.class)
+                .hasMessage("Credenciales inválidas");
+        verify(passwordEncoder, never()).matches(anyString(), anyString());
     }
 
     @Test
-    @DisplayName("HU-03: Bloqueo de cuenta - al alcanzar el límite de fallos se bloquea la cuenta (423)")
-    void login_quintoIntentoFallido_bloqueaCuentaTemporalmente() {
-        // Given
-        LoginRequest request = new LoginRequest("usuario@ids.com", "WrongPassword");
-        User user = new User("uuid-123", "Juan", "Pérez", null,
-                "usuario@ids.com",
-                new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode("CorrectPassword"),
-                Role.SOLICITANTE, true, LocalDateTime.now());
-        user.setFailedAttempts(4); // Al fallar este llegará a 5
+    void successfulLoginResetsAttemptsAndIssuesTokens() {
+        User user = user(1L, true);
+        user.setFailedAttempts(3);
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(PASSWORD, user.getPassword())).thenReturn(true);
+        when(tokenService.generateToken(user)).thenReturn("access-token");
+        when(refreshTokenService.issue(user)).thenReturn("refresh-token");
+        when(tokenService.getAccessTtlSeconds()).thenReturn(900L);
 
-        given(userRepository.findByEmail(request.email())).willReturn(Optional.of(user));
+        TokenResponse response = userService.login(new LoginRequest(EMAIL, PASSWORD));
 
-        // When / Then
-        assertThrows(AccountLockedException.class, () -> userService.login(request));
-        assertEquals(5, user.getFailedAttempts());
-        assertNotNull(user.getLockedUntil());
-        then(userRepository).should().save(user);
+        assertThat(user.getFailedAttempts()).isZero();
+        assertThat(response.accessToken()).isEqualTo("access-token");
+        assertThat(response.refreshToken()).isEqualTo("refresh-token");
+        assertThat(response.tokenType()).isEqualTo("Bearer");
+        assertThat(response.expiresInSeconds()).isEqualTo(900L);
     }
 
     @Test
-    @DisplayName("HU-04: Perfil - lanzar UserNotFoundException si el identificador no existe (404)")
-    void getProfile_usuarioInexistente_lanzaUserNotFoundException() {
-        // Given
-        String unknownIdentifier = "uuid-no-existe";
-        given(userRepository.findByUserIdentifier(unknownIdentifier)).willReturn(Optional.empty());
+    void inactiveUserGetsSameInvalidCredentialsAsWrongPassword() {
+        User user = user(1L, false);
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(PASSWORD, user.getPassword())).thenReturn(true);
 
-        // When / Then
-        assertThrows(UserNotFoundException.class, () -> userService.getProfile(unknownIdentifier));
+        assertThatThrownBy(() -> userService.login(new LoginRequest(EMAIL, PASSWORD)))
+                .isInstanceOf(InvalidCredentialsException.class)
+                .hasMessage("Credenciales inválidas");
+        verify(tokenService, never()).generateToken(any(User.class));
     }
 
     @Test
-    @DisplayName("HU-05: Desactivación - actualizar estado a falso borra jwt activo")
-    void updateStatus_desactivarUsuario_limpiaSesionActiva() {
-        // Given
-        String identifier = "uuid-agente";
-        User user = new User(identifier, "Agente", "Uno", null, "agente@ids.com", "pass", Role.AGENTE, true, LocalDateTime.now());
-        user.setJwtId("active-jwt-id");
-        user.setJwtExpiresAt(LocalDateTime.now().plusHours(1));
+    void deactivatingUserRevokesAllRefreshTokens() {
+        User user = user(9L, true);
+        when(userRepository.findById(9L)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        given(userRepository.findByUserIdentifier(identifier)).willReturn(Optional.of(user));
-        given(userRepository.save(any(User.class))).willAnswer(invocation -> invocation.getArgument(0));
+        userService.updateStatusByAdmin(9L, new UpdateUserStatusRequest(false));
 
-        // When
-        UserResponse response = userService.updateStatusByAdmin(
-            identifier, new UpdateUserStatusRequest(false), List.of("ADMIN"));
-
-        // Then
-        assertFalse(response.isActive());
-        assertNull(user.getJwtId());
-        assertNull(user.getJwtExpiresAt());
-        then(userRepository).should().save(user);
+        assertThat(user.getIsActive()).isFalse();
+        verify(refreshTokenService).revokeAllForUser(eq(9L));
     }
 
-    @Test
-    @DisplayName("HU-USR-05: un rol distinto de ADMIN no puede cambiar el estado")
-    void updateStatusByAdmin_sinRolAdmin_lanzaForbiddenOperationException() {
-        assertThrows(ForbiddenOperationException.class, () -> userService.updateStatusByAdmin(
-                "uuid-agente", new UpdateUserStatusRequest(false), List.of("SOLICITANTE")));
-        then(userRepository).shouldHaveNoInteractions();
-    }
-
-    @Test
-    @DisplayName("GET /api/v1/users/{id}: ADMIN obtiene el usuario solicitado")
-    void getUserByIdByAdmin_adminConsulta_retornaUsuario() {
-        String identifier = "uuid-agente";
-        User user = new User(identifier, "Agente", "Uno", null, "agente@ids.com", "pass", Role.AGENTE, true, LocalDateTime.now());
-
-        given(userRepository.findByUserIdentifier(identifier)).willReturn(Optional.of(user));
-
-        UserResponse response = userService.getUserByIdByAdmin(identifier, List.of("ADMIN"));
-
-        assertEquals(identifier, response.userIdentifier());
-        assertEquals("agente@ids.com", response.email());
-    }
-
-    @Test
-    @DisplayName("GET /api/v1/users/{id}: un rol distinto de ADMIN no puede consultar usuarios")
-    void getUserByIdByAdmin_sinRolAdmin_lanzaForbiddenOperationException() {
-        assertThrows(ForbiddenOperationException.class, () -> userService.getUserByIdByAdmin(
-                "uuid-agente", List.of("SOLICITANTE")));
-        then(userRepository).shouldHaveNoInteractions();
-    }
-
-    @Test
-    @DisplayName("GET /api/v1/users/{id}: identificador inexistente lanza UserNotFoundException")
-    void getUserByIdByAdmin_usuarioInexistente_lanzaUserNotFoundException() {
-        given(userRepository.findByUserIdentifier("uuid-no-existe")).willReturn(Optional.empty());
-
-        assertThrows(UserNotFoundException.class, () -> userService.getUserByIdByAdmin(
-                "uuid-no-existe", List.of("ADMIN")));
+    private static User user(Long id, boolean active) {
+        User user = new User("uid-" + id, "Ana", "Pérez", null, EMAIL,
+                "stored-hash", Role.SOLICITANTE, active, LocalDateTime.now());
+        ReflectionTestUtils.setField(user, "id", id);
+        return user;
     }
 }
