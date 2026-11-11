@@ -1,6 +1,6 @@
 package com.ids.ms_users.exception;
 
-public class InvalidCredentialsException extends RuntimeException {
+public class InvalidCredentialsException extends DomainException {
     private static final long serialVersionUID = 1L;
 
     public InvalidCredentialsException(String message) {
