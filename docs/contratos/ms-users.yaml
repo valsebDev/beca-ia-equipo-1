@@ -20,7 +20,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegisterUserRequest'
+              $ref: '#/components/schemas/RegisterRequest'
       responses:
         '201':
           description: Usuario registrado.
@@ -49,23 +49,49 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
+                $ref: '#/components/schemas/TokenResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          description: La cuenta está inactiva.
+  /api/v1/auth/refresh:
+    post:
+      operationId: refreshToken
+      summary: Rotar el refresh token y obtener un nuevo par de tokens
+      description: Cada refresh token se usa una sola vez. Si se reutiliza uno ya rotado o revocado, se revocan todos los refresh tokens del usuario.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Nuevo par de tokens emitido.
           content:
-            application/problem+json:
+            application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetail'
-        '423':
-          description: La cuenta está bloqueada temporalmente.
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/auth/logout:
+    post:
+      operationId: logoutUser
+      summary: Cerrar sesión revocando el refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '204':
+          description: Sesión cerrada.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/v1/users/me:
     get:
       operationId: getMyProfile
@@ -79,20 +105,42 @@ paths:
                 $ref: '#/components/schemas/UserResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    put:
-      operationId: updateMyProfile
-      summary: Actualizar el perfil autenticado
+  /api/v1/users:
+    get:
+      operationId: listUsers
+      summary: Listar usuarios, con filtro opcional por rol (solo ADMIN)
+      parameters:
+        - name: role
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [SOLICITANTE, AGENTE, ADMIN]
+      responses:
+        '200':
+          description: Lista de usuarios.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      operationId: createUserByAdmin
+      summary: Crear un usuario con rol asignado (solo ADMIN)
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateProfileRequest'
+              $ref: '#/components/schemas/CreateUserRequest'
       responses:
-        '200':
-          description: Perfil actualizado.
+        '201':
+          description: Usuario creado.
           content:
             application/json:
               schema:
@@ -101,24 +149,51 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/v1/users/{id}:
+    get:
+      operationId: getUserById
+      summary: Consultar un usuario por id (solo ADMIN)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Usuario encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-  /api/v1/users/{userIdentifier}/status:
+  /api/v1/users/{id}/status:
     patch:
       operationId: updateUserStatusByAdmin
       summary: Cambiar estado de una cuenta (solo ADMIN)
       parameters:
-        - name: userIdentifier
+        - name: id
           in: path
           required: true
           schema:
-            type: string
+            type: integer
+            format: int64
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateUserStatusRequest'
+              $ref: '#/components/schemas/UpdateStatusRequest'
       responses:
         '200':
           description: Estado actualizado.
@@ -141,53 +216,54 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
-    RegisterUserRequest:
+    RegisterRequest:
       type: object
-      required: [name, paternalName, email, password]
+      required: [email, password, fullName]
       properties:
-        name: { type: string, maxLength: 100 }
-        paternalName: { type: string, maxLength: 100 }
-        maternalName: { type: [string, 'null'], maxLength: 100 }
-        email: { type: string, format: email, maxLength: 150 }
-        password: { type: string, format: password, minLength: 8, maxLength: 50 }
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, format: password, minLength: 8, maxLength: 72, description: Al menos una letra y un dígito }
+        fullName: { type: string, minLength: 2, maxLength: 150 }
     LoginRequest:
       type: object
-      required: [email, softPassword]
+      required: [email, password]
       properties:
         email: { type: string, format: email }
-        softPassword: { type: string, format: password }
-    UpdateProfileRequest:
+        password: { type: string, format: password }
+    RefreshRequest:
       type: object
-      required: [name, paternalName]
+      required: [refreshToken]
       properties:
-        name: { type: string, maxLength: 100 }
-        paternalName: { type: string, maxLength: 100 }
-        maternalName: { type: [string, 'null'], maxLength: 100 }
-    UpdateUserStatusRequest:
+        refreshToken: { type: string }
+    CreateUserRequest:
+      allOf:
+        - $ref: '#/components/schemas/RegisterRequest'
+        - type: object
+          required: [role]
+          properties:
+            role: { type: string, enum: [SOLICITANTE, AGENTE, ADMIN] }
+    UpdateStatusRequest:
       type: object
-      required: [isActive]
+      required: [active]
       properties:
-        isActive: { type: boolean }
-    AuthResponse:
+        active: { type: boolean }
+    TokenResponse:
       type: object
-      required: [accessToken, tokenType, expiresInSeconds, user]
+      required: [accessToken, tokenType, expiresIn, refreshToken, refreshExpiresIn]
       properties:
         accessToken: { type: string }
+        refreshToken: { type: string }
         tokenType: { type: string, example: Bearer }
-        expiresInSeconds: { type: integer, format: int64 }
-        user:
-          $ref: '#/components/schemas/UserResponse'
+        expiresIn: { type: integer, format: int64, example: 900 }
+        refreshExpiresIn: { type: integer, format: int64, example: 604800 }
     UserResponse:
       type: object
-      required: [userIdentifier, name, paternalName, email, role, isActive, createdAt]
+      required: [id, email, fullName, role, active, createdAt]
       properties:
-        userIdentifier: { type: string }
-        name: { type: string }
-        paternalName: { type: string }
-        maternalName: { type: [string, 'null'] }
+        id: { type: integer, format: int64 }
         email: { type: string, format: email }
+        fullName: { type: string }
         role: { type: string, enum: [SOLICITANTE, AGENTE, ADMIN] }
-        isActive: { type: boolean }
+        active: { type: boolean }
         createdAt: { type: string, format: date-time }
     ProblemDetail:
       type: object
