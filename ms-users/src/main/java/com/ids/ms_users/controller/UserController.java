@@ -22,6 +22,8 @@ import java.util.List;
 @RequestMapping("/api/v1/users")
 public class UserController {
 
+    private static final String AUTHORIZATION_HEADER = "Authorization";
+
     private final UserService userService;
     private final TokenService tokenService;
 
@@ -32,23 +34,32 @@ public class UserController {
 
     @GetMapping("/me")
     public ResponseEntity<UserResponse> getMyProfile(
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+            @RequestHeader(value = AUTHORIZATION_HEADER, required = false) String authHeader) {
         String userIdentifier = tokenService.extractUserIdentifier(authHeader);
         return ResponseEntity.ok(userService.getProfile(userIdentifier));
     }
 
     @PutMapping("/me")
     public ResponseEntity<UserResponse> updateMyProfile(
-            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestHeader(value = AUTHORIZATION_HEADER, required = false) String authHeader,
             @Valid @RequestBody UpdateProfileRequest request) {
         String userIdentifier = tokenService.extractUserIdentifier(authHeader);
         return ResponseEntity.ok(userService.updateProfile(userIdentifier, request));
     }
 
+    // Consulta de un usuario por identificador; solo ADMIN (ARCHITECTURE.md §3.1, §6.3).
+    @GetMapping("/{id}")
+    public ResponseEntity<UserResponse> getUserByIdByAdmin(
+            @RequestHeader(value = AUTHORIZATION_HEADER, required = false) String authHeader,
+            @PathVariable String id) {
+        List<String> roles = tokenService.extractRoles(authHeader);
+        return ResponseEntity.ok(userService.getUserByIdByAdmin(id, roles));
+    }
+
     // HU-USR-05: El servicio valida el rol antes de cambiar el estado.
     @PatchMapping("/{userIdentifier}/status")
     public ResponseEntity<UserResponse> updateUserStatusByAdmin(
-            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestHeader(value = AUTHORIZATION_HEADER, required = false) String authHeader,
             @PathVariable String userIdentifier,
             @Valid @RequestBody UpdateUserStatusRequest request) {
         List<String> roles = tokenService.extractRoles(authHeader);

@@ -9,6 +9,7 @@ import com.ids.ms_users.dto.UpdateUserStatusRequest;
 import com.ids.ms_users.dto.UserResponse;
 import com.ids.ms_users.exception.AccountLockedException;
 import com.ids.ms_users.exception.EmailAlreadyExistsException;
+import com.ids.ms_users.exception.ForbiddenOperationException;
 import com.ids.ms_users.exception.GlobalExceptionHandler;
 import com.ids.ms_users.exception.InvalidCredentialsException;
 import com.ids.ms_users.exception.UserNotFoundException;
@@ -208,5 +209,57 @@ class UserControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isActive").value(false));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/users/{id} - ADMIN obtiene un usuario por identificador (200 OK)")
+    void getUserByIdByAdmin_adminConsultaUsuario_devuelve200Ok() throws Exception {
+        String tokenHeader = "******";
+        String userIdentifier = "uuid-target";
+        UserResponse response = new UserResponse(
+                userIdentifier, "Pedro", "Navaja", null, "pedro@ids.com",
+                Role.AGENTE, true, LocalDateTime.now()
+        );
+
+        given(tokenService.extractRoles(tokenHeader)).willReturn(List.of("ADMIN"));
+        given(userService.getUserByIdByAdmin(userIdentifier, List.of("ADMIN"))).willReturn(response);
+
+        mockMvc.perform(get("/api/v1/users/{id}", userIdentifier)
+                        .header("Authorization", tokenHeader))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userIdentifier").value(userIdentifier))
+                .andExpect(jsonPath("$.email").value("pedro@ids.com"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/users/{id} - usuario inexistente devuelve 404 Not Found")
+    void getUserByIdByAdmin_usuarioNoEncontrado_devuelve404NotFound() throws Exception {
+        String tokenHeader = "******";
+        String userIdentifier = "uuid-no-existe";
+
+        given(tokenService.extractRoles(tokenHeader)).willReturn(List.of("ADMIN"));
+        given(userService.getUserByIdByAdmin(userIdentifier, List.of("ADMIN")))
+                .willThrow(new UserNotFoundException("Usuario no encontrado con identificador: " + userIdentifier));
+
+        mockMvc.perform(get("/api/v1/users/{id}", userIdentifier)
+                        .header("Authorization", tokenHeader))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/users/{id} - rol distinto de ADMIN devuelve 403 Forbidden")
+    void getUserByIdByAdmin_sinRolAdmin_devuelve403Forbidden() throws Exception {
+        String tokenHeader = "******";
+        String userIdentifier = "uuid-target";
+
+        given(tokenService.extractRoles(tokenHeader)).willReturn(List.of("SOLICITANTE"));
+        given(userService.getUserByIdByAdmin(userIdentifier, List.of("SOLICITANTE")))
+                .willThrow(new ForbiddenOperationException("Solo un usuario con rol ADMIN puede cambiar estados"));
+
+        mockMvc.perform(get("/api/v1/users/{id}", userIdentifier)
+                        .header("Authorization", tokenHeader))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN_OPERATION"));
     }
 }

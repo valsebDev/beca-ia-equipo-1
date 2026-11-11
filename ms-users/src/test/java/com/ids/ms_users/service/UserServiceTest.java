@@ -199,4 +199,35 @@ class UserServiceTest {
                 "uuid-agente", new UpdateUserStatusRequest(false), List.of("SOLICITANTE")));
         then(userRepository).shouldHaveNoInteractions();
     }
+
+    @Test
+    @DisplayName("GET /api/v1/users/{id}: ADMIN obtiene el usuario solicitado")
+    void getUserByIdByAdmin_adminConsulta_retornaUsuario() {
+        String identifier = "uuid-agente";
+        User user = new User(identifier, "Agente", "Uno", null, "agente@ids.com", "pass", Role.AGENTE, true, LocalDateTime.now());
+
+        given(userRepository.findByUserIdentifier(identifier)).willReturn(Optional.of(user));
+
+        UserResponse response = userService.getUserByIdByAdmin(identifier, List.of("ADMIN"));
+
+        assertEquals(identifier, response.userIdentifier());
+        assertEquals("agente@ids.com", response.email());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/users/{id}: un rol distinto de ADMIN no puede consultar usuarios")
+    void getUserByIdByAdmin_sinRolAdmin_lanzaForbiddenOperationException() {
+        assertThrows(ForbiddenOperationException.class, () -> userService.getUserByIdByAdmin(
+                "uuid-agente", List.of("SOLICITANTE")));
+        then(userRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/users/{id}: identificador inexistente lanza UserNotFoundException")
+    void getUserByIdByAdmin_usuarioInexistente_lanzaUserNotFoundException() {
+        given(userRepository.findByUserIdentifier("uuid-no-existe")).willReturn(Optional.empty());
+
+        assertThrows(UserNotFoundException.class, () -> userService.getUserByIdByAdmin(
+                "uuid-no-existe", List.of("ADMIN")));
+    }
 }
