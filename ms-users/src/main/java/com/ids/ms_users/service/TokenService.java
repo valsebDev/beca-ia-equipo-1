@@ -8,9 +8,10 @@ import java.util.List;
 import javax.crypto.SecretKey;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Service;
 
+import com.ids.ms_users.config.JwtProperties;
 import com.ids.ms_users.domain.User;
 import com.ids.ms_users.exception.InvalidCredentialsException;
 
@@ -20,6 +21,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
 @Service
+@EnableConfigurationProperties(JwtProperties.class)
 public final class TokenService {
 
     private static final String BEARER_PREFIX = "Bearer ";
@@ -33,12 +35,12 @@ public final class TokenService {
     private final String audience;
 
     @Autowired
-    public TokenService(
-            @Value("${app.security.jwt.secret}") String secret,
-            @Value("${app.security.jwt.access-ttl-minutes:15}") long expirationMinutes,
-            @Value("${app.security.jwt.issuer:ms-users}") String issuer,
-            @Value("${app.security.jwt.audience:mesa-ayuda}") String audience) {
-        this(createSigningKey(secret), expirationMinutes, issuer, audience);
+    public TokenService(JwtProperties properties) {
+        this(
+                createSigningKey(properties.secret()),
+                properties.accessTtlMinutes(),
+                properties.issuer(),
+                properties.audience());
     }
 
         public TokenService(
