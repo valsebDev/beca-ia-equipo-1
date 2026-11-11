@@ -25,8 +25,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.ids.ms_users.config.JwtDecoderConfig;
 import com.ids.ms_users.config.JwtEncoderConfig;
 import com.ids.ms_users.config.SecurityConfig;
-import com.ids.ms_users.exception.AccountInactiveException;
-import com.ids.ms_users.exception.AccountLockedException;
 import com.ids.ms_users.exception.InvalidCredentialsException;
 import com.ids.ms_users.security.JwtRolesConverter;
 import com.ids.ms_users.security.ProblemAccessDeniedHandler;
@@ -83,27 +81,15 @@ class AuthControllerSecurityTest {
     }
 
     @Test
-    void loginWithInactiveAccountReturns403() throws Exception {
-        doThrow(new AccountInactiveException("La cuenta está inactiva")).when(userService)
+    void loginWithInactiveAccountReturns401WithSameBodyAsWrongCredentials() throws Exception {
+        doThrow(new InvalidCredentialsException("Credenciales inválidas")).when(userService)
                 .login(org.mockito.ArgumentMatchers.any());
 
         mockMvc.perform(post(LOGIN_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(LOGIN_BODY))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("ACCOUNT_INACTIVE"));
-    }
-
-    @Test
-    void loginWithLockedAccountReturns423() throws Exception {
-        doThrow(new AccountLockedException("La cuenta está bloqueada temporalmente")).when(userService)
-                .login(org.mockito.ArgumentMatchers.any());
-
-        mockMvc.perform(post(LOGIN_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(LOGIN_BODY))
-                .andExpect(status().isLocked())
-                .andExpect(jsonPath("$.code").value("ACCOUNT_LOCKED"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
     }
 
     @Test

@@ -47,7 +47,7 @@ public class TokenService {
                 .expiresAt(now.plus(accessTtlMinutes, ChronoUnit.MINUTES))
                 .claim(CLAIM_ROLES, List.of(user.getRole().name()))
                 .claim("email", user.getEmail())
-                .claim("name", fullName(user))
+                .claim("name", user.getFullName())
                 .build();
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
         return jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
@@ -55,13 +55,5 @@ public class TokenService {
 
     public long getAccessTtlSeconds() {
         return accessTtlMinutes * SECONDS_PER_MINUTE;
-    }
-
-    private static String fullName(User user) {
-        String fullName = user.getName() + " " + user.getPaternalName();
-        if (user.getMaternalName() != null && !user.getMaternalName().isBlank()) {
-            fullName += " " + user.getMaternalName();
-        }
-        return fullName;
     }
 }

@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -24,18 +23,19 @@ import org.springframework.test.util.ReflectionTestUtils;
 import com.ids.ms_users.domain.Role;
 import com.ids.ms_users.domain.User;
 import com.ids.ms_users.dto.request.LoginRequest;
+import com.ids.ms_users.dto.request.RegisterUserRequest;
 import com.ids.ms_users.dto.request.UpdateUserStatusRequest;
 import com.ids.ms_users.dto.response.TokenResponse;
-import com.ids.ms_users.exception.AccountInactiveException;
-import com.ids.ms_users.exception.AccountLockedException;
+import com.ids.ms_users.dto.response.UserResponse;
+import com.ids.ms_users.exception.EmailAlreadyExistsException;
 import com.ids.ms_users.exception.InvalidCredentialsException;
+import com.ids.ms_users.exception.UserNotFoundException;
 import com.ids.ms_users.repository.UserRepository;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
-    private static final int MAX_FAILED_ATTEMPTS = 5;
-    private static final int LOCK_MINUTES = 15;
+    private static final String FULL_NAME = "Ana Pérez";
     private static final String EMAIL = "ana@example.com";
     private static final String PASSWORD = "Secreta123";
 
@@ -56,7 +56,7 @@ class UserServiceTest {
     @BeforeEach
     void setUp() {
         userService = new UserService(userRepository, tokenService, refreshTokenService,
-                passwordEncoder, MAX_FAILED_ATTEMPTS, LOCK_MINUTES);
+                passwordEncoder);
     }
 
     @Test
@@ -69,101 +69,105 @@ class UserServiceTest {
     }
 
     @Test
-    void loginWithWrongPasswordIncrementsFailedAttempts() {
+    void loginWithWrongPasswordIsRejectedWithGenericMessage() {
         User user = user(1L, true);
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, user.getPassword())).thenReturn(false);
 
         assertThatThrownBy(() -> userService.login(new LoginRequest(EMAIL, PASSWORD)))
-                .isInstanceOf(InvalidCredentialsException.class);
-        assertThat(user.getFailedAttempts()).isEqualTo(1);
-        verify(userRepository).save(user);
+                .isInstanceOf(InvalidCredentialsException.class)
+                .hasMessage("Credenciales inválidas");
+        verify(tokenService, never()).generateToken(any(User.class));
     }
 
     @Test
-    void fifthFailedAttemptLocksAccount() {
+    void successfulLoginIssuesTokensWithExpiry() {
         User user = user(1L, true);
-        user.setFailedAttempts(MAX_FAILED_ATTEMPTS - 1);
-        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches(PASSWORD, user.getPassword())).thenReturn(false);
-
-        assertThatThrownBy(() -> userService.login(new LoginRequest(EMAIL, PASSWORD)))
-                .isInstanceOf(InvalidCredentialsException.class);
-        assertThat(user.getLockedUntil()).isAfter(LocalDateTime.now());
-    }
-
-    @Test
-    void lockedAccountIsRejectedWithoutCheckingPassword() {
-        User user = user(1L, true);
-        user.setLockedUntil(LocalDateTime.now().plusMinutes(10));
-        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
-
-        assertThatThrownBy(() -> userService.login(new LoginRequest(EMAIL, PASSWORD)))
-                .isInstanceOf(AccountLockedException.class);
-        verify(passwordEncoder, never()).matches(anyString(), anyString());
-    }
-
-    @Test
-    void successfulLoginResetsAttemptsAndIssuesTokens() {
-        User user = user(1L, true);
-        user.setFailedAttempts(3);
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, user.getPassword())).thenReturn(true);
         when(tokenService.generateToken(user)).thenReturn("access-token");
         when(refreshTokenService.issue(user)).thenReturn("refresh-token");
         when(tokenService.getAccessTtlSeconds()).thenReturn(900L);
+        when(refreshTokenService.getRefreshTtlSeconds()).thenReturn(604800L);
 
         TokenResponse response = userService.login(new LoginRequest(EMAIL, PASSWORD));
 
-        assertThat(user.getFailedAttempts()).isZero();
         assertThat(response.accessToken()).isEqualTo("access-token");
         assertThat(response.refreshToken()).isEqualTo("refresh-token");
         assertThat(response.tokenType()).isEqualTo("Bearer");
-        assertThat(response.expiresInSeconds()).isEqualTo(900L);
+        assertThat(response.expiresIn()).isEqualTo(900L);
+        assertThat(response.refreshExpiresIn()).isEqualTo(604800L);
     }
 
     @Test
-    void inactiveUserWithCorrectPasswordGetsForbidden() {
+    void inactiveUserWithCorrectPasswordIsRejectedWithSameMessage() {
         User user = user(1L, false);
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(PASSWORD, user.getPassword())).thenReturn(true);
 
         assertThatThrownBy(() -> userService.login(new LoginRequest(EMAIL, PASSWORD)))
-                .isInstanceOf(AccountInactiveException.class);
+                .isInstanceOf(InvalidCredentialsException.class)
+                .hasMessage("Credenciales inválidas");
         verify(tokenService, never()).generateToken(any(User.class));
+    }
+
+    @Test
+    void registerRejectsDuplicateEmail() {
+        when(userRepository.existsByEmail(EMAIL)).thenReturn(true);
+
+        assertThatThrownBy(() -> userService.register(new RegisterUserRequest(FULL_NAME, EMAIL, PASSWORD)))
+                .isInstanceOf(EmailAlreadyExistsException.class);
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void registerStoresEncodedPasswordAndAssignsSolicitante() {
+        when(userRepository.existsByEmail(EMAIL)).thenReturn(false);
+        when(passwordEncoder.encode(PASSWORD)).thenReturn("stored-hash");
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UserResponse response = userService.register(new RegisterUserRequest(FULL_NAME, EMAIL, PASSWORD));
+
+        assertThat(response.fullName()).isEqualTo(FULL_NAME);
+        assertThat(response.role()).isEqualTo(Role.SOLICITANTE);
+        assertThat(response.active()).isTrue();
     }
 
     @Test
     void deactivatingUserRevokesAllRefreshTokens() {
         User user = user(9L, true);
-        when(userRepository.findByUserIdentifier("uid-9")).thenReturn(Optional.of(user));
+        when(userRepository.findById(9L)).thenReturn(Optional.of(user));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        userService.updateStatusByAdmin("uid-9", new UpdateUserStatusRequest(false));
+        userService.updateStatusByAdmin(9L, new UpdateUserStatusRequest(false));
 
         assertThat(user.getIsActive()).isFalse();
         verify(refreshTokenService).revokeAllForUser(eq(9L));
     }
 
     @Test
-    void reactivatingUserClearsLockSoLoginWorks() {
+    void reactivatingUserDoesNotRevokeTokens() {
         User user = user(9L, false);
-        user.setFailedAttempts(MAX_FAILED_ATTEMPTS);
-        user.setLockedUntil(LocalDateTime.now().plusMinutes(10));
-        when(userRepository.findByUserIdentifier("uid-9")).thenReturn(Optional.of(user));
+        when(userRepository.findById(9L)).thenReturn(Optional.of(user));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        userService.updateStatusByAdmin("uid-9", new UpdateUserStatusRequest(true));
+        userService.updateStatusByAdmin(9L, new UpdateUserStatusRequest(true));
 
         assertThat(user.getIsActive()).isTrue();
-        assertThat(user.getFailedAttempts()).isZero();
-        assertThat(user.getLockedUntil()).isNull();
+        verify(refreshTokenService, never()).revokeAllForUser(anyLong());
+    }
+
+    @Test
+    void updateStatusForUnknownUserThrowsNotFound() {
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.updateStatusByAdmin(99L, new UpdateUserStatusRequest(false)))
+                .isInstanceOf(UserNotFoundException.class);
         verify(refreshTokenService, never()).revokeAllForUser(anyLong());
     }
 
     private static User user(Long id, boolean active) {
-        User user = new User("uid-" + id, "Ana", "Pérez", null, EMAIL,
-                "stored-hash", Role.SOLICITANTE, active, LocalDateTime.now());
+        User user = new User(FULL_NAME, EMAIL, "stored-hash", Role.SOLICITANTE, active, LocalDateTime.now());
         ReflectionTestUtils.setField(user, "id", id);
         return user;
     }

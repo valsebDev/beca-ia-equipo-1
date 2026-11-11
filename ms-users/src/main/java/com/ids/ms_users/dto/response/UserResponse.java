@@ -5,12 +5,9 @@ import java.time.LocalDateTime;
 
 public record UserResponse(
     Long id,
-    String userIdentifier,
-    String name,
-    String paternalName,
-    String maternalName,
     String email,
+    String fullName,
     Role role,
-    Boolean isActive,
+    Boolean active,
     LocalDateTime createdAt
 ) {}

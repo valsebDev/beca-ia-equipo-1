@@ -3,7 +3,6 @@ package com.ids.ms_users.controller;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -47,17 +46,14 @@ class UserControllerSecurityTest {
 
     private static final String ME_PATH = "/api/v1/users/me";
     private static final String USERS_PATH = "/api/v1/users";
-    private static final String USER_BY_ID_PATH = "/api/v1/users/uid-5";
-    private static final String STATUS_PATH = "/api/v1/users/uid-5/status";
+    private static final String USER_BY_ID_PATH = "/api/v1/users/5";
+    private static final String STATUS_PATH = "/api/v1/users/5/status";
     private static final String SOLICITANTE = "SOLICITANTE";
     private static final String AGENTE = "AGENTE";
     private static final String ADMIN = "ADMIN";
     private static final String FORBIDDEN_SECRET = "otro-secreto-de-prueba-con-mas-de-32-bytes!!";
-    private static final String UPDATE_PROFILE_BODY = """
-            {"name":"Ana","paternalName":"Lopez","maternalName":"Ruiz"}""";
     private static final String CREATE_USER_BODY = """
-            {"user":{"name":"Ana","paternalName":"Lopez","email":"ana@ids.com",
-             "password":"Passw0rd!"},"role":"AGENTE"}""";
+            {"fullName":"Ana Lopez","email":"ana@ids.com","password":"Passw0rd!","role":"AGENTE"}""";
 
     @Autowired
     private MockMvc mockMvc;
@@ -123,17 +119,6 @@ class UserControllerSecurityTest {
     }
 
     @Test
-    void updateMeWithAgenteReturns200() throws Exception {
-        String token = token(AGENTE, 2L, Instant.now().plusSeconds(60), issuer, audience);
-
-        mockMvc.perform(put(ME_PATH)
-                        .header("Authorization", bearer(token))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(UPDATE_PROFILE_BODY))
-                .andExpect(status().isOk());
-    }
-
-    @Test
     void listUsersWithoutTokenReturns401() throws Exception {
         mockMvc.perform(get(USERS_PATH))
                 .andExpect(status().isUnauthorized());
@@ -187,7 +172,7 @@ class UserControllerSecurityTest {
     }
 
     @Test
-    void getUserByIdentifierWithSolicitanteReturns403() throws Exception {
+    void getUserByIdWithSolicitanteReturns403() throws Exception {
         String token = token(SOLICITANTE, 1L, Instant.now().plusSeconds(60), issuer, audience);
 
         mockMvc.perform(get(USER_BY_ID_PATH).header("Authorization", bearer(token)))
@@ -195,7 +180,7 @@ class UserControllerSecurityTest {
     }
 
     @Test
-    void getUserByIdentifierWithAgenteReturns403() throws Exception {
+    void getUserByIdWithAgenteReturns403() throws Exception {
         String token = token(AGENTE, 2L, Instant.now().plusSeconds(60), issuer, audience);
 
         mockMvc.perform(get(USER_BY_ID_PATH).header("Authorization", bearer(token)))
@@ -203,7 +188,7 @@ class UserControllerSecurityTest {
     }
 
     @Test
-    void getUserByIdentifierWithAdminReturns200() throws Exception {
+    void getUserByIdWithAdminReturns200() throws Exception {
         String token = token(ADMIN, 3L, Instant.now().plusSeconds(60), issuer, audience);
 
         mockMvc.perform(get(USER_BY_ID_PATH).header("Authorization", bearer(token)))
@@ -217,7 +202,7 @@ class UserControllerSecurityTest {
         mockMvc.perform(patch(STATUS_PATH)
                         .header("Authorization", bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"isActive\":false}"))
+                        .content("{\"active\":false}"))
                 .andExpect(status().isForbidden());
     }
 
@@ -228,7 +213,7 @@ class UserControllerSecurityTest {
         mockMvc.perform(patch(STATUS_PATH)
                         .header("Authorization", bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"isActive\":true}"))
+                        .content("{\"active\":true}"))
                 .andExpect(status().isOk());
     }
 

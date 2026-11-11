@@ -18,19 +18,10 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_identifier", nullable = false, unique = true, length = 36)
-    private String userIdentifier;
+    @Column(name = "full_name", nullable = false, length = 150)
+    private String fullName;
 
-    @Column(name = "name", nullable = false, length = 100)
-    private String name;
-
-    @Column(name = "paternal_name", nullable = false, length = 100)
-    private String paternalName;
-
-    @Column(name = "maternal_name", length = 100)
-    private String maternalName;
-
-    @Column(name = "email", nullable = false, unique = true, length = 150)
+    @Column(name = "email", nullable = false, unique = true, length = 254)
     private String email;
 
     @Column(name = "password", nullable = false, length = 255)
@@ -58,63 +49,29 @@ public class User {
     @Column(name = "refresh_token_expires_at")
     private LocalDateTime refreshTokenExpiresAt;
 
-    @Column(name = "failed_attempts", nullable = false)
-    private Integer failedAttempts = 0;
-
-    @Column(name = "locked_until")
-    private LocalDateTime lockedUntil;
-
     public User() {
     }
 
-    public User(String userIdentifier, String name, String paternalName, String maternalName,
-                String email, String password, Role role, Boolean isActive, LocalDateTime createdAt) {
-        this.userIdentifier = userIdentifier;
-        this.name = name;
-        this.paternalName = paternalName;
-        this.maternalName = maternalName;
+    public User(String fullName, String email, String password, Role role, Boolean isActive,
+                LocalDateTime createdAt) {
+        this.fullName = fullName;
         this.email = email;
         this.password = password;
         this.role = role;
         this.isActive = isActive;
         this.createdAt = createdAt;
-        this.failedAttempts = 0;
     }
 
     public Long getId() {
         return id;
     }
 
-    public String getUserIdentifier() {
-        return userIdentifier;
+    public String getFullName() {
+        return fullName;
     }
 
-    public void setUserIdentifier(String userIdentifier) {
-        this.userIdentifier = userIdentifier;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getPaternalName() {
-        return paternalName;
-    }
-
-    public void setPaternalName(String paternalName) {
-        this.paternalName = paternalName;
-    }
-
-    public String getMaternalName() {
-        return maternalName;
-    }
-
-    public void setMaternalName(String maternalName) {
-        this.maternalName = maternalName;
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
     }
 
     public String getEmail() {
@@ -185,19 +142,4 @@ public class User {
         this.refreshTokenExpiresAt = refreshTokenExpiresAt;
     }
 
-    public Integer getFailedAttempts() {
-        return failedAttempts != null ? failedAttempts : 0;
-    }
-
-    public void setFailedAttempts(Integer failedAttempts) {
-        this.failedAttempts = failedAttempts;
-    }
-
-    public LocalDateTime getLockedUntil() {
-        return lockedUntil;
-    }
-
-    public void setLockedUntil(LocalDateTime lockedUntil) {
-        this.lockedUntil = lockedUntil;
-    }
 }

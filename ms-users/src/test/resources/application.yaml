@@ -20,9 +20,6 @@ app:
       access-ttl-minutes: 15
       issuer: ms-users
       audience: mesa-ayuda
-    lock:
-      max-failed-attempts: 5
-      duration-minutes: 15
   bootstrap:
     admin:
       email: admin-test@example.com

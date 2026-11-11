@@ -2,7 +2,6 @@ package com.ids.ms_users.controller;
 
 import com.ids.ms_users.domain.Role;
 import com.ids.ms_users.dto.request.CreateUserRequest;
-import com.ids.ms_users.dto.request.UpdateProfileRequest;
 import com.ids.ms_users.dto.request.UpdateUserStatusRequest;
 import com.ids.ms_users.dto.response.UserResponse;
 import com.ids.ms_users.service.UserService;
@@ -15,7 +14,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -39,12 +37,6 @@ public class UserController {
         return userService.getProfile(currentUserId(jwt));
     }
 
-    @PutMapping("/me")
-    public UserResponse updateMyProfile(@AuthenticationPrincipal Jwt jwt,
-                                        @Valid @RequestBody UpdateProfileRequest request) {
-        return userService.updateProfile(currentUserId(jwt), request);
-    }
-
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public List<UserResponse> listUsers(@RequestParam(required = false) Role role) {
@@ -58,17 +50,17 @@ public class UserController {
         return userService.createByAdmin(request);
     }
 
-    @GetMapping("/{userIdentifier}")
+    @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public UserResponse getUserByIdentifier(@PathVariable String userIdentifier) {
-        return userService.getUserByIdentifierByAdmin(userIdentifier);
+    public UserResponse getUserById(@PathVariable Long id) {
+        return userService.getUserByIdByAdmin(id);
     }
 
-    @PatchMapping("/{userIdentifier}/status")
+    @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
-    public UserResponse updateStatus(@PathVariable String userIdentifier,
+    public UserResponse updateStatus(@PathVariable Long id,
                                      @Valid @RequestBody UpdateUserStatusRequest request) {
-        return userService.updateStatusByAdmin(userIdentifier, request);
+        return userService.updateStatusByAdmin(id, request);
     }
 
     private static Long currentUserId(Jwt jwt) {

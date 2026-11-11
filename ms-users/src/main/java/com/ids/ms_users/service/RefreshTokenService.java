@@ -23,6 +23,7 @@ import com.ids.ms_users.repository.UserRepository;
 public class RefreshTokenService {
 
     private static final int TOKEN_BYTES = 32;
+    private static final long SECONDS_PER_DAY = 86_400L;
     private static final String INVALID_REFRESH_MESSAGE = "Refresh token inválido o expirado";
 
     private final RefreshTokenRepository refreshTokenRepository;
@@ -35,6 +36,10 @@ public class RefreshTokenService {
         this.refreshTokenRepository = refreshTokenRepository;
         this.userRepository = userRepository;
         this.refreshTtlDays = properties.refreshTtlDays();
+    }
+
+    public long getRefreshTtlSeconds() {
+        return refreshTtlDays * SECONDS_PER_DAY;
     }
 
     @Transactional

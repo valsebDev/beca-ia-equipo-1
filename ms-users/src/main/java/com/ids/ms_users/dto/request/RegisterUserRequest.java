@@ -6,27 +6,19 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record RegisterUserRequest(
-    @NotBlank(message = "El nombre es obligatorio")
-    @Size(max = 100, message = "El nombre no puede exceder 100 caracteres")
-    String name,
-
-    @NotBlank(message = "El apellido paterno es obligatorio")
-    @Size(max = 100, message = "El apellido paterno no puede exceder 100 caracteres")
-    String paternalName,
-
-    @Size(max = 100, message = "El apellido materno no puede exceder 100 caracteres")
-    String maternalName,
+    @NotBlank(message = "El nombre completo es obligatorio")
+    @Size(min = 2, max = 150, message = "El nombre completo debe tener entre 2 y 150 caracteres")
+    String fullName,
 
     @NotBlank(message = "El correo electrónico es obligatorio")
     @Email(message = "El formato de correo no es válido")
-    @Size(max = 150, message = "El correo no puede exceder 150 caracteres")
+    @Size(max = 254, message = "El correo no puede exceder 254 caracteres")
     String email,
 
     @NotBlank(message = "La contraseña es obligatoria")
     @Pattern(
-    regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!._-]).{8,50}$",
-    message = "La contraseña debe tener entre 8 y 50 caracteres, "
-            + "incluir mayúscula, minúscula, número y carácter especial"
+    regexp = "^(?=.*[A-Za-z])(?=.*[0-9]).{8,72}$",
+    message = "La contraseña debe tener entre 8 y 72 caracteres e incluir al menos una letra y un dígito"
     )
     String password
 ) {}

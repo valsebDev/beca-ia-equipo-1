@@ -53,7 +53,7 @@ class TokenServiceTest {
     }
 
     private static User user(Long id, Role role) {
-        User user = new User("uid-" + id, "Ana", "Pérez", null, "ana@example.com",
+        User user = new User("Ana Pérez", "ana@example.com",
                 "hash", role, true, LocalDateTime.now());
         ReflectionTestUtils.setField(user, "id", id);
         return user;

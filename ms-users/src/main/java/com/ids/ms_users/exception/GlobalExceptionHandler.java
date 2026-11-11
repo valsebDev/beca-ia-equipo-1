@@ -61,26 +61,6 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
-    @ExceptionHandler(AccountInactiveException.class)
-    public ProblemDetail handleAccountInactive(AccountInactiveException ex) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
-        problem.setTitle("Cuenta Inactiva");
-        problem.setType(URI.create("https://ids.com/errors/account-inactive"));
-        problem.setProperty(FIELD_CODE, "ACCOUNT_INACTIVE");
-        problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
-        return problem;
-    }
-
-    @ExceptionHandler(AccountLockedException.class)
-    public ProblemDetail handleAccountLocked(AccountLockedException ex) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.LOCKED, ex.getMessage());
-        problem.setTitle("Cuenta Bloqueada");
-        problem.setType(URI.create("https://ids.com/errors/account-locked"));
-        problem.setProperty(FIELD_CODE, "ACCOUNT_LOCKED");
-        problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
-        return problem;
-    }
-
     @ExceptionHandler(UserNotFoundException.class)
     public ProblemDetail handleUserNotFound(UserNotFoundException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());

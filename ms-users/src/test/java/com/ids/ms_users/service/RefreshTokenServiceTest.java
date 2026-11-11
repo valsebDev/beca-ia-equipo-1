@@ -139,7 +139,7 @@ class RefreshTokenServiceTest {
     }
 
     private static User user(Long id) {
-        User user = new User("uid-" + id, "Ana", "Pérez", null, "ana@example.com",
+        User user = new User("Ana Pérez", "ana@example.com",
                 "hash", Role.SOLICITANTE, true, LocalDateTime.now());
         ReflectionTestUtils.setField(user, "id", id);
         return user;
