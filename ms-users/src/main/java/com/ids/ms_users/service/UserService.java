@@ -2,12 +2,12 @@ package com.ids.ms_users.service;
 
 import com.ids.ms_users.domain.Role;
 import com.ids.ms_users.domain.User;
-import com.ids.ms_users.dto.AuthResponse;
-import com.ids.ms_users.dto.LoginRequest;
-import com.ids.ms_users.dto.RegisterUserRequest;
-import com.ids.ms_users.dto.UpdateProfileRequest;
-import com.ids.ms_users.dto.UpdateUserStatusRequest;
-import com.ids.ms_users.dto.UserResponse;
+import com.ids.ms_users.dto.response.AuthResponse;
+import com.ids.ms_users.dto.request.LoginRequest;
+import com.ids.ms_users.dto.request.RegisterUserRequest;
+import com.ids.ms_users.dto.request.UpdateProfileRequest;
+import com.ids.ms_users.dto.request.UpdateUserStatusRequest;
+import com.ids.ms_users.dto.response.UserResponse;
 import com.ids.ms_users.exception.AccountInactiveException;
 import com.ids.ms_users.exception.AccountLockedException;
 import com.ids.ms_users.exception.EmailAlreadyExistsException;

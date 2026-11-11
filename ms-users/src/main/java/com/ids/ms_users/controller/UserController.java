@@ -1,8 +1,8 @@
 package com.ids.ms_users.controller;
 
-import com.ids.ms_users.dto.UpdateProfileRequest;
-import com.ids.ms_users.dto.UpdateUserStatusRequest;
-import com.ids.ms_users.dto.UserResponse;
+import com.ids.ms_users.dto.request.UpdateProfileRequest;
+import com.ids.ms_users.dto.request.UpdateUserStatusRequest;
+import com.ids.ms_users.dto.response.UserResponse;
 import com.ids.ms_users.service.TokenService;
 import com.ids.ms_users.service.UserService;
 import jakarta.validation.Valid;
