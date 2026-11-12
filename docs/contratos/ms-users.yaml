@@ -228,12 +228,12 @@ components:
       required: [email, password]
       properties:
         email: { type: string, format: email }
-        password: { type: string, format: password }
+        password: { type: string, format: password, maxLength: 72 }
     RefreshRequest:
       type: object
       required: [refreshToken]
       properties:
-        refreshToken: { type: string }
+        refreshToken: { type: string, maxLength: 128 }
     CreateUserRequest:
       allOf:
         - $ref: '#/components/schemas/RegisterRequest'
