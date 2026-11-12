@@ -3,6 +3,7 @@ package com.ids.ms_catalog.controller;
 import com.ids.ms_catalog.config.JwtDecoderConfig;
 import com.ids.ms_catalog.config.SecurityConfig;
 import com.ids.ms_catalog.exception.NotFoundException;
+import com.ids.ms_catalog.security.AdminGuard;
 import com.ids.ms_catalog.service.PriorityService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -41,6 +42,9 @@ class PriorityControllerSecurityTest {
 	private static final String SLA_BODY = "{\"responseHours\":2,\"resolutionHours\":8}";
 
 	private final MockMvc mockMvc;
+
+	@MockitoBean
+	private AdminGuard adminGuard;
 
 	@MockitoBean
 	private PriorityService priorityService;

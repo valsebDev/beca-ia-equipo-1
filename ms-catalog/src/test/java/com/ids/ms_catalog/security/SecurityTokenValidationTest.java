@@ -59,6 +59,9 @@ class SecurityTokenValidationTest {
 	private final MockMvc mockMvc;
 
 	@MockitoBean
+	private AdminGuard adminGuard;
+
+	@MockitoBean
 	private CategoryService categoryService;
 
 	@Autowired

@@ -9,6 +9,7 @@ import com.ids.ms_catalog.exception.ConflictException;
 import com.ids.ms_catalog.exception.DomainValidationException;
 import com.ids.ms_catalog.exception.NotFoundException;
 import com.ids.ms_catalog.model.PriorityCode;
+import com.ids.ms_catalog.security.AdminGuard;
 import com.ids.ms_catalog.service.PriorityService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +49,9 @@ class PriorityControllerTest {
 	private static final String ALTA_NAME = "Alta";
 
 	private final MockMvc mockMvc;
+
+	@MockitoBean
+	private AdminGuard adminGuard;
 
 	@MockitoBean
 	private PriorityService priorityService;
