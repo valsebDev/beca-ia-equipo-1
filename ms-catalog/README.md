@@ -24,6 +24,10 @@ Se leen de variables de entorno con valores por defecto en `src/main/resources/a
 | `SWAGGER_ENABLED` | `true` | No | Activa Swagger UI. |
 | `CATALOG_SLA_MAX_RESPONSE_HOURS` | `720` | No | Máximo de horas de respuesta permitido en un SLA. |
 | `CATALOG_SLA_MAX_RESOLUTION_HOURS` | `2160` | No | Máximo de horas de resolución permitido en un SLA. |
+| `JWT_SECRET` | — | **Sí** | Clave HS256 compartida con ms-users (32 bytes o más). No tiene valor por defecto. |
+| `JWT_ISSUER` | `ms-users` | No | Valor esperado del claim `iss`. |
+| `JWT_AUDIENCE` | `mesa-ayuda` | No | Valor esperado del claim `aud`. |
+| `SERVICES_USERS_URL` | `http://localhost:8081` | No | URL base de ms-users, usada por `AdminGuard` (D13). |
 
 ## 1. Base de datos con Docker
 
@@ -55,7 +59,7 @@ Health check: `GET http://localhost:8080/actuator/health`.
 ./mvnw test
 ```
 
-Incluye pruebas unitarias de servicio (JUnit 5 + Mockito) y pruebas de controlador con `@WebMvcTest`. No requieren base de datos, salvo `MsCatalogApplicationTests`, que usa Testcontainers y necesita Docker.
+Incluye pruebas unitarias de servicio (JUnit 5 + Mockito), pruebas de controlador con `@WebMvcTest`, pruebas de seguridad (401/403 y matriz de roles) y pruebas del cliente de ms-users con WireMock local. No requieren base de datos, salvo `MsCatalogApplicationTests`, que usa Testcontainers y necesita Docker.
 
 Para las puertas de calidad completas (Checkstyle, PMD, SpotBugs con FindSecBugs, Dependency-Check y JaCoCo con cobertura de líneas ≥ 70 %):
 
@@ -70,18 +74,22 @@ Con el servicio en ejecución, abre <http://localhost:8080/swagger-ui.html>. La 
 
 ## Endpoints
 
-| Método | Ruta | Descripción |
-|---|---|---|
-| GET | `/api/v1/categories?active=true` | Lista categorías (filtro opcional por `active`). |
-| GET | `/api/v1/categories/{id}` | Consulta una categoría. |
-| POST | `/api/v1/categories` | Crea una categoría. |
-| PUT | `/api/v1/categories/{id}` | Modifica nombre y descripción. |
-| DELETE | `/api/v1/categories/{id}` | Desactiva la categoría (borrado lógico, 204). |
-| GET | `/api/v1/priorities` | Lista prioridades con su SLA, ordenadas por nivel. |
-| GET | `/api/v1/priorities/{id}` | Consulta una prioridad. |
-| POST | `/api/v1/priorities` | Crea una prioridad. |
-| PUT | `/api/v1/priorities/{id}/sla` | Actualiza las horas de respuesta y resolución. |
+Todos los endpoints de negocio requieren un JWT en `Authorization: Bearer <token>` (emitido por ms-users). Sin token o con token inválido, responde 401. Las operaciones de escritura requieren el rol `ADMIN`; con otro rol responde 403.
+
+| Método | Ruta | Rol mínimo | Descripción |
+|---|---|---|---|
+| GET | `/api/v1/categories?active=true` | Cualquier autenticado | Lista categorías (filtro opcional por `active`). |
+| GET | `/api/v1/categories/{id}` | Cualquier autenticado | Consulta una categoría. |
+| POST | `/api/v1/categories` | ADMIN | Crea una categoría. |
+| PUT | `/api/v1/categories/{id}` | ADMIN | Modifica nombre y descripción. |
+| DELETE | `/api/v1/categories/{id}` | ADMIN | Desactiva la categoría (borrado lógico, 204). |
+| GET | `/api/v1/priorities` | Cualquier autenticado | Lista prioridades con su SLA, ordenadas por nivel. |
+| GET | `/api/v1/priorities/{id}` | Cualquier autenticado | Consulta una prioridad. |
+| POST | `/api/v1/priorities` | ADMIN | Crea una prioridad. |
+| PUT | `/api/v1/priorities/{id}/sla` | ADMIN | Actualiza las horas de respuesta y resolución. |
+
+Antes de cada POST, PUT o DELETE, ms-catalog consulta a ms-users que el ADMIN siga activo (`GET /api/v1/users/{id}`, D13). Si la cuenta está inactiva o no existe, responde 403; si ms-users no responde, responde 503 `DEPENDENCY_UNAVAILABLE`. Los GET no consultan a ms-users.
 
 Los errores siguen RFC 9457 (`application/problem+json`) con los campos `type`, `title`, `status`, `detail`, `instance`, `code` y `timestamp`; los errores 400 de validación incluyen `errors`.
 
-> La autenticación JWT se incorpora en la Práctica 3. En la Práctica 1 los endpoints no requieren token.
+Informe de seguridad: [docs/SECURITY-REPORT.md](docs/SECURITY-REPORT.md).
