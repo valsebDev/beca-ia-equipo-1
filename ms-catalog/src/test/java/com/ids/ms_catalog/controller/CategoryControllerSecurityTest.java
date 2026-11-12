@@ -2,6 +2,7 @@ package com.ids.ms_catalog.controller;
 
 import com.ids.ms_catalog.config.JwtDecoderConfig;
 import com.ids.ms_catalog.config.SecurityConfig;
+import com.ids.ms_catalog.security.AdminGuard;
 import com.ids.ms_catalog.service.CategoryService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -39,6 +40,9 @@ class CategoryControllerSecurityTest {
 	private static final String BODY = "{\"name\":\"Redes\",\"description\":\"Problemas de red\"}";
 
 	private final MockMvc mockMvc;
+
+	@MockitoBean
+	private AdminGuard adminGuard;
 
 	@MockitoBean
 	private CategoryService categoryService;

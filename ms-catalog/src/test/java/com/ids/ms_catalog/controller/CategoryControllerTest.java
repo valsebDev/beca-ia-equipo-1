@@ -3,6 +3,7 @@ package com.ids.ms_catalog.controller;
 import com.ids.ms_catalog.config.JwtDecoderConfig;
 import com.ids.ms_catalog.config.SecurityConfig;
 import com.ids.ms_catalog.dto.response.CategoryResponse;
+import com.ids.ms_catalog.security.AdminGuard;
 import com.ids.ms_catalog.service.CategoryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -38,6 +39,9 @@ class CategoryControllerTest {
 	private static final String BASE_PATH = "/api/v1/categories";
 
 	private final MockMvc mockMvc;
+
+	@MockitoBean
+	private AdminGuard adminGuard;
 
 	@MockitoBean
 	private CategoryService categoryService;
