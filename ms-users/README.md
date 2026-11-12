@@ -57,9 +57,24 @@ Notas:
 - `ADMIN_EMAIL` y `ADMIN_PASSWORD` solo se usan si todavía no existe ningún administrador. Si faltan, el servicio arranca, registra un WARN y no crea administrador. Un valor sin resolver (`${...}`) se trata como ausente.
 - Actuator: solo `/actuator/health` está expuesto, sin detalles (`show-details: never`).
 
+## Endpoints y autenticación
+
+Contrato OpenAPI: [docs/contratos/ms-users.yaml](../docs/contratos/ms-users.yaml). Todas las rutas van bajo `/api/v1` en `http://localhost:8081`.
+
+| Método y ruta | Acceso |
+|---|---|
+| `POST /api/v1/auth/register`, `/auth/login`, `/auth/refresh` | Público |
+| `POST /api/v1/auth/logout` | Access token válido |
+| `GET /api/v1/users/me` | Access token válido |
+| `GET /api/v1/users`, `GET /api/v1/users/{id}`, `POST /api/v1/users`, `PATCH /api/v1/users/{id}/status` | Rol ADMIN |
+
+Los errores responden `ProblemDetail` (RFC 9457) con un campo `code`. La matriz completa de endpoint × rol y los riesgos aceptados están en [SECURITY-REPORT.md](docs/SECURITY-REPORT.md).
+
 ## Verificación
 
 Ejecutar pruebas y verificaciones Maven con:
 ```powershell
 ./mvnw -B verify
 ```
+
+Las pruebas de integración usan Testcontainers (`postgres:16`), así que Docker debe estar activo.
