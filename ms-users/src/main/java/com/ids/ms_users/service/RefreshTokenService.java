@@ -71,7 +71,7 @@ public class RefreshTokenService {
         stored.setRevokedAt(now);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new InvalidCredentialsException(INVALID_REFRESH_MESSAGE));
-        if (Boolean.FALSE.equals(user.getIsActive())) {
+        if (Boolean.FALSE.equals(user.getActive())) {
             throw new InvalidCredentialsException(INVALID_REFRESH_MESSAGE);
         }
         return new RotatedToken(userId, issue(user));

@@ -7,8 +7,9 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "users")
@@ -24,42 +25,39 @@ public class User {
     @Column(name = "email", nullable = false, unique = true, length = 254)
     private String email;
 
-    @Column(name = "password", nullable = false, length = 255)
-    private String password;
+    @Column(name = "password_hash", nullable = false, length = 100)
+    private String passwordHash;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "role", nullable = false, length = 30)
+    @Column(name = "role", nullable = false, length = 20)
     private Role role;
 
-    @Column(name = "is_active", nullable = false)
-    private Boolean isActive;
+    @Column(name = "active", nullable = false)
+    private Boolean active;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
-    @Column(name = "jwt_id", length = 100)
-    private String jwtId;
-
-    @Column(name = "jwt_expires_at")
-    private LocalDateTime jwtExpiresAt;
-
-    @Column(name = "refresh_token_hash", length = 255)
-    private String refreshTokenHash;
-
-    @Column(name = "refresh_token_expires_at")
-    private LocalDateTime refreshTokenExpiresAt;
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
 
     public User() {
     }
 
-    public User(String fullName, String email, String password, Role role, Boolean isActive,
-                LocalDateTime createdAt) {
+    public User(String fullName, String email, String passwordHash, Role role, Boolean active,
+                Instant createdAt) {
         this.fullName = fullName;
         this.email = email;
-        this.password = password;
+        this.passwordHash = passwordHash;
         this.role = role;
-        this.isActive = isActive;
+        this.active = active;
         this.createdAt = createdAt;
+        this.updatedAt = createdAt;
+    }
+
+    @PreUpdate
+    void touchUpdatedAt() {
+        this.updatedAt = Instant.now();
     }
 
     public Long getId() {
@@ -82,12 +80,12 @@ public class User {
         this.email = email;
     }
 
-    public String getPassword() {
-        return password;
+    public String getPasswordHash() {
+        return passwordHash;
     }
 
-    public void setPassword(String password) {
-        this.password = password;
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
     }
 
     public Role getRole() {
@@ -98,48 +96,20 @@ public class User {
         this.role = role;
     }
 
-    public Boolean getIsActive() {
-        return isActive;
+    public Boolean getActive() {
+        return active;
     }
 
-    public void setIsActive(Boolean isActive) {
-        this.isActive = isActive;
+    public void setActive(Boolean active) {
+        this.active = active;
     }
 
-    public LocalDateTime getCreatedAt() {
+    public Instant getCreatedAt() {
         return createdAt;
     }
 
-    public String getJwtId() {
-        return jwtId;
-    }
-
-    public void setJwtId(String jwtId) {
-        this.jwtId = jwtId;
-    }
-
-    public LocalDateTime getJwtExpiresAt() {
-        return jwtExpiresAt;
-    }
-
-    public void setJwtExpiresAt(LocalDateTime jwtExpiresAt) {
-        this.jwtExpiresAt = jwtExpiresAt;
-    }
-
-    public String getRefreshTokenHash() {
-        return refreshTokenHash;
-    }
-
-    public void setRefreshTokenHash(String refreshTokenHash) {
-        this.refreshTokenHash = refreshTokenHash;
-    }
-
-    public LocalDateTime getRefreshTokenExpiresAt() {
-        return refreshTokenExpiresAt;
-    }
-
-    public void setRefreshTokenExpiresAt(LocalDateTime refreshTokenExpiresAt) {
-        this.refreshTokenExpiresAt = refreshTokenExpiresAt;
+    public Instant getUpdatedAt() {
+        return updatedAt;
     }
 
 }

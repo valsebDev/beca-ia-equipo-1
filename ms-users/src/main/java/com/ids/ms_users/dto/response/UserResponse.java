@@ -1,7 +1,7 @@
 package com.ids.ms_users.dto.response;
 
 import com.ids.ms_users.domain.Role;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record UserResponse(
     Long id,
@@ -9,5 +9,5 @@ public record UserResponse(
     String fullName,
     Role role,
     Boolean active,
-    LocalDateTime createdAt
+    Instant createdAt
 ) {}

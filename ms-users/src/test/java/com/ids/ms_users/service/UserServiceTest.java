@@ -9,7 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -61,7 +61,7 @@ class UserServiceTest {
 
     @Test
     void loginRejectsUnknownEmailWithSameMessageAsWrongPassword() {
-        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());
+        when(userRepository.findByEmailIgnoreCase(EMAIL)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.login(new LoginRequest(EMAIL, PASSWORD)))
                 .isInstanceOf(InvalidCredentialsException.class)
@@ -71,8 +71,8 @@ class UserServiceTest {
     @Test
     void loginWithWrongPasswordIsRejectedWithGenericMessage() {
         User user = user(1L, true);
-        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches(PASSWORD, user.getPassword())).thenReturn(false);
+        when(userRepository.findByEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(PASSWORD, user.getPasswordHash())).thenReturn(false);
 
         assertThatThrownBy(() -> userService.login(new LoginRequest(EMAIL, PASSWORD)))
                 .isInstanceOf(InvalidCredentialsException.class)
@@ -83,8 +83,8 @@ class UserServiceTest {
     @Test
     void successfulLoginIssuesTokensWithExpiry() {
         User user = user(1L, true);
-        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches(PASSWORD, user.getPassword())).thenReturn(true);
+        when(userRepository.findByEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(PASSWORD, user.getPasswordHash())).thenReturn(true);
         when(tokenService.generateToken(user)).thenReturn("access-token");
         when(refreshTokenService.issue(user)).thenReturn("refresh-token");
         when(tokenService.getAccessTtlSeconds()).thenReturn(900L);
@@ -102,8 +102,8 @@ class UserServiceTest {
     @Test
     void inactiveUserWithCorrectPasswordIsRejectedWithSameMessage() {
         User user = user(1L, false);
-        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches(PASSWORD, user.getPassword())).thenReturn(true);
+        when(userRepository.findByEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(PASSWORD, user.getPasswordHash())).thenReturn(true);
 
         assertThatThrownBy(() -> userService.login(new LoginRequest(EMAIL, PASSWORD)))
                 .isInstanceOf(InvalidCredentialsException.class)
@@ -113,7 +113,7 @@ class UserServiceTest {
 
     @Test
     void registerRejectsDuplicateEmail() {
-        when(userRepository.existsByEmail(EMAIL)).thenReturn(true);
+        when(userRepository.existsByEmailIgnoreCase(EMAIL)).thenReturn(true);
 
         assertThatThrownBy(() -> userService.register(new RegisterUserRequest(FULL_NAME, EMAIL, PASSWORD)))
                 .isInstanceOf(EmailAlreadyExistsException.class);
@@ -121,8 +121,20 @@ class UserServiceTest {
     }
 
     @Test
+    void registerStoresEmailInLowercase() {
+        when(userRepository.existsByEmailIgnoreCase(EMAIL)).thenReturn(false);
+        when(passwordEncoder.encode(PASSWORD)).thenReturn("stored-hash");
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UserResponse response = userService.register(
+                new RegisterUserRequest(FULL_NAME, "Ana@Example.com", PASSWORD));
+
+        assertThat(response.email()).isEqualTo(EMAIL);
+    }
+
+    @Test
     void registerStoresEncodedPasswordAndAssignsSolicitante() {
-        when(userRepository.existsByEmail(EMAIL)).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCase(EMAIL)).thenReturn(false);
         when(passwordEncoder.encode(PASSWORD)).thenReturn("stored-hash");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -141,7 +153,7 @@ class UserServiceTest {
 
         userService.updateStatusByAdmin(9L, new UpdateUserStatusRequest(false));
 
-        assertThat(user.getIsActive()).isFalse();
+        assertThat(user.getActive()).isFalse();
         verify(refreshTokenService).revokeAllForUser(eq(9L));
     }
 
@@ -153,7 +165,7 @@ class UserServiceTest {
 
         userService.updateStatusByAdmin(9L, new UpdateUserStatusRequest(true));
 
-        assertThat(user.getIsActive()).isTrue();
+        assertThat(user.getActive()).isTrue();
         verify(refreshTokenService, never()).revokeAllForUser(anyLong());
     }
 
@@ -167,7 +179,7 @@ class UserServiceTest {
     }
 
     private static User user(Long id, boolean active) {
-        User user = new User(FULL_NAME, EMAIL, "stored-hash", Role.SOLICITANTE, active, LocalDateTime.now());
+        User user = new User(FULL_NAME, EMAIL, "stored-hash", Role.SOLICITANTE, active, Instant.now());
         ReflectionTestUtils.setField(user, "id", id);
         return user;
     }

@@ -17,8 +17,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class UserService {
@@ -61,10 +62,10 @@ public class UserService {
 
     @Transactional
     public TokenResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.email())
+        User user = userRepository.findByEmailIgnoreCase(request.email())
                 .orElseThrow(() -> new InvalidCredentialsException(INVALID_CREDENTIALS_MESSAGE));
-        if (!passwordEncoder.matches(request.password(), user.getPassword())
-                || Boolean.FALSE.equals(user.getIsActive())) {
+        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())
+                || Boolean.FALSE.equals(user.getActive())) {
             throw new InvalidCredentialsException(INVALID_CREDENTIALS_MESSAGE);
         }
         return issueTokens(user);
@@ -92,7 +93,7 @@ public class UserService {
     @Transactional
     public UserResponse updateStatusByAdmin(Long id, UpdateUserStatusRequest request) {
         User user = findUser(id);
-        user.setIsActive(request.active());
+        user.setActive(request.active());
         if (Boolean.FALSE.equals(request.active())) {
             refreshTokenService.revokeAllForUser(user.getId());
         }
@@ -111,16 +112,17 @@ public class UserService {
     }
 
     private UserResponse persistNewUser(String fullName, String email, String rawPassword, Role role) {
-        if (userRepository.existsByEmail(email)) {
-            throw new EmailAlreadyExistsException(email);
+        String normalizedEmail = normalizeEmail(email);
+        if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
+            throw new EmailAlreadyExistsException(normalizedEmail);
         }
         User user = new User(
                 fullName,
-                email,
+                normalizedEmail,
                 passwordEncoder.encode(rawPassword),
                 role,
                 true,
-                LocalDateTime.now()
+                Instant.now()
         );
         return UserMapper.toResponse(userRepository.save(user));
     }
@@ -130,6 +132,10 @@ public class UserService {
         String refreshToken = refreshTokenService.issue(user);
         return new TokenResponse(accessToken, TOKEN_TYPE, tokenService.getAccessTtlSeconds(),
                 refreshToken, refreshTokenService.getRefreshTtlSeconds());
+    }
+
+    private String normalizeEmail(String email) {
+        return email.toLowerCase(Locale.ROOT);
     }
 
     private User findUser(Long id) {

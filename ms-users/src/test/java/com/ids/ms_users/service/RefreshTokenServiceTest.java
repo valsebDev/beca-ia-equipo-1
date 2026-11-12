@@ -9,7 +9,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
@@ -114,7 +113,7 @@ class RefreshTokenServiceTest {
     @Test
     void rotateRejectsTokenOfInactiveUser() {
         User user = user(3L);
-        user.setIsActive(false);
+        user.setActive(false);
         RefreshToken stored = storedToken(user, "inactive", Instant.now().plus(1, ChronoUnit.DAYS));
         when(refreshTokenRepository.findByTokenHash(RefreshTokenService.hash("inactive")))
                 .thenReturn(Optional.of(stored));
@@ -140,7 +139,7 @@ class RefreshTokenServiceTest {
 
     private static User user(Long id) {
         User user = new User("Ana Pérez", "ana@example.com",
-                "hash", Role.SOLICITANTE, true, LocalDateTime.now());
+                "hash", Role.SOLICITANTE, true, Instant.now());
         ReflectionTestUtils.setField(user, "id", id);
         return user;
     }

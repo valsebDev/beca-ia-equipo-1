@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -54,7 +54,7 @@ class TokenServiceTest {
 
     private static User user(Long id, Role role) {
         User user = new User("Ana Pérez", "ana@example.com",
-                "hash", role, true, LocalDateTime.now());
+                "hash", role, true, Instant.now());
         ReflectionTestUtils.setField(user, "id", id);
         return user;
     }
