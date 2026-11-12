@@ -7,6 +7,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -16,9 +17,12 @@ import java.time.Instant;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
@@ -32,6 +36,7 @@ import com.ids.ms_tickets.config.JwtDecoderConfig;
 import com.ids.ms_tickets.config.SecurityConfig;
 import com.ids.ms_tickets.dto.response.TicketResponse;
 import com.ids.ms_tickets.exception.ConflictException;
+import com.ids.ms_tickets.exception.ForbiddenException;
 import com.ids.ms_tickets.exception.NotFoundException;
 import com.ids.ms_tickets.model.TicketStatus;
 import com.ids.ms_tickets.security.JwtRolesConverter;
@@ -197,7 +202,92 @@ class TicketControllerTest {
 		mockMvc.perform(patch("/api/v1/tickets/1/assignment")
 						.with(asRole("5", "AGENTE"))
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"agentId\":5}"))
+						.content("{\"assigneeId\":5}"))
+				.andExpect(status().isForbidden());
+	}
+
+	@ParameterizedTest
+	@CsvSource({
+			"GET,/api/v1/tickets",
+			"GET,/api/v1/tickets/1",
+			"GET,/api/v1/tickets/1/history",
+			"POST,/api/v1/tickets",
+			"PATCH,/api/v1/tickets/1/assignment",
+			"PATCH,/api/v1/tickets/1/status"
+	})
+	void everyProtectedEndpoint_withoutToken_returns401(String method, String path) throws Exception {
+		mockMvc.perform(request(HttpMethod.valueOf(method), path))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+	}
+
+	@Test
+	void getTicket_byOwner_returns200() throws Exception {
+		when(ticketService.get(any(), anyLong())).thenReturn(sampleResponse(1L));
+
+		mockMvc.perform(get("/api/v1/tickets/1")
+						.with(asRole("10", "SOLICITANTE")))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.id").value(1));
+	}
+
+	@Test
+	void getTicket_byUnrelatedRequester_returns403() throws Exception {
+		when(ticketService.get(any(), anyLong())).thenThrow(new ForbiddenException("No es dueño del ticket"));
+
+		mockMvc.perform(get("/api/v1/tickets/1")
+						.with(asRole("11", "SOLICITANTE")))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("FORBIDDEN"));
+	}
+
+	@Test
+	void listTickets_withoutKnownRole_returns403() throws Exception {
+		mockMvc.perform(get("/api/v1/tickets")
+						.with(jwt().jwt(j -> j.subject("20").claim("roles", List.of("DESCONOCIDO")))))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void getHistory_byUnrelatedRequester_returns403() throws Exception {
+		when(ticketService.history(any(), anyLong())).thenThrow(new ForbiddenException("No es dueño del ticket"));
+
+		mockMvc.perform(get("/api/v1/tickets/1/history")
+						.with(asRole("11", "SOLICITANTE")))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void assignTicket_byAdmin_returns200() throws Exception {
+		when(ticketService.assign(any(), anyLong(), anyLong())).thenReturn(sampleResponse(1L));
+
+		mockMvc.perform(patch("/api/v1/tickets/1/assignment")
+						.with(asRole("1", "ADMIN"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"assigneeId\":5}"))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	void changeStatus_byAssignedAgente_returns200() throws Exception {
+		when(ticketService.changeStatus(any(), anyLong(), any())).thenReturn(sampleResponse(1L));
+
+		mockMvc.perform(patch("/api/v1/tickets/1/status")
+						.with(asRole("5", "AGENTE"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"status\":\"EN_PROGRESO\"}"))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	void changeStatus_byUnassignedAgente_returns403() throws Exception {
+		when(ticketService.changeStatus(any(), anyLong(), any())).thenThrow(
+				new ForbiddenException("El agente no está asignado a este ticket"));
+
+		mockMvc.perform(patch("/api/v1/tickets/1/status")
+						.with(asRole("6", "AGENTE"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"status\":\"EN_PROGRESO\"}"))
 				.andExpect(status().isForbidden());
 	}
 
