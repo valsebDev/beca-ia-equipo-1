@@ -1,0 +1,20 @@
+# Plantilla para desarrollo local. Copiar a application-local.yaml (ignorado por git) y activar con SPRING_PROFILES_ACTIVE=local.
+# Solo referencia: los valores reales van en variables de entorno, nunca en este archivo.
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/users_db}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET}
+      access-ttl: ${JWT_ACCESS_TTL:PT15M}
+      refresh-ttl-days: ${JWT_REFRESH_TTL_DAYS:7}
+    password:
+      bcrypt-cost: ${BCRYPT_COST:10}
+  bootstrap:
+    admin:
+      email: ${ADMIN_EMAIL}
+      password: ${ADMIN_PASSWORD}
