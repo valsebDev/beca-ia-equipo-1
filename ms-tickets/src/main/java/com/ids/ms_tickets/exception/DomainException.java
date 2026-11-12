@@ -9,7 +9,12 @@ public abstract class DomainException extends RuntimeException {
 	private final String title;
 
 	protected DomainException(HttpStatus status, String code, String title, String detail) {
-		super(detail);
+		this(status, code, title, detail, null);
+	}
+
+	protected DomainException(HttpStatus status, String code, String title, String detail,
+			Throwable cause) {
+		super(detail, cause);
 		this.status = status;
 		this.code = code;
 		this.title = title;
