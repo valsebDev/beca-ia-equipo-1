@@ -65,7 +65,7 @@ Fuentes: [ARCHITECTURE.md](../ARCHITECTURE.md) §0, §3.4, §6 y §7 (fuente de 
 - **Email**: se normaliza a minúsculas; único sin distinguir mayúsculas.
 - **Administrador inicial**: `AdminBootstrap` con `ADMIN_EMAIL` / `ADMIN_PASSWORD` sin valor por defecto; no duplica si ya existe un ADMIN.
 
-### Orden de validación en login (HU-USR-02 / HU-USR-03)
+### Orden de validación en login (HU-USR-02)
 
 1. Buscar el usuario por email en minúsculas.
 2. Contraseña incorrecta → **401** `INVALID_CREDENTIALS`.

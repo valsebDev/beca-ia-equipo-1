@@ -3,7 +3,7 @@
 **Microservicio:** `ms-users`  
 **Sistema:** Mesa de Ayuda (Sistema de Tickets)  
 **Stack:** Java 17, Spring Boot 4.1.2, PostgreSQL 16, Spring Security, JWT
-**Fase:** Práctica 1 (Análisis y Especificación de Requerimientos)
+**Fase:** Práctica 1 (Análisis y Especificación de Requerimientos). Actualizado en Práctica 3 con JWT HS256 (Nimbus), access token y refresh token.
 
 ---
 
@@ -21,15 +21,24 @@
 ### Entidad: `Usuario` (`users`)
 Representa la cuenta de identidad y acceso al ecosistema de la Mesa de Ayuda.
 
-* `id` (`UUID`): Clave primaria única del usuario.
-* `email` (`VARCHAR(150)`): Identificador de acceso, único y en formato RFC 5322.
-* `password` (`VARCHAR(255)`): Contraseña cifrada en algoritmo hash seguro (BCrypt). Nunca se persiste ni expone en texto plano.
-* `nombre` (`VARCHAR(100)`): Nombre(s) de la persona.
-* `apellido` (`VARCHAR(100)`): Apellido(s) de la persona.
-* `rol` (`VARCHAR(30)`): Rol de control de acceso RBAC (`SOLICITANTE`, `AGENTE`, `ADMIN`).
-* `activo` (`BOOLEAN`): Estado lógico de la cuenta (`true` = activa, `false` = deshabilitada por administración).
+* `id` (`Long`): Clave primaria del usuario.
+* `email` (`VARCHAR(254)`): Identificador de acceso, único, en minúsculas y en formato RFC 5322.
+* `password_hash` (`VARCHAR(255)`): Contraseña cifrada con BCrypt. Nunca se persiste ni expone en texto plano.
+* `full_name` (`VARCHAR(150)`): Nombre completo de la persona (entre 2 y 150 caracteres).
+* `role` (`VARCHAR(30)`): Rol de control de acceso RBAC (`SOLICITANTE`, `AGENTE`, `ADMIN`).
+* `active` (`BOOLEAN`): Estado lógico de la cuenta (`true` = activa, `false` = deshabilitada por administración).
 * `createdAt` (`TIMESTAMP WITH TIME ZONE`): Fecha/hora de creación del registro.
 * `updatedAt` (`TIMESTAMP WITH TIME ZONE`): Fecha/hora de la última actualización.
+
+### Entidad: `RefreshToken` (`refresh_tokens`)
+Token de renovación de sesión. Solo se persiste su hash SHA-256; el valor en claro se entrega una sola vez al cliente.
+
+* `id` (`BIGINT`): Clave primaria.
+* `user` (`Long`, FK a `users.id`): Usuario dueño del token. Se elimina en cascada con el usuario.
+* `token_hash` (`CHAR(64)`): Hash SHA-256 del token, único.
+* `expires_at` (`TIMESTAMP WITH TIME ZONE`): Fin de vigencia (7 días desde la emisión).
+* `revoked_at` (`TIMESTAMP WITH TIME ZONE`): Momento de revocación por logout, rotación o desactivación de la cuenta; vacío si está vigente.
+* `created_at` (`TIMESTAMP WITH TIME ZONE`): Fecha/hora de emisión.
 
 ---
 
@@ -37,12 +46,17 @@ Representa la cuenta de identidad y acceso al ecosistema de la Mesa de Ayuda.
 
 * **RN-01 (Unicidad de cuenta)**: No pueden coexistir dos usuarios con el mismo correo electrónico en la base de datos (clave única e insensible a mayúsculas/minúsculas).
 * **RN-02 (Cifrado criptográfico)**: Toda contraseña debe procesarse mediante BCrypt con un factor de trabajo (*work factor*) mínimo de 10 antes de persistirse.
-* **RN-03 (Emisión de token JWT)**: Una autenticación válida emite un token JWT firmado (HMAC-SHA256 o RSA) conteniendo claims esenciales: `sub` (ID de usuario), `email`, `role`, `iat` (emisión) y `exp` (expiración).
+* **RN-03 (Emisión de token JWT)**: Una autenticación válida emite un access token JWT firmado con HMAC-SHA256 (HS256) y vigencia de 15 minutos. Claims: `iss` (`ms-users`), `aud` (`mesa-ayuda`), `sub` (ID del usuario como texto), `email`, `name`, `roles` (arreglo), `iat` (emisión), `exp` (expiración) y `jti`.
 * **RN-04 (Sin bloqueo temporal por intentos fallidos)**: El sistema no bloquea cuentas por intentos fallidos de login; el bloqueo temporal (HU-USR-03) fue retirado porque ARCHITECTURE no lo contempla.
 * **RN-05 (Respuesta uniforme de login)**: Login fallido, con correo inexistente o con cuenta inactiva (`activo = false`) responde siempre `401 Unauthorized` con el mismo mensaje genérico, sin revelar la causa ni si el correo existe.
 * **RN-06 (Condición de acceso)**: Un usuario con cuenta inactiva (`activo = false`) no puede iniciar sesión ni generar tokens JWT.
 * **RN-07 (Consulta de perfil propio)**: El usuario autenticado solo puede consultar su propio perfil (`GET /api/v1/users/me`). No existe endpoint de autogestión de datos; no puede modificar su rol, correo ni estado activo.
 * **RN-08 (Desactivación privativa)**: La acción de desactivar lógicamente una cuenta es exclusiva de usuarios autenticados con rol `ADMIN`.
+* **RN-09 (Refresh token con rotación)**: Tras un login válido se emite un refresh token opaco de 7 días. Cada uso lo rota: se emite uno nuevo y el anterior queda revocado. Si se reutiliza un refresh token ya rotado o revocado, se revocan todos los refresh tokens del usuario.
+* **RN-10 (Cierre de sesión)**: `POST /api/v1/auth/logout` revoca el refresh token enviado y requiere un access token válido.
+* **RN-11 (Desactivación revoca sesiones)**: Al desactivar una cuenta se revocan sus refresh tokens vigentes. El access token ya emitido sigue válido hasta su expiración (máximo 15 minutos).
+* **RN-12 (Administrador inicial)**: Si no existe ningún usuario `ADMIN`, el sistema crea uno al arrancar a partir de `ADMIN_EMAIL` y `ADMIN_PASSWORD`. Estos valores no tienen valor por defecto.
+* **RN-13 (Política de contraseña)**: La contraseña tiene entre 8 y 72 caracteres e incluye al menos una letra y un dígito. Aplica al registro y a la creación de usuarios por el `ADMIN`.
 
 ---
 
@@ -56,18 +70,22 @@ Representa la cuenta de identidad y acceso al ecosistema de la Mesa de Ayuda.
 | **HU-USR-03** | ~~Bloqueo temporal por intentos fallidos de login~~ (Retirada) | ~~Must Have~~ | ~~5~~ |
 | **HU-USR-04** | Consulta de perfil propio | Should Have | 3 |
 | **HU-USR-05** | Desactivación lógica de cuentas por el Administrador | Should Have | 3 |
+| **HU-USR-06** | Renovación de sesión con refresh token | Must Have | 5 |
+| **HU-USR-07** | Cierre de sesión (logout) | Must Have | 2 |
+| **HU-USR-08** | Listado de usuarios por el Administrador | Should Have | 3 |
+| **HU-USR-09** | Creación de usuarios con rol por el Administrador | Should Have | 3 |
 
 ---
 
 ### HU-USR-01: Registro de nuevo solicitante
 [Volver al backlog](../../docs/backlog.md#hu-usr-01)
 **Como** usuario anónimo  
-**Quiero** registrarme ingresando mis nombres, apellidos, correo y contraseña  
+**Quiero** registrarme ingresando mi nombre completo, correo y contraseña  
 **Para** acceder al sistema de Mesa de Ayuda con una cuenta de rol solicitante.
 
 * **Escenario 1 (Positivo): Registro exitoso de usuario**
   * **Dado** que un usuario no registrado ingresa a la plataforma
-  * **Cuando** envía una solicitud a `POST /api/v1/auth/register` con nombre, apellido, correo válido y contraseña que cumple la política
+  * **Cuando** envía una solicitud a `POST /api/v1/auth/register` con `fullName`, correo válido y contraseña que cumple RN-13
   * **Entonces** el sistema persiste al usuario con rol `SOLICITANTE`, estado `activo = true`, contraseña en hash BCrypt y retorna código HTTP `201 Created` con los datos del perfil (sin incluir la contraseña).
 
 * **Escenario 2 (Negativo): Registro fallido por correo duplicado**
@@ -91,7 +109,7 @@ Representa la cuenta de identidad y acceso al ecosistema de la Mesa de Ayuda.
 * **Escenario 1 (Positivo): Autenticación exitosa**
   * **Dado** que un usuario con cuenta activa envía sus credenciales correctas vía `POST /api/v1/auth/login`
   * **Cuando** el servicio valida la correspondencia de la contraseña con el hash almacenado
-  * **Entonces** el sistema responde con código HTTP `200 OK` y entrega un token JWT con tiempo de expiración y roles asignados.
+  * **Entonces** el sistema responde con código HTTP `200 OK` y entrega un access token JWT (vigencia de 15 minutos, RN-03) y un refresh token (vigencia de 7 días, RN-09).
 
 * **Escenario 2 (Negativo): Credenciales incorrectas**
   * **Dado** que existe una cuenta con el correo `agente@empresa.com`
@@ -138,18 +156,119 @@ Representa la cuenta de identidad y acceso al ecosistema de la Mesa de Ayuda.
 
 * **Escenario 1 (Positivo): Desactivación exitosa realizada por un ADMIN**
   * **Dado** que un usuario con rol `ADMIN` se encuentra debidamente autenticado
-  * **Cuando** envía `PATCH /api/v1/users/{userIdentifier}/status` con `isActive = false`
-  * **Entonces** el sistema actualiza el estado y responde con código HTTP `200 OK` y el perfil actualizado.
+  * **Cuando** envía `PATCH /api/v1/users/{id}/status` con `{"active": false}`
+  * **Entonces** el sistema actualiza el estado, revoca sus refresh tokens vigentes (RN-11) y responde con código HTTP `200 OK` y el perfil actualizado. Para reactivar la cuenta se envía `{"active": true}` al mismo endpoint.
 
 * **Escenario 2 (Negativo): Intento de desactivación por un rol no autorizado**
-  * **Dado** que un usuario autenticado con rol `SOLICITANTE` o `AGENTE` invoca `PATCH /api/v1/users/{userIdentifier}/status`
+  * **Dado** que un usuario autenticado con rol `SOLICITANTE` o `AGENTE`   invoca `PATCH /api/v1/users/{id}/status`
   * **Cuando** el evaluador de autorización RBAC verifica los claims del token
   * **Entonces** la solicitud es rechazada y el servicio responde con código HTTP `403 Forbidden`.
 
 * **Escenario 3 (Negativo): Desactivación de un ID de usuario inexistente**
-  * **Dado** que un `ADMIN` invoca `PATCH /api/v1/users/{userIdentifier}/status` enviando un identificador inexistente
+  * **Dado** que un `ADMIN` invoca `PATCH /api/v1/users/{id}/status` enviando un identificador inexistente
   * **Cuando** el servicio busca al usuario en la base de datos
   * **Entonces** el sistema no encuentra el recurso y responde con código HTTP `404 Not Found`.
+
+  * **Escenario 4 (Negativo): Petición sin token válido**
+    * **Dado** que la solicitud a `PATCH /api/v1/users/{id}/status` no incluye token o este se encuentra expirado
+    * **Cuando** el filtro de seguridad intercepta la petición
+    * **Entonces** el sistema responde con código HTTP `401 Unauthorized`.
+
+---
+
+### HU-USR-06: Renovación de sesión con refresh token
+[Volver al backlog](../../docs/backlog.md#hu-usr-06)
+**Como** usuario autenticado  
+**Quiero** renovar mi access token con mi refresh token  
+**Para** mantener la sesión sin volver a ingresar mis credenciales.
+
+* **Escenario 1 (Positivo): Rotación exitosa**
+  * **Dado** que tengo un refresh token vigente y no revocado
+  * **Cuando** envío `POST /api/v1/auth/refresh` con `refreshToken`
+  * **Entonces** el sistema responde con código HTTP `200 OK` con un nuevo access token y un nuevo refresh token, y revoca el refresh token anterior (RN-09).
+
+* **Escenario 2 (Negativo): Refresh token expirado, revocado o inexistente**
+  * **Dado** que envío un refresh token expirado, revocado o que no existe
+  * **Cuando** envío `POST /api/v1/auth/refresh`
+  * **Entonces** el sistema responde con código HTTP `401 Unauthorized` sin indicar la causa.
+
+* **Escenario 3 (Negativo): Reutilización de un refresh token ya rotado**
+  * **Dado** que un refresh token ya fue rotado y se envía de nuevo
+  * **Cuando** envío `POST /api/v1/auth/refresh` con ese token
+  * **Entonces** el sistema responde con código HTTP `401 Unauthorized` y revoca todos los refresh tokens del usuario (RN-09).
+
+_No aplica 403: el endpoint es público y no exige un rol concreto._
+
+---
+
+### HU-USR-07: Cierre de sesión (logout)
+[Volver al backlog](../../docs/backlog.md#hu-usr-07)
+**Como** usuario autenticado  
+**Quiero** cerrar mi sesión  
+**Para** invalidar mi refresh token y que no pueda usarse para renovar el acceso.
+
+* **Escenario 1 (Positivo): Cierre de sesión exitoso**
+  * **Dado** que un usuario con rol `SOLICITANTE`, `AGENTE` o `ADMIN` tiene un access token válido y un refresh token vigente
+  * **Cuando** envía `POST /api/v1/auth/logout` con su `refreshToken`
+  * **Entonces** el sistema responde con código HTTP `204 No Content` y revoca el refresh token (RN-10).
+
+* **Escenario 2 (Negativo): Petición sin token válido**
+  * **Dado** que la solicitud a `POST /api/v1/auth/logout` no incluye access token o este se encuentra expirado
+  * **Cuando** el filtro de seguridad intercepta la petición
+  * **Entonces** el sistema responde con código HTTP `401 Unauthorized`.
+
+_No aplica 403: cualquier rol autenticado puede cerrar su propia sesión._
+
+---
+
+### HU-USR-08: Listado de usuarios por el Administrador
+[Volver al backlog](../../docs/backlog.md#hu-usr-08)
+**Como** Administrador  
+**Quiero** listar los usuarios, opcionalmente filtrados por rol  
+**Para** revisar las cuentas registradas y sus roles.
+
+* **Escenario 1 (Positivo): Listado exitoso por un ADMIN**
+  * **Dado** que un usuario con rol `ADMIN` está autenticado
+  * **Cuando** envía `GET /api/v1/users`, con o sin el parámetro `role`
+  * **Entonces** el sistema responde con código HTTP `200 OK` con la lista de usuarios, filtrada por rol si se indicó, sin contraseñas.
+
+* **Escenario 2 (Negativo): Petición de un rol distinto de ADMIN**
+  * **Dado** que un usuario con rol `SOLICITANTE` o `AGENTE` está autenticado
+  * **Cuando** envía `GET /api/v1/users`
+  * **Entonces** el sistema responde con código HTTP `403 Forbidden`.
+
+* **Escenario 3 (Negativo): Petición sin token válido**
+  * **Dado** que la solicitud a `GET /api/v1/users` no incluye token o este se encuentra expirado
+  * **Cuando** el filtro de seguridad intercepta la petición
+  * **Entonces** el sistema responde con código HTTP `401 Unauthorized`.
+
+---
+
+### HU-USR-09: Creación de usuarios con rol por el Administrador
+[Volver al backlog](../../docs/backlog.md#hu-usr-09)
+**Como** Administrador  
+**Quiero** crear usuarios asignándoles un rol  
+**Para** dar de alta agentes y otros administradores, que no se registran por autoservicio.
+
+* **Escenario 1 (Positivo): Creación exitosa por un ADMIN**
+  * **Dado** que un usuario con rol `ADMIN` está autenticado
+  * **Cuando** envía `POST /api/v1/users` con `email`, `password`, `fullName` y `role`
+  * **Entonces** el sistema persiste al usuario con `active = true`, contraseña en hash BCrypt y responde con código HTTP `201 Created` con su perfil, sin contraseña.
+
+* **Escenario 2 (Negativo): Correo duplicado**
+  * **Dado** que ya existe una cuenta con el correo indicado
+  * **Cuando** el `ADMIN` envía `POST /api/v1/users` con ese correo
+  * **Entonces** el sistema responde con código HTTP `409 Conflict` y no persiste información (RN-01).
+
+* **Escenario 3 (Negativo): Petición de un rol distinto de ADMIN**
+  * **Dado** que un usuario con rol `SOLICITANTE` o `AGENTE` está autenticado
+  * **Cuando** envía `POST /api/v1/users`
+  * **Entonces** el sistema responde con código HTTP `403 Forbidden` y no persiste información.
+
+* **Escenario 4 (Negativo): Petición sin token válido**
+  * **Dado** que la solicitud a `POST /api/v1/users` no incluye token o este se encuentra expirado
+  * **Cuando** el filtro de seguridad intercepta la petición
+  * **Entonces** el sistema responde con código HTTP `401 Unauthorized`.
 
 ---
 
@@ -173,6 +292,10 @@ Representa la cuenta de identidad y acceso al ecosistema de la Mesa de Ayuda.
 ## 6. Preguntas Abiertas para el Cliente
 
 1. **Creación de Agentes y Administradores**: El registro autoservicio asigna por defecto el rol `SOLICITANTE`. ¿Cómo se deberán dar de alta los usuarios `AGENTE` y `ADMIN`? ¿Existirá un endpoint privado exclusivo para que el `ADMIN` cree usuarios con rol asignable?
+   **Resuelta:** alta de `AGENTE` y `ADMIN` con `POST /api/v1/users`, solo para el `ADMIN` (HU-USR-09).
 2. **Ciclo de vida y revocación de tokens JWT**: ¿Cuál es el tiempo de expiración (TTL) requerido para el token de acceso (ej. 15 minutos, 60 minutos, 8 horas)? ¿Se requerirá soporte de Refresh Token o mecanismo de invalidación en lista negra cuando se desactive una cuenta?
+   **Resuelta:** access token de 15 minutos y refresh token de 7 días con rotación (RN-03, RN-09). Al desactivar una cuenta se revocan sus refresh tokens (RN-11). No hay lista negra de access tokens.
 3. **Política de robustez de contraseña**: ¿Cuáles son las reglas de complejidad a validar (mínimo de 8 caracteres, alfanumérico, caracteres especiales, mayúsculas)?
+   **Resuelta:** entre 8 y 72 caracteres con al menos una letra y un dígito (RN-13).
 4. **Reactivación de usuarios**: ¿Se requerirá habilitar un endpoint recíproco `PATCH /api/v1/users/{id}/activate` para que el Administrador pueda rehabilitar cuentas previamente desactivadas?
+   **Resuelta:** se reactiva con `PATCH /api/v1/users/{id}/status` y `{"active": true}` (HU-USR-05). No se crea un endpoint `/activate`.

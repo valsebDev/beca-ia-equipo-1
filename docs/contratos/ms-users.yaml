@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: ms-users API
   version: 1.0.0
-  description: "Cubre HU-USR-01, 02, 05 y 08. HU-USR-03, 04, 06 y 07 quedan fuera del alcance de P1."
+  description: "Cubre HU-USR-01, 02, 04, 05, 06, 07, 08 y 09. HU-USR-03 fue retirada (ARCHITECTURE no contempla bloqueo temporal)."
   license:
     name: Uso académico (Práctica 1)
 servers:

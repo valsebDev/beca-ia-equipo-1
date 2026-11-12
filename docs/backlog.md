@@ -43,7 +43,7 @@ flowchart LR
 
 | ID | Épica | Objetivo de negocio | Servicio(s) | HU |
 |---|---|---|---|---|
-| EP-01 | Identidad y acceso | Que cada persona entre al sistema con su rol y solo vea lo que le corresponde | ms-users | HU-USR-01 … 05 |
+| EP-01 | Identidad y acceso | Que cada persona entre al sistema con su rol y solo vea lo que le corresponde | ms-users | HU-USR-01 … 09 |
 | EP-02 | Catálogo y SLA | Clasificar los tickets y fijar tiempos de atención por prioridad | ms-catalog | HU-CAT-01 … 07 |
 | EP-03 | Ciclo de vida del ticket | Registrar, asignar, atender y cerrar solicitudes de soporte | ms-tickets | HU-TCK-01 … 06 |
 | EP-04 | Trazabilidad y cumplimiento de SLA | Saber quién cambió qué y cuándo, y detectar tickets vencidos | ms-tickets | HU-TCK-07, 08 |
@@ -62,9 +62,13 @@ flowchart LR
 | <a id="hu-usr-03"></a>HU-USR-03 | ~~Como **usuario autenticado** quiero que se bloquee temporalmente mi cuenta tras intentos fallidos para proteger mis credenciales.~~ **Retirada**: ARCHITECTURE no contempla el bloqueo temporal (423). | Must | 5 | [detalle](../ms-users/docs/requerimientos.md#hu-usr-03) |
 | <a id="hu-usr-04"></a>HU-USR-04 | Como **usuario autenticado** quiero consultar mi perfil para verificar mis datos vigentes. | Should | 3 | [detalle](../ms-users/docs/requerimientos.md#hu-usr-04) |
 | <a id="hu-usr-05"></a>HU-USR-05 | Como **administrador** quiero cambiar el estado de una cuenta para retirar su acceso sin perder su historial. | Should | 3 | [detalle](../ms-users/docs/requerimientos.md#hu-usr-05) |
+| <a id="hu-usr-06"></a>HU-USR-06 | Como **usuario autenticado** quiero renovar mi sesión con un refresh token para no volver a ingresar mis credenciales. | Must | 5 | [detalle](../ms-users/docs/requerimientos.md#hu-usr-06) |
+| <a id="hu-usr-07"></a>HU-USR-07 | Como **usuario autenticado** quiero cerrar mi sesión para invalidar mi refresh token. | Must | 2 | [detalle](../ms-users/docs/requerimientos.md#hu-usr-07) |
+| <a id="hu-usr-08"></a>HU-USR-08 | Como **administrador** quiero listar los usuarios, filtrados por rol si lo necesito, para revisar las cuentas. | Should | 3 | [detalle](../ms-users/docs/requerimientos.md#hu-usr-08) |
+| <a id="hu-usr-09"></a>HU-USR-09 | Como **administrador** quiero crear usuarios con un rol asignado para dar de alta agentes y administradores. | Should | 3 | [detalle](../ms-users/docs/requerimientos.md#hu-usr-09) |
 
 Escenarios negativos mínimos que el detalle debe cubrir: email duplicado (409), credenciales
-inválidas o usuario inactivo (401, mismo mensaje), rol distinto de ADMIN en HU-USR-05 (403).
+inválidas o usuario inactivo (401, mismo mensaje), rol distinto de ADMIN en HU-USR-05, HU-USR-08 y HU-USR-09 (403).
 El bloqueo temporal (423) de HU-USR-03 se retiró y ya no es un escenario negativo.
 
 ### 3.2 ms-catalog — EP-02 Catálogo y SLA (Sebastián)
