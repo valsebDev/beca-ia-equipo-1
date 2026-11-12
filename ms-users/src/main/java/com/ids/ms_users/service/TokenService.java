@@ -1,7 +1,7 @@
 package com.ids.ms_users.service;
 
+import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -12,23 +12,22 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
 
-import com.ids.ms_users.config.JwtProperties;
+import com.ids.ms_users.config.properties.JwtProperties;
 import com.ids.ms_users.domain.User;
 
 @Service
 public class TokenService {
 
     private static final String CLAIM_ROLES = "roles";
-    private static final long SECONDS_PER_MINUTE = 60L;
 
     private final JwtEncoder jwtEncoder;
-    private final long accessTtlMinutes;
+    private final Duration accessTtl;
     private final String issuer;
     private final String audience;
 
     public TokenService(JwtEncoder jwtEncoder, JwtProperties properties) {
         this.jwtEncoder = jwtEncoder;
-        this.accessTtlMinutes = properties.accessTtlMinutes();
+        this.accessTtl = properties.accessTtl();
         this.issuer = properties.issuer();
         this.audience = properties.audience();
     }
@@ -44,7 +43,7 @@ public class TokenService {
                 .subject(String.valueOf(user.getId()))
                 .id(UUID.randomUUID().toString())
                 .issuedAt(now)
-                .expiresAt(now.plus(accessTtlMinutes, ChronoUnit.MINUTES))
+                .expiresAt(now.plus(accessTtl))
                 .claim(CLAIM_ROLES, List.of(user.getRole().name()))
                 .claim("email", user.getEmail())
                 .claim("name", user.getFullName())
@@ -54,6 +53,6 @@ public class TokenService {
     }
 
     public long getAccessTtlSeconds() {
-        return accessTtlMinutes * SECONDS_PER_MINUTE;
+        return accessTtl.getSeconds();
     }
 }

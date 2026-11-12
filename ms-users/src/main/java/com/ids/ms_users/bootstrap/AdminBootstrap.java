@@ -5,12 +5,15 @@ import com.ids.ms_users.repository.UserRepository;
 import com.ids.ms_users.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import com.ids.ms_users.config.properties.BootstrapAdminProperties;
+
 @Component
+@EnableConfigurationProperties(BootstrapAdminProperties.class)
 public class AdminBootstrap implements ApplicationRunner {
 
     private static final Logger LOG = LoggerFactory.getLogger(AdminBootstrap.class);
@@ -22,12 +25,11 @@ public class AdminBootstrap implements ApplicationRunner {
 
     public AdminBootstrap(UserRepository userRepository,
                           UserService userService,
-                          @Value("${app.bootstrap.admin.email}") String adminEmail,
-                          @Value("${app.bootstrap.admin.password}") String adminPassword) {
+                          BootstrapAdminProperties properties) {
         this.userRepository = userRepository;
         this.userService = userService;
-        this.adminEmail = adminEmail;
-        this.adminPassword = adminPassword;
+        this.adminEmail = properties.email();
+        this.adminPassword = properties.password();
     }
 
     @Override

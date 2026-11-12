@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 
 import javax.crypto.SecretKey;
@@ -14,7 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import com.ids.ms_users.config.JwtProperties;
+import com.ids.ms_users.config.properties.JwtProperties;
 import com.ids.ms_users.domain.Role;
 import com.ids.ms_users.domain.User;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
@@ -23,7 +24,7 @@ class TokenServiceTest {
 
     private static final String SECRET = "test-secret-with-at-least-32-bytes-000";
     private static final JwtProperties PROPERTIES = new JwtProperties(
-            SECRET, 15, 7, "ms-users", "mesa-ayuda");
+            SECRET, Duration.ofMinutes(15), 7, "ms-users", "mesa-ayuda");
 
     private TokenService tokenService;
 

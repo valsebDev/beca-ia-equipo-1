@@ -12,7 +12,7 @@ import java.util.HexFormat;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.ids.ms_users.config.JwtProperties;
+import com.ids.ms_users.config.properties.JwtProperties;
 import com.ids.ms_users.domain.RefreshToken;
 import com.ids.ms_users.domain.User;
 import com.ids.ms_users.exception.InvalidCredentialsException;

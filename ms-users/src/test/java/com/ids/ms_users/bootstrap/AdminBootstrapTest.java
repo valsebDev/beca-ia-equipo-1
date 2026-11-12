@@ -10,6 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.ids.ms_users.config.properties.BootstrapAdminProperties;
 import com.ids.ms_users.domain.Role;
 import com.ids.ms_users.repository.UserRepository;
 import com.ids.ms_users.service.UserService;
@@ -27,7 +28,7 @@ class AdminBootstrapTest {
     void doesNothingWhenAnAdminAlreadyExists() {
         when(userRepository.existsByRole(Role.ADMIN)).thenReturn(true);
 
-        new AdminBootstrap(userRepository, userService, "admin@example.com", "secret").run(null);
+        bootstrap("admin@example.com", "secret").run(null);
 
         verify(userService, never()).createAdminIfAbsent(anyString(), anyString());
     }
@@ -36,7 +37,7 @@ class AdminBootstrapTest {
     void skipsCreationWhenCredentialsAreMissing() {
         when(userRepository.existsByRole(Role.ADMIN)).thenReturn(false);
 
-        new AdminBootstrap(userRepository, userService, "", "").run(null);
+        bootstrap("", "").run(null);
 
         verify(userService, never()).createAdminIfAbsent(anyString(), anyString());
     }
@@ -45,8 +46,13 @@ class AdminBootstrapTest {
     void createsAdminWhenNoneExistsAndCredentialsAreProvided() {
         when(userRepository.existsByRole(Role.ADMIN)).thenReturn(false);
 
-        new AdminBootstrap(userRepository, userService, "admin@example.com", "secret").run(null);
+        bootstrap("admin@example.com", "secret").run(null);
 
         verify(userService).createAdminIfAbsent("admin@example.com", "secret");
+    }
+
+    private AdminBootstrap bootstrap(String email, String password) {
+        return new AdminBootstrap(userRepository, userService,
+                new BootstrapAdminProperties(email, password));
     }
 }

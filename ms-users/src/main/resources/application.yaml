@@ -29,7 +29,7 @@ app:
   security:
     jwt:
       secret: ${JWT_SECRET}
-      access-ttl-minutes: ${JWT_ACCESS_TTL_MINUTES:15}
+      access-ttl: ${JWT_ACCESS_TTL:PT15M}
       refresh-ttl-days: ${JWT_REFRESH_TTL_DAYS:7}
       issuer: ms-users
       audience: mesa-ayuda

@@ -183,7 +183,7 @@ Cada respuesta de error es un `ProblemDetail` con campo `code`; el `detail` va e
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | ms-users | Sí | — | ADMIN inicial |
 | `SERVICES_USERS_URL` | ms-catalog, ms-tickets | Sí | — | URL de ms-users |
 | `SERVICES_CATALOG_URL` | ms-tickets | Sí | — | URL de ms-catalog |
-| `JWT_ACCESS_TTL_MINUTES` | ms-users | No | 15 | Vigencia del access token |
+| `JWT_ACCESS_TTL` | ms-users | No | `PT15M` | Vigencia del access token (`Duration` ISO-8601) |
 | `JWT_REFRESH_TTL_DAYS` | ms-users | No | 7 | Vigencia del refresh token |
 | `BCRYPT_COST` | ms-users | No | 10 | Costo de BCrypt |
 | `SWAGGER_ENABLED` | los 3 | No | `true` | Publica `/swagger-ui` y `/v3/api-docs`; `false` en producción |

@@ -63,7 +63,7 @@ Nuevas:
 - `db/migration/V5__alinear_columnas_usuarios.sql` (✔ hecha, no destructiva; V2 ya es `refresh_tokens`, por eso no es V2 como indicaba §5b-B): renombra `is_active`→`active` y `password`→`password_hash`; ajusta `password_hash` a 100 y `role` a 20; `created_at` pasa a `timestamptz` (asume UTC) y añade `updated_at`; normaliza `email` a minúsculas con índice único `lower(email)`. V4 no se edita. Las columnas legacy (`user_identifier`, `name`, `paternal_name`, `maternal_name`, `jwt_*`, `refresh_token_*`) se conservan sin mapear.
 
 Modificadas:
-- `application.yaml`: ✔ `server.error.include-stacktrace`, `include-message` y `include-binding-errors` en `never`; ✔ `management` solo expone `health` con `show-details=never`; ✔ bloque `app.security.lock.*` retirado. Los TTL van como `access-ttl-minutes: ${JWT_ACCESS_TTL_MINUTES:15}` y `refresh-ttl-days: ${JWT_REFRESH_TTL_DAYS:7}`, que equivalen a 900 s y 604800 s. Los secretos siguen como `${VAR}` sin valor por defecto.
+- `application.yaml`: ✔ `server.error.include-stacktrace`, `include-message` y `include-binding-errors` en `never`; ✔ `management` solo expone `health` con `show-details=never`; ✔ bloque `app.security.lock.*` retirado. Los TTL van como `access-ttl: ${JWT_ACCESS_TTL:PT15M}` (`Duration`, 900 s) y `refresh-ttl-days: ${JWT_REFRESH_TTL_DAYS:7}`, que equivale a 604800 s. Los secretos siguen como `${VAR}` sin valor por defecto.
 - `config/SecurityConfig`: revisar que `/api/v1/**` sea la única excepción de CSRF y que el `try/catch` alrededor de `build()` no oculte fallos de configuración.
 - `controller/UserController`: ✔ `{userIdentifier}` → `{id}` (`Long`); ✔ `GET /users/{id}` y `PATCH /users/{id}/status` con `@PreAuthorize("hasRole('ADMIN')")`; ✔ `PUT /me` retirado (§7.2).
 - `controller/AuthController`: ✔ login y refresh fallidos → 401 `INVALID_CREDENTIALS`; ✔ `logout` exige token.
@@ -155,6 +155,6 @@ Paso 2 del plan (§5b-B, tabla `users`) ✔: migración V5, entidad, repositorio
 
 Resuelto: `docs/requerimientos.md` (RN-04 y HU-USR-03 retirada), `docs/backlog.md` (HU-USR-03 retirada) y `plan-ms-users.md` ya no piden 423 (commits `3b08280` y `3e0b7e2`). Este aviso estaba desactualizado.
 
-Estado: P2 y P3 ejecutados y commiteados. Paso 2 del plan (§5b-B) hecho; el código del paso 2 y este documento están pendientes de commit.
+Estado: P2 y P3 ejecutados y commiteados. Paso 2 del plan (§5b-B) hecho y commiteado. Paso 3 (§5b-C, propiedades y encoder/decoder) hecho: `./mvnw -B verify` en BUILD SUCCESS con 70 pruebas, 0 fallos, JaCoCo OK; pendiente de commit.
 
 

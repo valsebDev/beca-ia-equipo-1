@@ -17,9 +17,12 @@ app:
   security:
     jwt:
       secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-      access-ttl-minutes: 15
+      access-ttl: PT15M
+      refresh-ttl-days: 7
       issuer: ms-users
       audience: mesa-ayuda
+    password:
+      bcrypt-cost: 10
   bootstrap:
     admin:
       email: admin-test@example.com

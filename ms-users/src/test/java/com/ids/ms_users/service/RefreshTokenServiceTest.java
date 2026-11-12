@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -20,7 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import com.ids.ms_users.config.JwtProperties;
+import com.ids.ms_users.config.properties.JwtProperties;
 import com.ids.ms_users.domain.RefreshToken;
 import com.ids.ms_users.domain.Role;
 import com.ids.ms_users.domain.User;
@@ -42,7 +43,8 @@ class RefreshTokenServiceTest {
     @BeforeEach
     void setUp() {
         refreshTokenService = new RefreshTokenService(refreshTokenRepository, userRepository,
-                new JwtProperties("unused-secret-unused-secret-unused-00", 15, 7, "ms-users", "mesa-ayuda"));
+                new JwtProperties("unused-secret-unused-secret-unused-00", Duration.ofMinutes(15), 7,
+                        "ms-users", "mesa-ayuda"));
     }
 
     @Test

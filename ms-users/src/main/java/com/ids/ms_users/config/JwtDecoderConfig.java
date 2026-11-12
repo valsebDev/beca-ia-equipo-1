@@ -16,6 +16,8 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
+import com.ids.ms_users.config.properties.JwtProperties;
+
 @Configuration
 public class JwtDecoderConfig {
 
