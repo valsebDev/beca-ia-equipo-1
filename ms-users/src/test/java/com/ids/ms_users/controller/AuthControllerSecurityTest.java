@@ -31,6 +31,7 @@ import com.ids.ms_users.security.JwtRolesConverter;
 import com.ids.ms_users.security.ProblemAccessDeniedHandler;
 import com.ids.ms_users.security.ProblemAuthenticationEntryPoint;
 import com.ids.ms_users.security.UnmappedRouteAuthorizationManager;
+import com.ids.ms_users.service.AuthService;
 import com.ids.ms_users.service.UserService;
 
 @WebMvcTest(controllers = AuthController.class)
@@ -66,6 +67,9 @@ class AuthControllerSecurityTest {
     @MockitoBean
     private UserService userService;
 
+    @MockitoBean
+    private AuthService authService;
+
     @Test
     void loginWithValidCredentialsReturns200() throws Exception {
         mockMvc.perform(post(LOGIN_PATH)
@@ -76,7 +80,7 @@ class AuthControllerSecurityTest {
 
     @Test
     void loginWithWrongCredentialsReturns401() throws Exception {
-        doThrow(new InvalidCredentialsException("Credenciales inválidas")).when(userService)
+        doThrow(new InvalidCredentialsException("Credenciales inválidas")).when(authService)
                 .login(org.mockito.ArgumentMatchers.any());
 
         mockMvc.perform(post(LOGIN_PATH)
@@ -88,7 +92,7 @@ class AuthControllerSecurityTest {
 
     @Test
     void loginWithInactiveAccountReturns401WithSameBodyAsWrongCredentials() throws Exception {
-        doThrow(new InvalidCredentialsException("Credenciales inválidas")).when(userService)
+        doThrow(new InvalidCredentialsException("Credenciales inválidas")).when(authService)
                 .login(org.mockito.ArgumentMatchers.any());
 
         mockMvc.perform(post(LOGIN_PATH)
@@ -166,7 +170,7 @@ class AuthControllerSecurityTest {
 
     @Test
     void refreshWithInvalidTokenReturns401() throws Exception {
-        doThrow(new InvalidCredentialsException("Credenciales inválidas")).when(userService)
+        doThrow(new InvalidCredentialsException("Credenciales inválidas")).when(authService)
                 .refresh(anyString());
 
         mockMvc.perform(post(REFRESH_PATH)

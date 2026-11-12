@@ -22,13 +22,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.ids.ms_users.domain.Role;
 import com.ids.ms_users.domain.User;
-import com.ids.ms_users.dto.request.LoginRequest;
 import com.ids.ms_users.dto.request.RegisterUserRequest;
 import com.ids.ms_users.dto.request.UpdateUserStatusRequest;
-import com.ids.ms_users.dto.response.TokenResponse;
 import com.ids.ms_users.dto.response.UserResponse;
 import com.ids.ms_users.exception.EmailAlreadyExistsException;
-import com.ids.ms_users.exception.InvalidCredentialsException;
 import com.ids.ms_users.exception.UserNotFoundException;
 import com.ids.ms_users.repository.UserRepository;
 
@@ -43,9 +40,6 @@ class UserServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private TokenService tokenService;
-
-    @Mock
     private RefreshTokenService refreshTokenService;
 
     @Mock
@@ -55,60 +49,7 @@ class UserServiceTest {
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(userRepository, tokenService, refreshTokenService,
-                passwordEncoder);
-    }
-
-    @Test
-    void loginRejectsUnknownEmailWithSameMessageAsWrongPassword() {
-        when(userRepository.findByEmailIgnoreCase(EMAIL)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> userService.login(new LoginRequest(EMAIL, PASSWORD)))
-                .isInstanceOf(InvalidCredentialsException.class)
-                .hasMessage("Credenciales inválidas");
-    }
-
-    @Test
-    void loginWithWrongPasswordIsRejectedWithGenericMessage() {
-        User user = user(1L, true);
-        when(userRepository.findByEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches(PASSWORD, user.getPasswordHash())).thenReturn(false);
-
-        assertThatThrownBy(() -> userService.login(new LoginRequest(EMAIL, PASSWORD)))
-                .isInstanceOf(InvalidCredentialsException.class)
-                .hasMessage("Credenciales inválidas");
-        verify(tokenService, never()).generateToken(any(User.class));
-    }
-
-    @Test
-    void successfulLoginIssuesTokensWithExpiry() {
-        User user = user(1L, true);
-        when(userRepository.findByEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches(PASSWORD, user.getPasswordHash())).thenReturn(true);
-        when(tokenService.generateToken(user)).thenReturn("access-token");
-        when(refreshTokenService.issue(user)).thenReturn("refresh-token");
-        when(tokenService.getAccessTtlSeconds()).thenReturn(900L);
-        when(refreshTokenService.getRefreshTtlSeconds()).thenReturn(604800L);
-
-        TokenResponse response = userService.login(new LoginRequest(EMAIL, PASSWORD));
-
-        assertThat(response.accessToken()).isEqualTo("access-token");
-        assertThat(response.refreshToken()).isEqualTo("refresh-token");
-        assertThat(response.tokenType()).isEqualTo("Bearer");
-        assertThat(response.expiresIn()).isEqualTo(900L);
-        assertThat(response.refreshExpiresIn()).isEqualTo(604800L);
-    }
-
-    @Test
-    void inactiveUserWithCorrectPasswordIsRejectedWithSameMessage() {
-        User user = user(1L, false);
-        when(userRepository.findByEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches(PASSWORD, user.getPasswordHash())).thenReturn(true);
-
-        assertThatThrownBy(() -> userService.login(new LoginRequest(EMAIL, PASSWORD)))
-                .isInstanceOf(InvalidCredentialsException.class)
-                .hasMessage("Credenciales inválidas");
-        verify(tokenService, never()).generateToken(any(User.class));
+        userService = new UserService(userRepository, refreshTokenService, passwordEncoder);
     }
 
     @Test

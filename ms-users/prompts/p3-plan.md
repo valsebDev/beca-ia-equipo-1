@@ -67,7 +67,8 @@ Modificadas:
 - `config/SecurityConfig`: revisar que `/api/v1/**` sea la única excepción de CSRF y que el `try/catch` alrededor de `build()` no oculte fallos de configuración.
 - `controller/UserController`: ✔ `{userIdentifier}` → `{id}` (`Long`); ✔ `GET /users/{id}` y `PATCH /users/{id}/status` con `@PreAuthorize("hasRole('ADMIN')")`; ✔ `PUT /me` retirado (§7.2).
 - `controller/AuthController`: ✔ login y refresh fallidos → 401 `INVALID_CREDENTIALS`; ✔ `logout` exige token.
-- `service/UserService`: ✔ login con cuenta inactiva → 401 genérico; ✔ `validateNotLocked`, `lockDurationMinutes` y `maxFailedAttempts` retirados.
+- `service/UserService`: ✔ login con cuenta inactiva → 401 genérico; ✔ `validateNotLocked`, `lockDurationMinutes` y `maxFailedAttempts` retirados; ✔ login, refresh y logout movidos a `AuthService`, y `UserService` conserva registro, perfil y administración.
+- `service/AuthService` (nuevo, paso 5): login, refresh y logout, con la misma lógica que tenía `UserService`. Sus 4 tests de login se movieron de `UserServiceTest` a `AuthServiceTest` sin cambiar aserciones.
 - `exception/GlobalExceptionHandler`: ✔ handlers de 423 y de 403 por cuenta inactiva eliminados; el login usa 401 `INVALID_CREDENTIALS`. Los `type` usan `https://mesa-ayuda.ids/problems/<slug>` (commit `57bba7a`).
 - `exception/AccountLockedException`, `exception/AccountInactiveException`: ✔ eliminadas (no quedan referencias en `ms-users/src`).
 - `domain/User`: ✔ `failedAttempts` y `lockedUntil` no están mapeados; las columnas quedan en BD (V4 no las borra).
@@ -158,5 +159,7 @@ Resuelto: `docs/requerimientos.md` (RN-04 y HU-USR-03 retirada), `docs/backlog.m
 Estado: P2 y P3 ejecutados y commiteados. Paso 2 del plan (§5b-B) hecho y commiteado. Paso 3 (§5b-C, propiedades y encoder/decoder) hecho y commiteado como `20795f1`: `./mvnw -B verify` en BUILD SUCCESS con 70 pruebas, 0 fallos, JaCoCo OK.
 
 Paso 4 (converter, handlers y `SecurityConfig`) resuelto con la opción A: se mantienen las ubicaciones de ARCHITECTURE §4 (`SecurityConfig` en `config/`; `JwtRolesConverter`, `ProblemAuthenticationEntryPoint` y `ProblemAccessDeniedHandler` en `security/`). No hay `throws` sobrantes: los `throws IOException` de los handlers vienen de las interfaces de Spring, y la firma de `SecurityConfig` ya no declara `throws`. Sin cambios de código.
+
+Paso 5 (`TokenService` con Nimbus y separación de servicios) resuelto con la opción A: `TokenService` ya usa `JwtEncoder` de Spring (Nimbus) y no hay JJWT, así que no hubo cambio en la firma. Se crea `service/AuthService` con login, refresh y logout, y `UserService` conserva registro, perfil y administración (§ plan línea 94). `AuthController` delega login, refresh y logout en `AuthService`, y `register` sigue en `UserService`. Los 4 tests de login pasan a `AuthServiceTest` sin cambiar sus aserciones; `AuthControllerSecurityTest` usa `@MockitoBean AuthService`. `./mvnw -B verify` en BUILD SUCCESS con 70 pruebas, 0 fallos y JaCoCo OK.
 
 
