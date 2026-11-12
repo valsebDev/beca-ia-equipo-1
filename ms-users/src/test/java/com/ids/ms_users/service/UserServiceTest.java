@@ -22,6 +22,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.ids.ms_users.domain.Role;
 import com.ids.ms_users.domain.User;
+import com.ids.ms_users.dto.request.CreateUserRequest;
 import com.ids.ms_users.dto.request.RegisterUserRequest;
 import com.ids.ms_users.dto.request.UpdateUserStatusRequest;
 import com.ids.ms_users.dto.response.UserResponse;
@@ -84,6 +85,25 @@ class UserServiceTest {
         assertThat(response.fullName()).isEqualTo(FULL_NAME);
         assertThat(response.role()).isEqualTo(Role.SOLICITANTE);
         assertThat(response.active()).isTrue();
+    }
+
+    @Test
+    void createByAdminRejectsDuplicateEmail() {
+        when(userRepository.existsByEmailIgnoreCase(EMAIL)).thenReturn(true);
+
+        assertThatThrownBy(() -> userService.createByAdmin(
+                new CreateUserRequest(FULL_NAME, EMAIL, PASSWORD, Role.AGENTE)))
+                .isInstanceOf(EmailAlreadyExistsException.class);
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void createAdminIfAbsentRejectsDuplicateEmail() {
+        when(userRepository.existsByEmailIgnoreCase(EMAIL)).thenReturn(true);
+
+        assertThatThrownBy(() -> userService.createAdminIfAbsent(EMAIL, PASSWORD))
+                .isInstanceOf(EmailAlreadyExistsException.class);
+        verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
