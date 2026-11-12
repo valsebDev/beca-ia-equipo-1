@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -114,6 +115,17 @@ public class GlobalExceptionHandler {
         problem.setType(URI.create("https://mesa-ayuda.ids/problems/method-not-allowed"));
         problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).headers(ex.getHeaders()).body(problem);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ProblemDetail handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.UNSUPPORTED_MEDIA_TYPE, "El tipo de contenido de la petición no es compatible");
+        problem.setTitle("Tipo de Contenido No Soportado");
+        problem.setType(URI.create("https://mesa-ayuda.ids/problems/unsupported-media-type"));
+        problem.setProperty(FIELD_CODE, "UNSUPPORTED_MEDIA_TYPE");
+        problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
+        return problem;
     }
 
     @ExceptionHandler(NoResourceFoundException.class)

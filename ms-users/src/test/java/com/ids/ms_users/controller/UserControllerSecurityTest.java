@@ -246,6 +246,18 @@ class UserControllerSecurityTest {
     }
 
     @Test
+    void createUserWithUnsupportedMediaTypeReturns415() throws Exception {
+        String token = token(ADMIN, 3L, Instant.now().plusSeconds(60), issuer, audience);
+
+        mockMvc.perform(post(USERS_PATH)
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content(CREATE_USER_BODY))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.code").value("UNSUPPORTED_MEDIA_TYPE"));
+    }
+
+    @Test
     void createUserWithoutTokenReturns401() throws Exception {
         mockMvc.perform(post(USERS_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
