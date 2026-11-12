@@ -30,7 +30,7 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleEmailAlreadyExists(EmailAlreadyExistsException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
         problem.setTitle("Conflicto de Datos");
-        problem.setType(URI.create("https://ids.com/errors/email-already-exists"));
+        problem.setType(URI.create("https://mesa-ayuda.ids/problems/email-already-exists"));
         problem.setProperty(FIELD_CODE, "EMAIL_ALREADY_EXISTS");
         problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return problem;
@@ -40,7 +40,7 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleInvalidCredentials(InvalidCredentialsException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
         problem.setTitle("Credenciales Inválidas");
-        problem.setType(URI.create("https://ids.com/errors/unauthorized"));
+        problem.setType(URI.create("https://mesa-ayuda.ids/problems/unauthorized"));
         problem.setProperty(FIELD_CODE, "INVALID_CREDENTIALS");
         problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return problem;
@@ -51,7 +51,7 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.FORBIDDEN, "No tiene permisos para realizar esta operación");
         problem.setTitle("Acceso Denegado");
-        problem.setType(URI.create("https://ids.com/errors/forbidden"));
+                        problem.setType(URI.create("https://mesa-ayuda.ids/problems/forbidden"));
         problem.setProperty(FIELD_CODE, "FORBIDDEN");
         problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return problem;
@@ -62,7 +62,7 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.UNAUTHORIZED, "Autenticación requerida o token inválido");
         problem.setTitle("No Autenticado");
-        problem.setType(URI.create("https://ids.com/errors/unauthorized"));
+                        problem.setType(URI.create("https://mesa-ayuda.ids/problems/unauthorized"));
         problem.setProperty(FIELD_CODE, "UNAUTHORIZED");
         problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return problem;
@@ -72,7 +72,7 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleUserNotFound(UserNotFoundException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         problem.setTitle("Usuario No Encontrado");
-        problem.setType(URI.create("https://ids.com/errors/user-not-found"));
+        problem.setType(URI.create("https://mesa-ayuda.ids/problems/user-not-found"));
         problem.setProperty(FIELD_CODE, "USER_NOT_FOUND");
         problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return problem;
@@ -82,7 +82,7 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleForbiddenOperation(ForbiddenOperationException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
         problem.setTitle("Acceso Denegado");
-        problem.setType(URI.create("https://ids.com/errors/forbidden"));
+                problem.setType(URI.create("https://mesa-ayuda.ids/problems/forbidden"));
         problem.setProperty(FIELD_CODE, "FORBIDDEN");
         problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return problem;
@@ -93,7 +93,7 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
         HttpStatus.BAD_REQUEST, "Uno o más campos tienen errores de validación");
         problem.setTitle("Error de Validación");
-        problem.setType(URI.create("https://ids.com/errors/validation-error"));
+        problem.setType(URI.create("https://mesa-ayuda.ids/problems/validation-error"));
         problem.setProperty(FIELD_CODE, "VALIDATION_ERROR");
         problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
 
@@ -111,7 +111,7 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.METHOD_NOT_ALLOWED, "El método HTTP no está permitido para este recurso");
         problem.setTitle("Método No Permitido");
-        problem.setType(URI.create("https://ids.com/errors/method-not-allowed"));
+        problem.setType(URI.create("https://mesa-ayuda.ids/problems/method-not-allowed"));
         problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).headers(ex.getHeaders()).body(problem);
     }
@@ -120,7 +120,7 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleNoResourceFound(NoResourceFoundException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, "Recurso no encontrado");
         problem.setTitle("Recurso No Encontrado");
-        problem.setType(URI.create("https://ids.com/errors/not-found"));
+        problem.setType(URI.create("https://mesa-ayuda.ids/problems/route-not-found"));
         problem.setProperty(FIELD_CODE, "ROUTE_NOT_FOUND");
         problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return problem;
@@ -131,7 +131,7 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST, "La petición no se puede leer o tiene un formato inválido");
         problem.setTitle("Petición Malformada");
-        problem.setType(URI.create("https://ids.com/errors/malformed-request"));
+        problem.setType(URI.create("https://mesa-ayuda.ids/problems/malformed-request"));
         problem.setProperty(FIELD_CODE, "MALFORMED_REQUEST");
         problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return problem;
@@ -143,7 +143,7 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
         HttpStatus.INTERNAL_SERVER_ERROR, "Ha ocurrido un error inesperado en el servidor");
         problem.setTitle("Error Interno del Servidor");
-        problem.setType(URI.create("https://ids.com/errors/internal-server-error"));
+        problem.setType(URI.create("https://mesa-ayuda.ids/problems/internal-server-error"));
         problem.setProperty(FIELD_CODE, "INTERNAL_ERROR");
         problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return problem;

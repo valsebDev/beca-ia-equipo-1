@@ -182,7 +182,8 @@ class AuthControllerSecurityTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"fullName\":"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
+                .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"))
+                .andExpect(jsonPath("$.type").value("https://mesa-ayuda.ids/problems/malformed-request"));
     }
 
     @Test
@@ -195,6 +196,7 @@ class AuthControllerSecurityTest {
                         .content(REGISTER_BODY))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
+                .andExpect(jsonPath("$.type").value("https://mesa-ayuda.ids/problems/internal-server-error"))
                 .andExpect(jsonPath("$.detail").value("Ha ocurrido un error inesperado en el servidor"));
     }
 

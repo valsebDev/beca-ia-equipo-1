@@ -30,7 +30,7 @@ public class ProblemAuthenticationEntryPoint implements AuthenticationEntryPoint
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.UNAUTHORIZED, "Autenticación requerida o token inválido");
         problem.setTitle("No Autenticado");
-        problem.setType(URI.create("https://ids.com/errors/unauthorized"));
+        problem.setType(URI.create("https://mesa-ayuda.ids/problems/unauthorized"));
         problem.setProperty("code", "UNAUTHORIZED");
         problem.setProperty("timestamp", Instant.now());
         response.setStatus(HttpStatus.UNAUTHORIZED.value());

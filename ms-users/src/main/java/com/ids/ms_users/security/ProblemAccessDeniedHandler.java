@@ -30,7 +30,7 @@ public class ProblemAccessDeniedHandler implements AccessDeniedHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.FORBIDDEN, "No tiene permisos para realizar esta operación");
         problem.setTitle("Acceso Denegado");
-        problem.setType(URI.create("https://ids.com/errors/forbidden"));
+        problem.setType(URI.create("https://mesa-ayuda.ids/problems/forbidden"));
         problem.setProperty("code", "FORBIDDEN");
         problem.setProperty("timestamp", Instant.now());
         response.setStatus(HttpStatus.FORBIDDEN.value());
