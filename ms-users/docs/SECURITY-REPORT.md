@@ -28,7 +28,7 @@ Los tokens firmados mal, expirados o con `iss`/`aud` incorrectos responden 401 `
 
 | ID | Severidad | OWASP | Archivo | Estado |
 |---|---|---|---|---|
-| R-01 | BAJA | A05 Security Misconfiguration | `ms-users/src/main/java/com/ids/ms_users/exception/GlobalExceptionHandler.java` | Abierto. Errores MVC (415, 405) responden 500 `INTERNAL_ERROR`. |
+| R-01 | BAJA | A05 Security Misconfiguration | `ms-users/src/main/java/com/ids/ms_users/exception/GlobalExceptionHandler.java` | Corregido. El 405 responde ProblemDetail sin `code` con cabecera `Allow`; el 415 responde `UNSUPPORTED_MEDIA_TYPE`. Cubierto por `UserControllerSecurityTest`. |
 | R-02 | BAJA | A05 Security Misconfiguration | `ms-users/src/main/java/com/ids/ms_users/config/SecurityConfig.java` | Aceptado. CSRF deshabilitado en `/api/v1/**` sin comentario. Es aceptable con JWT sin estado. |
 
 No hay hallazgos ALTA ni MEDIA. Ningún secreto tiene valor por defecto, y no se registran contraseñas, tokens ni emails en logs.
@@ -43,7 +43,8 @@ No hay hallazgos ALTA ni MEDIA. Ningún secreto tiene valor por defecto, y no se
 
 ## 5. Qué decidí no corregir
 
-- **R-01**: fuera del alcance de P3. Queda como deuda conocida.
+- **R-01**: corregido en P6. Se añadió el handler de `HttpMediaTypeNotSupportedException` (415 `UNSUPPORTED_MEDIA_TYPE`); el 405 ya tenía handler.
+- **Excepción a ARCHITECTURE §3.4**: el código `UNSUPPORTED_MEDIA_TYPE` (415) no está en la tabla de §3.4. Se mantiene como excepción documentada; `ARCHITECTURE.md` no se modifica en esta entrega.
 - **R-02**: con JWT sin estado y sin cookies de sesión, CSRF no aplica. Se documenta, no se cambia.
 - **Divergencia de configuración**: `ms-users` usa `@EnableConfigurationProperties` en los consumidores, mientras que `ms-catalog` y `ms-tickets` usan `@ConfigurationPropertiesScan`. `@ConfigurationPropertiesScan` no registra beans en los slices de `@WebMvcTest`.
 - **Excepción D13**: la prueba de contrato del proveedor depende de `GET /api/v1/users/{id}` (ADMIN). Se documenta en `p3-plan.md`.
@@ -56,12 +57,10 @@ No hay hallazgos ALTA ni MEDIA. Ningún secreto tiene valor por defecto, y no se
 
 ## 6. Evidencia `./mvnw -B verify`
 
-Ejecutado desde `ms-users/` sobre el commit `9fc90c9`:
+Ejecutado desde `ms-users/` tras añadir el handler 415 y su prueba (cambios sin commitear sobre `6db0e8c`):
 
 ```
-[INFO] Results:
-[INFO] Tests run: 88, Failures: 0, Errors: 0, Skipped: 0
-[INFO] All coverage checks have been met.
+[INFO] Tests run: 89, Failures: 0, Errors: 0, Skipped: 0
+[INFO] No errors/warnings found
 [INFO] BUILD SUCCESS
-[INFO] Total time:  02:56 min
 ```

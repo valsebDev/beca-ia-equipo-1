@@ -155,7 +155,7 @@ Regla 20: si una prueba falla, se corrige el código de producción, no la prueb
 3. ✔ **P3** (pruebas de seguridad según §4 y §5; 66 pruebas en verde). Quedan los huecos de §5 marcados arriba.
 4. ✔ **P4** (agente revisor en `.github/agents/revisor-seguridad-ms-users.agent.md`, alcance A: solo lectura, compara con la matriz §4, ARCHITECTURE §6 y `.github/copilot-instructions.md`, y reporta hallazgos con archivo y línea).
 5. ✔ **P5** (integración: ms-users solo provee contrato; excepción D13 documentada). ms-users no implementa `client/` ni consume servicios. Como proveedor, `integration/UserProviderContractTest` (4 pruebas) verifica que `GET /api/v1/users/{id}` devuelve exactamente los campos de `UserResponse` de `docs/contratos/ms-users.yaml` y los códigos 200, 401, 403 y 404 (`USER_NOT_FOUND`).
-6. **P6** (`SECURITY-REPORT`, alineación del contrato, `BITACORA-IA.md` sin sección P3, `verify` final, sugerencias de PR y tag en español): pendiente.
+6. ✔ **P6** (`SECURITY-REPORT`, alineación del contrato, verify final, tag `p3-entrega-fernando` en `6db0e8c`, R-01 corregido con handler 415; `verify` con 89 pruebas en BUILD SUCCESS).
 
 Paso 2 del plan (§5b-B, tabla `users`) ✔: migración V5, entidad, repositorio y DTOs alineados con ARCHITECTURE §2.1. `./mvnw -B verify` en BUILD SUCCESS: 67 pruebas, 0 fallos, JaCoCo OK (4:38 min).
 
