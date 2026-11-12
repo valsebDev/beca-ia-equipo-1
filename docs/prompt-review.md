@@ -180,7 +180,7 @@ Genera la arquitectura REST por capas que cumpla las HU de gestión de usuarios:
 2. DTOs de request y response como `record`.
 3. `UserRepository` con Spring Data JPA.
 4. `TokenService` y `UserService` con la lógica de negocio y el bloqueo temporal por intentos fallidos de login.
-5. `AuthController` (registro y login) y `UserController` (`GET /me`, `PUT /me`, `PATCH /{userIdentifier}/status`).
+5. `AuthController` (registro y login) y `UserController` (`GET /me`, `PATCH /{id}/status`).
 6. `GlobalExceptionHandler` con `ProblemDetail` (RFC 9457).
 
 ## 4. RESTRICCIONES

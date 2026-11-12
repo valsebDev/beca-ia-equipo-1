@@ -9,7 +9,7 @@ Microservicio ms-users. Pruebas de servicio y controlador según los escenarios 
 ## 3. TAREA
 1. Pruebas unitarias para UserService con JUnit 5 y Mockito.
 2. Pruebas de integración web para UserController y AuthController con @WebMvcTest y MockMvc.
-3. Cobertura de escenarios positivos (200, 201) y negativos (400, 401, 404, 409, 423).
+3. Cobertura de escenarios positivos (200, 201) y negativos (400, 401, 404, 409).
 
 ## 4. RESTRICCIONES
 - Mínimo 8 pruebas independientes.

@@ -28,8 +28,6 @@ Representa la cuenta de identidad y acceso al ecosistema de la Mesa de Ayuda.
 * `apellido` (`VARCHAR(100)`): Apellido(s) de la persona.
 * `rol` (`VARCHAR(30)`): Rol de control de acceso RBAC (`SOLICITANTE`, `AGENTE`, `ADMIN`).
 * `activo` (`BOOLEAN`): Estado lógico de la cuenta (`true` = activa, `false` = deshabilitada por administración).
-* `intentosFallidos` (`INTEGER`): Contador de intentos fallidos consecutivos de autenticación.
-* `bloqueadoHasta` (`TIMESTAMP WITH TIME ZONE`): Marca de tiempo hasta la cual la cuenta permanece inhabilitada temporalmente por fuerza bruta (o `NULL` si no está bloqueada).
 * `createdAt` (`TIMESTAMP WITH TIME ZONE`): Fecha/hora de creación del registro.
 * `updatedAt` (`TIMESTAMP WITH TIME ZONE`): Fecha/hora de la última actualización.
 
@@ -40,10 +38,10 @@ Representa la cuenta de identidad y acceso al ecosistema de la Mesa de Ayuda.
 * **RN-01 (Unicidad de cuenta)**: No pueden coexistir dos usuarios con el mismo correo electrónico en la base de datos (clave única e insensible a mayúsculas/minúsculas).
 * **RN-02 (Cifrado criptográfico)**: Toda contraseña debe procesarse mediante BCrypt con un factor de trabajo (*work factor*) mínimo de 10 antes de persistirse.
 * **RN-03 (Emisión de token JWT)**: Una autenticación válida emite un token JWT firmado (HMAC-SHA256 o RSA) conteniendo claims esenciales: `sub` (ID de usuario), `email`, `role`, `iat` (emisión) y `exp` (expiración).
-* **RN-04 (Umbral y ventana de bloqueo)**: Tras acumular 5 intentos consecutivos erróneos de inicio de sesión (*SUPUESTO*), la cuenta se bloquea automáticamente por un lapso de 15 minutos (*SUPUESTO*).
-* **RN-05 (Reinicio de intentos fallidos)**: Un inicio de sesión exitoso reinicia inmediatamente a 0 el contador `intentosFallidos` y anula `bloqueadoHasta`.
-* **RN-06 (Condición de acceso)**: Un usuario con cuenta inactiva (`activo = false`) o bloqueada temporalmente (`bloqueadoHasta > now()`) no puede iniciar sesión ni generar tokens JWT.
-* **RN-07 (Autogestión acotada de perfil)**: El usuario solo puede actualizar sus datos personales (nombre y apellido); no tiene permitido modificar su propio rol, correo, intentos fallidos ni estado activo.
+* **RN-04 (Sin bloqueo temporal por intentos fallidos)**: El sistema no bloquea cuentas por intentos fallidos de login; el bloqueo temporal (HU-USR-03) fue retirado porque ARCHITECTURE no lo contempla.
+* **RN-05 (Respuesta uniforme de login)**: Login fallido, con correo inexistente o con cuenta inactiva (`activo = false`) responde siempre `401 Unauthorized` con el mismo mensaje genérico, sin revelar la causa ni si el correo existe.
+* **RN-06 (Condición de acceso)**: Un usuario con cuenta inactiva (`activo = false`) no puede iniciar sesión ni generar tokens JWT.
+* **RN-07 (Consulta de perfil propio)**: El usuario autenticado solo puede consultar su propio perfil (`GET /api/v1/users/me`). No existe endpoint de autogestión de datos; no puede modificar su rol, correo ni estado activo.
 * **RN-08 (Desactivación privativa)**: La acción de desactivar lógicamente una cuenta es exclusiva de usuarios autenticados con rol `ADMIN`.
 
 ---
@@ -55,8 +53,8 @@ Representa la cuenta de identidad y acceso al ecosistema de la Mesa de Ayuda.
 | :--- | :--- | :--- | :--- |
 | **HU-USR-01** | Registro de nuevo solicitante | Must Have | 3 |
 | **HU-USR-02** | Autenticación con correo y contraseña (JWT) | Must Have | 5 |
-| **HU-USR-03** | Bloqueo temporal por intentos fallidos de login | Must Have | 5 |
-| **HU-USR-04** | Consulta y actualización de perfil de usuario | Should Have | 3 |
+| **HU-USR-03** | ~~Bloqueo temporal por intentos fallidos de login~~ (Retirada) | ~~Must Have~~ | ~~5~~ |
+| **HU-USR-04** | Consulta de perfil propio | Should Have | 3 |
 | **HU-USR-05** | Desactivación lógica de cuentas por el Administrador | Should Have | 3 |
 
 ---
@@ -91,65 +89,44 @@ Representa la cuenta de identidad y acceso al ecosistema de la Mesa de Ayuda.
 **Para** obtener un token JWT que acredite mi identidad en los microservicios del sistema.
 
 * **Escenario 1 (Positivo): Autenticación exitosa**
-  * **Dado** que un usuario con cuenta activa y sin bloqueos envía sus credenciales correctas vía `POST /api/v1/auth/login`
+  * **Dado** que un usuario con cuenta activa envía sus credenciales correctas vía `POST /api/v1/auth/login`
   * **Cuando** el servicio valida la correspondencia de la contraseña con el hash almacenado
-  * **Entonces** el sistema responde con código HTTP `200 OK`, resetea el contador de fallos a 0 y entrega un token JWT con tiempo de expiración y roles asignados.
+  * **Entonces** el sistema responde con código HTTP `200 OK` y entrega un token JWT con tiempo de expiración y roles asignados.
 
 * **Escenario 2 (Negativo): Credenciales incorrectas**
   * **Dado** que existe una cuenta con el correo `agente@empresa.com`
   * **Cuando** el usuario envía una solicitud a `POST /api/v1/auth/login` con una contraseña incorrecta
-  * **Entonces** el sistema incrementa el campo `intentosFallidos` en 1 y responde con código HTTP `401 Unauthorized` sin revelar si falló el correo o la clave.
+  * **Entonces** el sistema responde con código HTTP `401 Unauthorized` sin revelar si falló el correo o la clave.
 
 * **Escenario 3 (Negativo): Intento de login con cuenta desactivada**
   * **Dado** que un usuario tiene el atributo `activo = false`
   * **Cuando** intenta autenticarse mediante `POST /api/v1/auth/login` con la contraseña correcta
-  * **Entonces** el sistema deniega el acceso y responde con código HTTP `403 Forbidden` informando que la cuenta está deshabilitada.
+  * **Entonces** el sistema deniega el acceso y responde con código HTTP `401 Unauthorized` con el mismo mensaje genérico que en el escenario 2, sin revelar que la cuenta está deshabilitada.
+
 
 ---
 
-### HU-USR-03: Bloqueo temporal por intentos fallidos de login
+### HU-USR-03: Bloqueo temporal por intentos fallidos de login (RETIRADA)
 [Volver al backlog](../../docs/backlog.md#hu-usr-03)
-**Como** usuario autenticado  
-**Quiero** que la cuenta se bloquee automáticamente tras 5 intentos fallidos consecutivos de login  
-**Para** mitigar vulnerabilidades y ataques de fuerza bruta contra las credenciales.
-
-* **Escenario 1 (Negativo / Seguridad): Bloqueo tras alcanzar el límite de fallos**
-  * **Dado** que una cuenta tiene acumulados 4 intentos fallidos previos *(SUPUESTO)*
-  * **Cuando** el usuario ingresa por 5.ª ocasión consecutiva una contraseña errónea en `POST /api/v1/auth/login`
-  * **Entonces** el sistema incrementa el contador a 5, asigna en `bloqueadoHasta` la hora actual más 15 minutos *(SUPUESTO)* y responde con código HTTP `423 Locked`.
-
-* **Escenario 2 (Negativo): Rechazo de acceso durante el período de bloqueo**
-  * **Dado** que una cuenta tiene un bloqueo temporal activo (`bloqueadoHasta > now()`)
-  * **Cuando** el usuario intenta iniciar sesión vía `POST /api/v1/auth/login` aun enviando la contraseña correcta
-  * **Entonces** el sistema deniega la petición y responde con código HTTP `423 Locked` indicando el tiempo restante de bloqueo.
-
-* **Escenario 3 (Positivo): Desbloqueo automático tras expirar el lapso de tiempo**
-  * **Dado** que transcurrieron más de 15 minutos desde el bloqueo (`bloqueadoHasta <= now()`)
-  * **Cuando** el usuario ingresa sus credenciales válidas en `POST /api/v1/auth/login`
-  * **Entonces** el sistema permite el acceso, retorna HTTP `200 OK`, emite el token JWT y limpia los valores de bloqueo.
+**Estado:** Retirada. ARCHITECTURE no contempla el bloqueo temporal de cuentas (código `423 Locked`). Los fallos de login se responden con `401 Unauthorized` (ver HU-USR-02) y no hay contador de intentos ni campo de bloqueo en la entidad.
 
 ---
 
-### HU-USR-04: Consulta y actualización de perfil de usuario
+### HU-USR-04: Consulta de perfil propio
 [Volver al backlog](../../docs/backlog.md#hu-usr-04)
 **Como** usuario autenticado  
-**Quiero** consultar y actualizar mis datos básicos de perfil (nombre y apellido)  
-**Para** mantener actualizada mi información personal en la mesa de ayuda.
+**Quiero** consultar mis datos de perfil vigentes  
+**Para** verificar mi información personal registrada en la mesa de ayuda.
 
-* **Escenario 1 (Positivo): Actualización exitosa del propio perfil**
+* **Escenario 1 (Positivo): Consulta exitosa del propio perfil**
   * **Dado** que un usuario está autenticado con un token JWT válido
-  * **Cuando** realiza una petición `PUT /api/v1/users/me` enviando nuevos valores para nombre y apellido
-  * **Entonces** el sistema persiste las modificaciones, actualiza `updatedAt` y responde con código HTTP `200 OK` junto con el perfil actualizado.
+  * **Cuando** realiza una petición `GET /api/v1/users/me`
+  * **Entonces** el sistema responde con código HTTP `200 OK` y los datos de su propio perfil, sin contraseña ni campos internos.
 
 * **Escenario 2 (Negativo): Petición de perfil no autenticada o token inválido**
   * **Dado** que una solicitud a `GET /api/v1/users/me` no incluye token o este se encuentra expirado
   * **Cuando** el filtro de seguridad intercepta la petición
   * **Entonces** el sistema bloquea el procesamiento y responde con código HTTP `401 Unauthorized`.
-
-* **Escenario 3 (Negativo): Actualización con campos vacíos o inválidos**
-  * **Dado** que el usuario autenticado envía `PUT /api/v1/users/me` con nombre en blanco
-  * **Cuando** el validador procesa el cuerpo de la petición
-  * **Entonces** el sistema rechaza los cambios y responde con código HTTP `400 Bad Request`.
 
 ---
 
@@ -184,7 +161,7 @@ Representa la cuenta de identidad y acceso al ecosistema de la Mesa de Ayuda.
   * La configuración de Actuator debe limitar la exposición únicamente al endpoint `/actuator/health` en entornos productivos.
 
 * **RNF-02 (Auditoría de Eventos de Seguridad y Prevención de Fugas - OWASP A09)**:
-  * Debe registrarse bitácora estructurada (SLF4J/Logback) de eventos críticos: creación de usuario, login exitoso, fallo de login, bloqueo temporal de cuenta y desactivación.
+  * Debe registrarse bitácora estructurada (SLF4J/Logback) de eventos críticos: creación de usuario, login exitoso, fallo de login y desactivación.
   * Por estricto control de seguridad (OWASP A09), queda terminantemente prohibido escribir en los logs contraseñas en texto plano, tokens JWT completos o información crediticia/sensible.
 
 * **RNF-03 (Estandarización de Errores - RFC 9457 ProblemDetail)**:
@@ -195,8 +172,7 @@ Representa la cuenta de identidad y acceso al ecosistema de la Mesa de Ayuda.
 
 ## 6. Preguntas Abiertas para el Cliente
 
-1. **Parámetros del bloqueo temporal**: ¿Se confirman los 5 intentos fallidos y los 15 minutos de bloqueo propuestos como estándar, o se prefiere una política distinta (p. ej., bloqueo indefinido con intervención de soporte)?
-2. **Creación de Agentes y Administradores**: El registro autoservicio asigna por defecto el rol `SOLICITANTE`. ¿Cómo se deberán dar de alta los usuarios `AGENTE` y `ADMIN`? ¿Existirá un endpoint privado exclusivo para que el `ADMIN` cree usuarios con rol asignable?
-3. **Ciclo de vida y revocación de tokens JWT**: ¿Cuál es el tiempo de expiración (TTL) requerido para el token de acceso (ej. 15 minutos, 60 minutos, 8 horas)? ¿Se requerirá soporte de Refresh Token o mecanismo de invalidación en lista negra cuando se desactive una cuenta?
-4. **Política de robustez de contraseña**: ¿Cuáles son las reglas de complejidad a validar (mínimo de 8 caracteres, alfanumérico, caracteres especiales, mayúsculas)?
-5. **Reactivación de usuarios**: ¿Se requerirá habilitar un endpoint recíproco `PATCH /api/v1/users/{id}/activate` para que el Administrador pueda rehabilitar cuentas previamente desactivadas?
+1. **Creación de Agentes y Administradores**: El registro autoservicio asigna por defecto el rol `SOLICITANTE`. ¿Cómo se deberán dar de alta los usuarios `AGENTE` y `ADMIN`? ¿Existirá un endpoint privado exclusivo para que el `ADMIN` cree usuarios con rol asignable?
+2. **Ciclo de vida y revocación de tokens JWT**: ¿Cuál es el tiempo de expiración (TTL) requerido para el token de acceso (ej. 15 minutos, 60 minutos, 8 horas)? ¿Se requerirá soporte de Refresh Token o mecanismo de invalidación en lista negra cuando se desactive una cuenta?
+3. **Política de robustez de contraseña**: ¿Cuáles son las reglas de complejidad a validar (mínimo de 8 caracteres, alfanumérico, caracteres especiales, mayúsculas)?
+4. **Reactivación de usuarios**: ¿Se requerirá habilitar un endpoint recíproco `PATCH /api/v1/users/{id}/activate` para que el Administrador pueda rehabilitar cuentas previamente desactivadas?
