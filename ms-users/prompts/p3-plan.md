@@ -21,7 +21,7 @@ El código ya tiene la base de P2 (JWT, refresh, logout, bootstrap, handlers). L
 
 - Ya existen: `TokenService`, `RefreshTokenService`, `V2__crear_tabla_refresh_tokens.sql`, `JwtEncoderConfig`, `JwtDecoderConfig`, `JwtRolesConverter`, `ProblemAuthenticationEntryPoint`, `ProblemAccessDeniedHandler`, `UnmappedRouteAuthorizationManager`, `AdminBootstrap`, y los tests `AuthControllerSecurityTest`, `UserControllerSecurityTest`, `UnmappedRouteSecurityTest`, `RefreshTokenServiceTest`, `TokenServiceTest`, `UserServiceTest`, `AdminBootstrapTest`.
 - `SecurityConfig`: ya no tiene `throws Exception` en la firma (búsqueda sin coincidencias). El hallazgo de PMD de P0 debe confirmarse con `verify`.
-- `UserController`: `@PreAuthorize("hasRole('ADMIN')")` en `GET /users`, `POST /users`, `GET /{userIdentifier}` y `PATCH /{userIdentifier}/status`. `GET /me` y `PUT /me` no tienen restricción de rol.
+- `UserController`: `@PreAuthorize("hasRole('ADMIN')")` en `GET /users`, `POST /users`, `GET /{id}` y `PATCH /{id}/status`. `GET /me` no tiene restricción de rol (`PUT /me` ya no existe).
 - `V1__crear_tablas_usuarios.sql` (commit `2ba348f`) define `failed_attempts`, `locked_until` y `refresh_token_hash`. No se edita: el bloqueo se retira con una migración nueva.
 - `V3__ajustar_tipo_token_hash.sql` (sin commit) cambia `token_hash` a `VARCHAR(64)`. Es coherente con `RefreshToken.java:22` y con `V2` (`CHAR(64)`).
 
