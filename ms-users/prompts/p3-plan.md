@@ -142,6 +142,11 @@ Regla 20: si una prueba falla, se corrige el código de producción, no la prueb
 - Commit `89db372` reescrito a `72ba20d` (solo mensaje). Commits de código: `5093f73` (códigos de error), `57bba7a` (URIs de tipo).
 - `pom.xml` (Flyway y Testcontainers, H2 retirado) y borrado de `ms-users/AGENTS.md`: incluidos en `72ba20d`, confirmados por el usuario.
 
+### 7.6 Lombok (decisión B, aprobada)
+
+- Las reglas 8 y 9 piden `@RequiredArgsConstructor` y Lombok, pero `ms-users/pom.xml` no tiene Lombok. Se mantienen constructores manuales con campos `private final` en `service/` y `controller/`, que cumplen la inyección por constructor (regla 8). No se agrega dependencia nueva.
+- Como no hay Lombok, las entidades JPA tampoco lo usan, así que la prohibición de `@Data` (regla 9) se cumple. Si en el futuro se agrega Lombok, esta decisión debe revisarse.
+
 
 ## 8. Orden de ejecución
 
