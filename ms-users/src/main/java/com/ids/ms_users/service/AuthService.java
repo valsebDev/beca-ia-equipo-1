@@ -1,14 +1,18 @@
 package com.ids.ms_users.service;
 
+import java.util.Optional;
+import java.util.UUID;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.ids.ms_users.domain.User;
 import com.ids.ms_users.dto.request.LoginRequest;
 import com.ids.ms_users.dto.response.TokenResponse;
 import com.ids.ms_users.exception.InvalidCredentialsException;
 import com.ids.ms_users.exception.UserNotFoundException;
 import com.ids.ms_users.repository.UserRepository;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
@@ -21,6 +25,7 @@ public class AuthService {
     private final TokenService tokenService;
     private final RefreshTokenService refreshTokenService;
     private final PasswordEncoder passwordEncoder;
+    private final String dummyPasswordHash;
 
     public AuthService(
             UserRepository userRepository,
@@ -31,12 +36,18 @@ public class AuthService {
         this.tokenService = tokenService;
         this.refreshTokenService = refreshTokenService;
         this.passwordEncoder = passwordEncoder;
+        this.dummyPasswordHash = passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
     @Transactional
     public TokenResponse login(LoginRequest request) {
-        User user = userRepository.findByEmailIgnoreCase(request.email())
-                .orElseThrow(() -> new InvalidCredentialsException(INVALID_CREDENTIALS_MESSAGE));
+        Optional<User> found = userRepository.findByEmailIgnoreCase(request.email());
+        if (found.isEmpty()) {
+            // Ejecuta BCrypt igual que con un usuario real para no revelar si el email existe por el tiempo de respuesta.
+            passwordEncoder.matches(request.password(), dummyPasswordHash);
+            throw new InvalidCredentialsException(INVALID_CREDENTIALS_MESSAGE);
+        }
+        User user = found.get();
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())
                 || Boolean.FALSE.equals(user.getActive())) {
             throw new InvalidCredentialsException(INVALID_CREDENTIALS_MESSAGE);

@@ -167,4 +167,6 @@ Paso 4 (converter, handlers y `SecurityConfig`) resuelto con la opción A: se ma
 
 Paso 5 (`TokenService` con Nimbus y separación de servicios) resuelto con la opción A: `TokenService` ya usa `JwtEncoder` de Spring (Nimbus) y no hay JJWT, así que no hubo cambio en la firma. Se crea `service/AuthService` con login, refresh y logout, y `UserService` conserva registro, perfil y administración (§ plan línea 94). `AuthController` delega login, refresh y logout en `AuthService`, y `register` sigue en `UserService`. Los 4 tests de login pasan a `AuthServiceTest` sin cambiar sus aserciones; `AuthControllerSecurityTest` usa `@MockitoBean AuthService`. `./mvnw -B verify` en BUILD SUCCESS con 70 pruebas, 0 fallos y JaCoCo OK.
 
+Paso 6 (validación del login) resuelto con la opción A, la que sigue la arquitectura (`/auth/login` responde 400 y 401, ARCHITECTURE línea 199): si el email no existe, `AuthService.login` ejecuta `passwordEncoder.matches` contra un hash ficticio generado con el mismo encoder, y responde el mismo 401 genérico "Credenciales inválidas". Así el tiempo de respuesta no revela si el email está registrado. `AuthServiceTest` verifica esa ejecución. `./mvnw -B verify` en BUILD SUCCESS con 70 pruebas, 0 fallos y JaCoCo OK.
+
 
