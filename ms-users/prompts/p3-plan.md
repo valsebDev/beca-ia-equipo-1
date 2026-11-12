@@ -77,7 +77,7 @@ Modificadas:
 - `dto/response/UserResponse`: ✔ `id`, `email`, `fullName`, `role`, `active`, `createdAt` (D-e).
 - `dto/response/TokenResponse`: ✔ `accessToken`, `tokenType` (`Bearer`), `expiresIn` (900), `refreshToken`, `refreshExpiresIn` (604800) (D-f).
 - `dto/request/CreateUserRequest`: ✔ plano, con los campos de registro y `role` (D-g). `RegisterUserRequest` se mantiene para `POST /auth/register`.
-- `docs/contratos/ms-users.yaml`: ya alineado en P0; se revisa en P6 si cambia algún DTO.
+- `docs/contratos/ms-users.yaml` (raíz del repo, documentación global): ya alineado en P0; se revisa en P6 si cambia algún DTO.
 
 ## 4. Matriz endpoint × rol (ARCHITECTURE §6.3)
 
@@ -172,5 +172,7 @@ Paso 6 (validación del login) resuelto con la opción A, la que sigue la arquit
 Paso 7 (refresh y logout) resuelto con la opción A, la que sigue la arquitectura (`logout` revoca el token, ARCHITECTURE línea 435): `POST /auth/logout` sigue en 204 y requiere JWT, pero `AuthService.logout(userId, token)` revoca solo un refresh token que pertenece al usuario autenticado (`RefreshTokenService.revokeOwned`). Un token ajeno, desconocido o ya revocado no produce efecto y responde igual, para no revelar qué tokens existen. `RefreshTokenServiceTest` cubre el caso del dueño, un usuario ajeno y un token desconocido. `AuthServiceTest` cubre refresh correcto, refresh inválido y logout delegado. `./mvnw -B verify` en BUILD SUCCESS con 76 pruebas, 0 fallos.
 
 Paso 8 (`POST`/`GET /users` y `AdminBootstrap`) resuelto con la opción A. El código ya cumplía la matriz: `GET /users`, `POST /users`, `GET /users/{id}` y `PATCH /{id}/status` son solo ADMIN, `GET /users` filtra por rol, y `AdminBootstrap` no registra la contraseña. Se agregan pruebas: `AdminBootstrapTest.neverLogsAdminPassword` captura los logs con `ListAppender` y comprueba que la contraseña no aparece y que sí se registra "Administrador inicial creado"; `UserServiceTest` cubre el correo duplicado en `createByAdmin` y `createAdminIfAbsent` (`EmailAlreadyExistsException`, que `GlobalExceptionHandler` responde como 409, sin guardar). Sin cambios de producción. `./mvnw -B verify` en BUILD SUCCESS con 79 pruebas, 0 fallos.
+
+Paso 9 (configuración, plantillas y Actuator) resuelto: `AdminBootstrap` trata los placeholders `${...}` sin resolver como ausentes (WARN y no crea admin; `AdminBootstrapTest.skipsCreationWhenPasswordPlaceholderIsUnresolved`), opción A. `.env.example`, `application-local.example.yaml` y `application-prod.example.yaml` quedan con variables y sin secretos. El README documenta variables de entorno y Actuator. `ActuatorSecurityTest` (2 pruebas) comprueba que los endpoints de Actuator no expuestos exigen autenticación (401) y responden 404 cuando está autenticado. La prueba de `/actuator/health` público se pospone al paso 10 (`@SpringBootTest` con Testcontainers, porque `@WebMvcTest` no registra endpoints de Actuator). El contrato OpenAPI está en la documentación global `docs/contratos/ms-users.yaml` de la raíz del repo; las referencias del plan se corrigieron. `./mvnw -B verify` en BUILD SUCCESS con 82 pruebas, 0 fallos y JaCoCo OK.
 
 

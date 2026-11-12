@@ -33,7 +33,7 @@ Modificadas:
 - `UserController`: `@PreAuthorize` ADMIN en `GET /users`, `GET /users/{id}`, `POST /users`, `PATCH /users/{id}/status`; `/me` usa `@AuthenticationPrincipal Jwt` (`sub`). `AuthController`: `refresh` y `logout` (autenticado).
 - `UserService`: sin `requireAdmin`/roles; login con orden HU-USR-02 (contraseña 401 → inactivo 401 genérico, sin bloqueo por intentos); desactivar revoca refresh tokens.
 - `GlobalExceptionHandler`: `AccessDeniedException` → 403; mapear `code` según §3.4.
-- `application.yaml`: Actuator solo `health`, `show-details: never`; `app.security.bcrypt-cost`, `refresh-ttl-days`; plantillas, `.env.example`, README, `docs/SECURITY-REPORT.md`, `docs/contratos/ms-users.yaml` (`bearerAuth`, 401/403).
+- `application.yaml`: Actuator solo `health`, `show-details: never`; `app.security.bcrypt-cost`, `refresh-ttl-days`; plantillas, `.env.example`, README, `docs/SECURITY-REPORT.md`, `../docs/contratos/ms-users.yaml` de la raíz del repo (`bearerAuth`, 401/403).
 
 ## 4. Matriz endpoint × rol
 | Endpoint | Sin token | Token inválido/expirado | SOLICITANTE | AGENTE | ADMIN |
@@ -76,7 +76,7 @@ Modificadas:
 | HU-USR-05 | `PATCH /users/{userIdentifier}/status` con `isActive` | `PATCH /users/{id}/status` con `{"active": boolean}`; 404 por id inexistente |
 | Nuevas HU | — | HU-USR-06 refresh con rotación (`POST /auth/refresh`); HU-USR-07 logout (`POST /auth/logout`, 204); HU-USR-08 ADMIN lista usuarios (`GET /users?role=`); HU-USR-09 ADMIN crea usuario con rol (`POST /users`, 201/409); cada una con escenarios 401/403/éxito |
 | Preguntas abiertas 2, 3, 5 | abiertas | Cerradas: alta de AGENTE/ADMIN vía `POST /users` (D8); TTL 15 min + refresh 7 d (D5); reactivación con `PATCH status active=true` |
-| Actualizar también | — | `docs/backlog.md` (enlaces HU), `docs/contratos/ms-users.yaml`, README, `ms-users/docs/*`, `docs/seguridad.md` (acuerdo del equipo) |
+| Actualizar también | — | `docs/backlog.md` (enlaces HU), `../docs/contratos/ms-users.yaml` (raíz del repo), README, `ms-users/docs/*`, `docs/seguridad.md` (acuerdo del equipo) |
 
 ### B. Código y BD (cambios para alinear con ARCH §2.1, §3.1, §3.4)
 - **Migración `V2__align_users_with_architecture.sql`** (no se edita V1; hoy `users` solo tiene la V1):
