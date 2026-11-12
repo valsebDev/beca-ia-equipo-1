@@ -105,6 +105,40 @@ class AuthServiceTest {
         verify(tokenService, never()).generateToken(any(User.class));
     }
 
+    @Test
+    void refreshRotatesTokenAndIssuesNewAccessToken() {
+        User user = user(1L, true);
+        when(refreshTokenService.rotate("old-refresh"))
+                .thenReturn(new RefreshTokenService.RotatedToken(1L, "new-refresh"));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(tokenService.generateToken(user)).thenReturn("new-access");
+        when(tokenService.getAccessTtlSeconds()).thenReturn(900L);
+        when(refreshTokenService.getRefreshTtlSeconds()).thenReturn(604800L);
+
+        TokenResponse response = authService.refresh("old-refresh");
+
+        assertThat(response.accessToken()).isEqualTo("new-access");
+        assertThat(response.refreshToken()).isEqualTo("new-refresh");
+        assertThat(response.tokenType()).isEqualTo("Bearer");
+    }
+
+    @Test
+    void refreshWithInvalidTokenDoesNotIssueAccessToken() {
+        when(refreshTokenService.rotate("bad-refresh"))
+                .thenThrow(new InvalidCredentialsException("Refresh token inválido o expirado"));
+
+        assertThatThrownBy(() -> authService.refresh("bad-refresh"))
+                .isInstanceOf(InvalidCredentialsException.class);
+        verify(tokenService, never()).generateToken(any(User.class));
+    }
+
+    @Test
+    void logoutRevokesRefreshTokenOwnedByCaller() {
+        authService.logout(1L, "my-refresh");
+
+        verify(refreshTokenService).revokeOwned(1L, "my-refresh");
+    }
+
     private static User user(Long id, boolean active) {
         User user = new User(FULL_NAME, EMAIL, "stored-hash", Role.SOLICITANTE, active, Instant.now());
         ReflectionTestUtils.setField(user, "id", id);

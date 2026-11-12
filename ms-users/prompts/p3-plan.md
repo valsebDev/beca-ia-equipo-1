@@ -169,4 +169,6 @@ Paso 5 (`TokenService` con Nimbus y separación de servicios) resuelto con la op
 
 Paso 6 (validación del login) resuelto con la opción A, la que sigue la arquitectura (`/auth/login` responde 400 y 401, ARCHITECTURE línea 199): si el email no existe, `AuthService.login` ejecuta `passwordEncoder.matches` contra un hash ficticio generado con el mismo encoder, y responde el mismo 401 genérico "Credenciales inválidas". Así el tiempo de respuesta no revela si el email está registrado. `AuthServiceTest` verifica esa ejecución. `./mvnw -B verify` en BUILD SUCCESS con 70 pruebas, 0 fallos y JaCoCo OK.
 
+Paso 7 (refresh y logout) resuelto con la opción A, la que sigue la arquitectura (`logout` revoca el token, ARCHITECTURE línea 435): `POST /auth/logout` sigue en 204 y requiere JWT, pero `AuthService.logout(userId, token)` revoca solo un refresh token que pertenece al usuario autenticado (`RefreshTokenService.revokeOwned`). Un token ajeno, desconocido o ya revocado no produce efecto y responde igual, para no revelar qué tokens existen. `RefreshTokenServiceTest` cubre el caso del dueño, un usuario ajeno y un token desconocido. `AuthServiceTest` cubre refresh correcto, refresh inválido y logout delegado. `./mvnw -B verify` en BUILD SUCCESS con 76 pruebas, 0 fallos.
+
 

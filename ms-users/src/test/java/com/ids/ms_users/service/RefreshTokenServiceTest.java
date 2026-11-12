@@ -126,7 +126,7 @@ class RefreshTokenServiceTest {
     }
 
     @Test
-    void revokeIsIdempotentForAlreadyRevokedToken() {
+    void revokeOwnedIsIdempotentForAlreadyRevokedToken() {
         User user = user(4L);
         RefreshToken stored = storedToken(user, "logout", Instant.now().plus(1, ChronoUnit.DAYS));
         Instant firstRevocation = Instant.now().minusSeconds(30);
@@ -134,9 +134,43 @@ class RefreshTokenServiceTest {
         when(refreshTokenRepository.findByTokenHash(RefreshTokenService.hash("logout")))
                 .thenReturn(Optional.of(stored));
 
-        refreshTokenService.revoke("logout");
+        refreshTokenService.revokeOwned(4L, "logout");
 
         assertThat(stored.getRevokedAt()).isEqualTo(firstRevocation);
+    }
+
+    @Test
+    void revokeOwnedRevokesTokenOfTheSameUser() {
+        User user = user(5L);
+        RefreshToken stored = storedToken(user, "mine", Instant.now().plus(1, ChronoUnit.DAYS));
+        when(refreshTokenRepository.findByTokenHash(RefreshTokenService.hash("mine")))
+                .thenReturn(Optional.of(stored));
+
+        refreshTokenService.revokeOwned(5L, "mine");
+
+        assertThat(stored.getRevokedAt()).isNotNull();
+    }
+
+    @Test
+    void revokeOwnedDoesNotRevokeTokenOfAnotherUser() {
+        User owner = user(6L);
+        RefreshToken stored = storedToken(owner, "foreign", Instant.now().plus(1, ChronoUnit.DAYS));
+        when(refreshTokenRepository.findByTokenHash(RefreshTokenService.hash("foreign")))
+                .thenReturn(Optional.of(stored));
+
+        refreshTokenService.revokeOwned(99L, "foreign");
+
+        assertThat(stored.getRevokedAt()).isNull();
+    }
+
+    @Test
+    void revokeOwnedIgnoresUnknownToken() {
+        when(refreshTokenRepository.findByTokenHash(RefreshTokenService.hash("missing")))
+                .thenReturn(Optional.empty());
+
+        refreshTokenService.revokeOwned(1L, "missing");
+
+        verify(refreshTokenRepository, never()).save(any(RefreshToken.class));
     }
 
     private static User user(Long id) {

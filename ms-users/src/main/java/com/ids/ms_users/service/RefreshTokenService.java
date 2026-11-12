@@ -77,10 +77,14 @@ public class RefreshTokenService {
         return new RotatedToken(userId, issue(user));
     }
 
+    /**
+     * Revoca el token solo si pertenece al usuario indicado. Un token ajeno, desconocido
+     * o ya revocado no produce efecto, para no revelar qué tokens existen.
+     */
     @Transactional
-    public void revoke(String rawToken) {
+    public void revokeOwned(Long userId, String rawToken) {
         refreshTokenRepository.findByTokenHash(hash(rawToken))
-                .filter(token -> token.getRevokedAt() == null)
+                .filter(token -> token.getRevokedAt() == null && userId.equals(token.getUserId()))
                 .ifPresent(token -> token.setRevokedAt(Instant.now()));
     }
 

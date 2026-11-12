@@ -65,8 +65,8 @@ public class AuthService {
     }
 
     @Transactional
-    public void logout(String rawRefreshToken) {
-        refreshTokenService.revoke(rawRefreshToken);
+    public void logout(Long userId, String rawRefreshToken) {
+        refreshTokenService.revokeOwned(userId, rawRefreshToken);
     }
 
     private TokenResponse issueTokens(User user) {
