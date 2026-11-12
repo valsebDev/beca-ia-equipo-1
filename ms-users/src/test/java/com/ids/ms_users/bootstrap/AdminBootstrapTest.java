@@ -67,6 +67,15 @@ class AdminBootstrapTest {
     }
 
     @Test
+    void skipsCreationWhenPasswordPlaceholderIsUnresolved() {
+        when(userRepository.existsByRole(Role.ADMIN)).thenReturn(false);
+
+        bootstrap(ADMIN_EMAIL, "${ADMIN_PASSWORD}").run(null);
+
+        verify(userService, never()).createAdminIfAbsent(anyString(), anyString());
+    }
+
+    @Test
     void neverLogsAdminPassword() {
         when(userRepository.existsByRole(Role.ADMIN)).thenReturn(false);
         Logger logger = (Logger) LoggerFactory.getLogger(AdminBootstrap.class);

@@ -17,6 +17,7 @@ import com.ids.ms_users.config.properties.BootstrapAdminProperties;
 public class AdminBootstrap implements ApplicationRunner {
 
     private static final Logger LOG = LoggerFactory.getLogger(AdminBootstrap.class);
+    private static final String PLACEHOLDER_PREFIX = "${";
 
     private final UserRepository userRepository;
     private final UserService userService;
@@ -37,11 +38,16 @@ public class AdminBootstrap implements ApplicationRunner {
         if (userRepository.existsByRole(Role.ADMIN)) {
             return;
         }
-        if (adminEmail == null || adminEmail.isBlank() || adminPassword == null || adminPassword.isBlank()) {
+        if (!isUsable(adminEmail) || !isUsable(adminPassword)) {
             LOG.warn("No existe ADMIN y faltan ADMIN_EMAIL/ADMIN_PASSWORD; no se creó el administrador inicial");
             return;
         }
         userService.createAdminIfAbsent(adminEmail, adminPassword);
         LOG.info("Administrador inicial creado");
+    }
+
+    // Si la variable de entorno no existe, Spring deja el placeholder "${...}" como texto literal.
+    private static boolean isUsable(String value) {
+        return value != null && !value.isBlank() && !value.startsWith(PLACEHOLDER_PREFIX);
     }
 }
