@@ -153,7 +153,7 @@ Regla 20: si una prueba falla, se corrige el código de producción, no la prueb
 1. ✔ **P2A** (modelo, V4 no destructiva, DTOs, handlers y `UserService` para 401 en login).
 2. ✔ **P2B** (`UserController`: `{id}`, `PUT /me` retirado; `application.yaml`; `verify` en BUILD SUCCESS).
 3. ✔ **P3** (pruebas de seguridad según §4 y §5; 66 pruebas en verde). Quedan los huecos de §5 marcados arriba.
-4. **P4** (agente revisor en `.github/agents/revisor-seguridad-ms-users.agent.md`): pendiente.
+4. ✔ **P4** (agente revisor en `.github/agents/revisor-seguridad-ms-users.agent.md`, alcance A: solo lectura, compara con la matriz §4, ARCHITECTURE §6 y `.github/copilot-instructions.md`, y reporta hallazgos con archivo y línea).
 5. **P5** (integración: ms-users solo provee contrato; se documenta la excepción D13): pendiente.
 6. **P6** (`SECURITY-REPORT`, alineación del contrato, `BITACORA-IA.md` sin sección P3, `verify` final, sugerencias de PR y tag en español): pendiente.
 
