@@ -3,27 +3,26 @@ info:
   title: ms-tickets API
   version: 0.1.0-draft
   description: >
-    Borrador del contrato de ms-tickets. Identidad simulada con los encabezados
-    X-User-Id y X-User-Role hasta la Práctica 3 (JWT). Los errores siguen RFC 9457 (ProblemDetail).
+    Contrato de ms-tickets. La identidad se obtiene de un JWT Bearer emitido por ms-users
+    (Práctica 3). Los errores siguen RFC 9457 (ProblemDetail).
   license:
     name: Uso académico (Práctica 1)
 servers:
-  - url: http://localhost:8080
-    description: Desarrollo local
+  - url: http://localhost:8082
+    description: Desarrollo local (puerto host de ms-tickets, ARCHITECTURE §1.3)
 tags:
   - name: Tickets
     description: Gestión del ciclo de vida de los tickets
 security:
-  - simulatedIdentity: []
+  - bearerAuth: []
 paths:
   /api/v1/tickets:
     post:
       tags: [Tickets]
       summary: Crear ticket
       operationId: createTicket
-      parameters:
-        - $ref: '#/components/parameters/UserIdHeader'
-        - $ref: '#/components/parameters/UserRoleHeader'
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -31,6 +30,8 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateTicketRequest'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '201':
           description: Ticket creado
           headers:
@@ -51,9 +52,9 @@ paths:
       tags: [Tickets]
       summary: Listar tickets visibles para el usuario
       operationId: listTickets
+      security:
+        - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/UserIdHeader'
-        - $ref: '#/components/parameters/UserRoleHeader'
         - name: status
           in: query
           required: false
@@ -61,6 +62,8 @@ paths:
           schema:
             $ref: '#/components/schemas/TicketStatus'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Lista de tickets
           content:
@@ -78,10 +81,11 @@ paths:
       tags: [Tickets]
       summary: Consultar ticket por ID
       operationId: getTicket
-      parameters:
-        - $ref: '#/components/parameters/UserIdHeader'
-        - $ref: '#/components/parameters/UserRoleHeader'
+      security:
+        - bearerAuth: []
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Ticket encontrado
           content:
@@ -101,9 +105,8 @@ paths:
       tags: [Tickets]
       summary: Asignar ticket a un agente
       operationId: assignTicket
-      parameters:
-        - $ref: '#/components/parameters/UserIdHeader'
-        - $ref: '#/components/parameters/UserRoleHeader'
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -111,6 +114,8 @@ paths:
             schema:
               $ref: '#/components/schemas/AssignRequest'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Ticket asignado
           content:
@@ -132,9 +137,8 @@ paths:
       tags: [Tickets]
       summary: Cambiar estado del ticket
       operationId: changeTicketStatus
-      parameters:
-        - $ref: '#/components/parameters/UserIdHeader'
-        - $ref: '#/components/parameters/UserRoleHeader'
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -142,6 +146,8 @@ paths:
             schema:
               $ref: '#/components/schemas/ChangeStatusRequest'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Estado actualizado
           content:
@@ -163,10 +169,11 @@ paths:
       tags: [Tickets]
       summary: Consultar historial del ticket
       operationId: getTicketHistory
-      parameters:
-        - $ref: '#/components/parameters/UserIdHeader'
-        - $ref: '#/components/parameters/UserRoleHeader'
+      security:
+        - bearerAuth: []
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Historial de eventos
           content:
@@ -183,26 +190,12 @@ paths:
           $ref: '#/components/responses/TicketNotFound'
 components:
   securitySchemes:
-    simulatedIdentity:
-      type: apiKey
-      in: header
-      name: X-User-Id
-      description: Identidad simulada. Se exige también X-User-Role (Práctica 1).
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT emitido por ms-users (HS256, issuer y audience validados).
   parameters:
-    UserIdHeader:
-      name: X-User-Id
-      in: header
-      required: true
-      schema:
-        type: integer
-        format: int64
-        example: 10
-    UserRoleHeader:
-      name: X-User-Role
-      in: header
-      required: true
-      schema:
-        $ref: '#/components/schemas/UserRole'
     TicketId:
       name: id
       in: path
@@ -376,7 +369,13 @@ components:
           schema:
             $ref: '#/components/schemas/ProblemDetail'
     MalformedRequest:
-      description: Falta o es inválido un encabezado requerido (MALFORMED_REQUEST)
+      description: Petición malformada, por ejemplo un parámetro inválido (MALFORMED_REQUEST)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    Unauthorized:
+      description: Token ausente, inválido o expirado (UNAUTHORIZED)
       content:
         application/problem+json:
           schema:
