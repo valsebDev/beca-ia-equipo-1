@@ -44,6 +44,11 @@ public class GlobalExceptionHandler {
 		return build(HttpStatus.CONFLICT, ex.getCode(), "Conflicto con el estado actual", ex.getMessage(), request);
 	}
 
+	@ExceptionHandler(DependencyUnavailableException.class)
+	ProblemDetail handleDependencyUnavailable(DependencyUnavailableException ex, HttpServletRequest request) {
+		return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getCode(), "Servicio no disponible", ex.getMessage(), request);
+	}
+
 	@ExceptionHandler(DomainValidationException.class)
 	ProblemDetail handleDomainValidation(DomainValidationException ex, HttpServletRequest request) {
 		ProblemDetail problem = build(
