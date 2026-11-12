@@ -60,6 +60,7 @@ Docker está activo (`29.9.2`), así que las pruebas con Testcontainers se puede
 
 Nuevas:
 - `db/migration/V4__alinear_usuarios_con_arquitectura.sql` (✔ hecha, no destructiva): añade `full_name` y lo rellena desde nombre y apellidos; amplía `email` a 254; relaja `NOT NULL` de `name`, `paternal_name` y `user_identifier`. **No elimina** `failed_attempts` ni `locked_until`: se conservan para no perder datos y V1 no se edita. Ninguna entidad las mapea, así que `ddl-auto=validate` no falla.
+- `db/migration/V5__alinear_columnas_usuarios.sql` (✔ hecha, no destructiva; V2 ya es `refresh_tokens`, por eso no es V2 como indicaba §5b-B): renombra `is_active`→`active` y `password`→`password_hash`; ajusta `password_hash` a 100 y `role` a 20; `created_at` pasa a `timestamptz` (asume UTC) y añade `updated_at`; normaliza `email` a minúsculas con índice único `lower(email)`. V4 no se edita. Las columnas legacy (`user_identifier`, `name`, `paternal_name`, `maternal_name`, `jwt_*`, `refresh_token_*`) se conservan sin mapear.
 
 Modificadas:
 - `application.yaml`: ✔ `server.error.include-stacktrace`, `include-message` y `include-binding-errors` en `never`; ✔ `management` solo expone `health` con `show-details=never`; ✔ bloque `app.security.lock.*` retirado. Los TTL van como `access-ttl-minutes: ${JWT_ACCESS_TTL_MINUTES:15}` y `refresh-ttl-days: ${JWT_REFRESH_TTL_DAYS:7}`, que equivalen a 900 s y 604800 s. Los secretos siguen como `${VAR}` sin valor por defecto.
@@ -70,6 +71,8 @@ Modificadas:
 - `exception/GlobalExceptionHandler`: ✔ handlers de 423 y de 403 por cuenta inactiva eliminados; el login usa 401 `INVALID_CREDENTIALS`. Los `type` usan `https://mesa-ayuda.ids/problems/<slug>` (commit `57bba7a`).
 - `exception/AccountLockedException`, `exception/AccountInactiveException`: ✔ eliminadas (no quedan referencias en `ms-users/src`).
 - `domain/User`: ✔ `failedAttempts` y `lockedUntil` no están mapeados; las columnas quedan en BD (V4 no las borra).
+- `domain/User` (V5): `passwordHash`, `role` (20), `active`, `createdAt` y `updatedAt` como `Instant`, con `@PreUpdate` para `updatedAt`. Se quitan de la entidad los campos JWT y refresh token. `UserRepository` usa `findByEmailIgnoreCase` y `existsByEmailIgnoreCase`.
+- `dto/request/LoginRequest`, `RefreshRequest` y `LogoutRequest`: ✔ `@Size` (email 254, password 72, refresh token 128). `dto/response/UserResponse`: `createdAt` es `Instant`.
 - `dto/response/UserResponse`: ✔ `id`, `email`, `fullName`, `role`, `active`, `createdAt` (D-e).
 - `dto/response/TokenResponse`: ✔ `accessToken`, `tokenType` (`Bearer`), `expiresIn` (900), `refreshToken`, `refreshExpiresIn` (604800) (D-f).
 - `dto/request/CreateUserRequest`: ✔ plano, con los campos de registro y `role` (D-g). `RegisterUserRequest` se mantiene para `POST /auth/register`.
@@ -116,6 +119,8 @@ Regla 20: si una prueba falla, se corrige el código de producción, no la prueb
 6. **Commits**: el trabajo está en commits locales de `practica-3-fernando` (`2af0d44`…`57bba7a`), sin push. El `.gitignore` modificado no es parte de este trabajo.
 7. **Cambios de docs del usuario**: `docs/seguridad.md` y el borrado de la etiqueta `p3-entrega-fernando` se hicieron por instrucción explícita, aunque `docs/p3-prompt-maestro.md` lo prohíbe.
 8. **Códigos 415 y otras excepciones de MVC**: caen en 500 `INTERNAL_ERROR`. Fuera de alcance de P3; queda como deuda.
+9. **V5 con emails duplicados** (solo difieren en mayúsculas): el índice `lower(email)` falla y Flyway aborta. Hoy no hay datos reales; revisar antes de desplegar en un entorno con datos.
+10. **Supuesto de zona horaria**: `created_at` (`TIMESTAMP` sin zona) se interpreta como UTC en V5. No verificado: la app usaba la zona local de la JVM.
 
 ## 7. Decisiones confirmadas por el usuario
 
@@ -123,6 +128,10 @@ Regla 20: si una prueba falla, se corrige el código de producción, no la prueb
 2. **`PUT /api/v1/users/me`: quitado.** ✔ ARCHITECTURE solo lista `GET`.
 3. **DTOs y rutas: alineados con ARCHITECTURE §3.1** (`{id}`, `UserResponse`, `TokenResponse`, `CreateUserRequest` plano). ✔ Hecho.
 4. **Recurso ajeno: 403** para no-admin en `/users/{id}`, según ARCHITECTURE. ✔ Hecho.
+5. **Migración de usuarios: V5, no V2.** V2 ya es `refresh_tokens`. Se crea `V5__alinear_columnas_usuarios.sql` y no se edita V4. ✔ Aprobado.
+6. **Columnas legacy: se conservan sin mapear en JPA.** Borrarlas es destructivo y requiere una migración aparte con aprobación explícita. ✔ Aprobado.
+7. **Nombres de DTO: se mantienen** `RegisterUserRequest` y `UpdateUserStatusRequest` en lugar de `RegisterRequest` y `UpdateStatusRequest` (plan-ms-users.md §5b-B). Divergencia documentada. ✔ Aprobado.
+8. **Email en minúsculas** al registrar, con índice único `lower(email)`. `createdAt` y `updatedAt` son `Instant` (UTC, `Z`). ✔ Aprobado.
 
 ### 7.5 Decisiones de la opción A (aprobadas en la revisión de commits)
 
@@ -142,8 +151,10 @@ Regla 20: si una prueba falla, se corrige el código de producción, no la prueb
 5. **P5** (integración: ms-users solo provee contrato; se documenta la excepción D13): pendiente.
 6. **P6** (`SECURITY-REPORT`, alineación del contrato, `BITACORA-IA.md` sin sección P3, `verify` final, sugerencias de PR y tag en español): pendiente.
 
-Pendiente de decisión del usuario: `docs/requerimientos.md` (líneas 119–124) y `docs/backlog.md:68` todavía piden 423 en HU-USR-02, y `plan-ms-users.md` líneas 34 y 75 lo mencionan. No se tocan sin confirmación.
+Paso 2 del plan (§5b-B, tabla `users`) ✔: migración V5, entidad, repositorio y DTOs alineados con ARCHITECTURE §2.1. `./mvnw -B verify` en BUILD SUCCESS: 67 pruebas, 0 fallos, JaCoCo OK (4:38 min).
 
-Estado: P2 y P3 ejecutados y commiteados. Este documento se actualizó para reflejar el código real; los commits de este cambio de documento aún no se han hecho.
+Resuelto: `docs/requerimientos.md` (RN-04 y HU-USR-03 retirada), `docs/backlog.md` (HU-USR-03 retirada) y `plan-ms-users.md` ya no piden 423 (commits `3b08280` y `3e0b7e2`). Este aviso estaba desactualizado.
+
+Estado: P2 y P3 ejecutados y commiteados. Paso 2 del plan (§5b-B) hecho; el código del paso 2 y este documento están pendientes de commit.
 
 
