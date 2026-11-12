@@ -1,6 +1,6 @@
 # P3 · Plan de seguridad para ms-users (Fernando)
 
-> Estado: **Ejecutado hasta P3** (código alineado y pruebas de seguridad en verde). Pendientes: P4, P5 y P6. Este documento se actualizó tras las decisiones de la opción A; las divergencias de §1 están cerradas.
+> Estado: **Ejecutado hasta P3** (código alineado y pruebas de seguridad en verde). Pendiente: P6. Este documento se actualizó tras las decisiones de la opción A; las divergencias de §1 están cerradas.
 > Fuentes: `ARCHITECTURE.md` §3.1, §5.2, §6.1–§6.4; `docs/seguridad.md` (ajustado a tus decisiones); `docs/p3-prompt-maestro.md` P1.
 
 ## 0. Decisiones (ARCHITECTURE §3.1 es la fuente; `docs/seguridad.md` y el contrato ya están alineados)
@@ -154,7 +154,7 @@ Regla 20: si una prueba falla, se corrige el código de producción, no la prueb
 2. ✔ **P2B** (`UserController`: `{id}`, `PUT /me` retirado; `application.yaml`; `verify` en BUILD SUCCESS).
 3. ✔ **P3** (pruebas de seguridad según §4 y §5; 66 pruebas en verde). Quedan los huecos de §5 marcados arriba.
 4. ✔ **P4** (agente revisor en `.github/agents/revisor-seguridad-ms-users.agent.md`, alcance A: solo lectura, compara con la matriz §4, ARCHITECTURE §6 y `.github/copilot-instructions.md`, y reporta hallazgos con archivo y línea).
-5. **P5** (integración: ms-users solo provee contrato; se documenta la excepción D13): pendiente.
+5. ✔ **P5** (integración: ms-users solo provee contrato; excepción D13 documentada). ms-users no implementa `client/` ni consume servicios. Como proveedor, `integration/UserProviderContractTest` (4 pruebas) verifica que `GET /api/v1/users/{id}` devuelve exactamente los campos de `UserResponse` de `docs/contratos/ms-users.yaml` y los códigos 200, 401, 403 y 404 (`USER_NOT_FOUND`).
 6. **P6** (`SECURITY-REPORT`, alineación del contrato, `BITACORA-IA.md` sin sección P3, `verify` final, sugerencias de PR y tag en español): pendiente.
 
 Paso 2 del plan (§5b-B, tabla `users`) ✔: migración V5, entidad, repositorio y DTOs alineados con ARCHITECTURE §2.1. `./mvnw -B verify` en BUILD SUCCESS: 67 pruebas, 0 fallos, JaCoCo OK (4:38 min).
