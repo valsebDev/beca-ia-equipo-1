@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+	<!-- CSRF deshabilitado a propósito: API stateless con JWT Bearer, sin cookies (ARCHITECTURE.md §6.2). -->
+	<Match>
+		<Class name="com.ids.ms_tickets.config.SecurityConfig" />
+		<Bug pattern="SPRING_CSRF_PROTECTION_DISABLED" />
+	</Match>
+</FindBugsFilter>

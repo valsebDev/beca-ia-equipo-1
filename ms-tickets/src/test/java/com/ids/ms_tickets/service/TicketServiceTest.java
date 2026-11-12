@@ -155,6 +155,27 @@ class TicketServiceTest {
 	}
 
 	@Test
+	void changeStatus_toCanceledByAssignedAgent_throwsForbidden() {
+		when(tickets.findById(100L)).thenReturn(Optional.of(ticket(TicketStatus.ASIGNADO, 5L)));
+
+		assertThatThrownBy(() -> service.changeStatus(AGENT, 100L,
+				new ChangeStatusRequest(TicketStatus.CANCELADO, null)))
+				.isInstanceOf(ForbiddenException.class);
+	}
+
+	@Test
+	void changeStatus_toClosedByOwner_isAllowed() {
+		Ticket ticket = ticket(TicketStatus.RESUELTO, 5L);
+		when(tickets.findById(100L)).thenReturn(Optional.of(ticket));
+		when(tickets.save(any(Ticket.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		TicketResponse response = service.changeStatus(REQUESTER, 100L,
+				new ChangeStatusRequest(TicketStatus.CERRADO, null));
+
+		assertThat(response.status()).isEqualTo(TicketStatus.CERRADO);
+	}
+
+	@Test
 	void getTicket_byUnrelatedRequester_throwsForbidden() {
 		when(tickets.findById(100L)).thenReturn(Optional.of(ticket(TicketStatus.ABIERTO, null)));
 

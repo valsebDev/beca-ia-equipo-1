@@ -34,9 +34,8 @@ public class TicketAccessPolicy {
 	public void requireTransition(CurrentUser actor, Ticket ticket, TicketStatus target) {
 		boolean allowed = switch (target) {
 			case EN_PROGRESO, RESUELTO -> actor.role() == UserRole.ADMIN || isAssignee(actor, ticket);
-			case CERRADO -> actor.role() == UserRole.ADMIN || isOwner(actor, ticket);
-			// SUPUESTO: el AGENTE asignado puede cancelar, como indica el Gherkin de HU-04.
-			case CANCELADO -> actor.role() == UserRole.ADMIN || isOwner(actor, ticket) || isAssignee(actor, ticket);
+			// Matriz §6.3 de ARCHITECTURE: el AGENTE asignado no puede cerrar ni cancelar.
+			case CERRADO, CANCELADO -> actor.role() == UserRole.ADMIN || isOwner(actor, ticket);
 			default -> false;
 		};
 		if (!allowed) {
