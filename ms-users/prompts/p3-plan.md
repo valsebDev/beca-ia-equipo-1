@@ -155,6 +155,8 @@ Paso 2 del plan (§5b-B, tabla `users`) ✔: migración V5, entidad, repositorio
 
 Resuelto: `docs/requerimientos.md` (RN-04 y HU-USR-03 retirada), `docs/backlog.md` (HU-USR-03 retirada) y `plan-ms-users.md` ya no piden 423 (commits `3b08280` y `3e0b7e2`). Este aviso estaba desactualizado.
 
-Estado: P2 y P3 ejecutados y commiteados. Paso 2 del plan (§5b-B) hecho y commiteado. Paso 3 (§5b-C, propiedades y encoder/decoder) hecho: `./mvnw -B verify` en BUILD SUCCESS con 70 pruebas, 0 fallos, JaCoCo OK; pendiente de commit.
+Estado: P2 y P3 ejecutados y commiteados. Paso 2 del plan (§5b-B) hecho y commiteado. Paso 3 (§5b-C, propiedades y encoder/decoder) hecho y commiteado como `20795f1`: `./mvnw -B verify` en BUILD SUCCESS con 70 pruebas, 0 fallos, JaCoCo OK.
+
+Paso 4 (converter, handlers y `SecurityConfig`) resuelto con la opción A: se mantienen las ubicaciones de ARCHITECTURE §4 (`SecurityConfig` en `config/`; `JwtRolesConverter`, `ProblemAuthenticationEntryPoint` y `ProblemAccessDeniedHandler` en `security/`). No hay `throws` sobrantes: los `throws IOException` de los handlers vienen de las interfaces de Spring, y la firma de `SecurityConfig` ya no declara `throws`. Sin cambios de código.
 
 
