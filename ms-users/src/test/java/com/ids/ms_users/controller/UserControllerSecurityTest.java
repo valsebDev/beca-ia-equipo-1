@@ -3,6 +3,7 @@ package com.ids.ms_users.controller;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -74,7 +75,7 @@ class UserControllerSecurityTest {
     void meWithoutTokenReturns401() throws Exception {
         mockMvc.perform(get(ME_PATH))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"));
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
     }
 
     @Test
@@ -130,7 +131,7 @@ class UserControllerSecurityTest {
 
         mockMvc.perform(get(USERS_PATH).header("Authorization", bearer(token)))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("FORBIDDEN_OPERATION"));
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
     }
 
     @Test
@@ -215,6 +216,87 @@ class UserControllerSecurityTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"active\":true}"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void meWithAgenteReturns200() throws Exception {
+        String token = token(AGENTE, 2L, Instant.now().plusSeconds(60), issuer, audience);
+
+        mockMvc.perform(get(ME_PATH).header("Authorization", bearer(token)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void meWithAdminReturns200() throws Exception {
+        String token = token(ADMIN, 3L, Instant.now().plusSeconds(60), issuer, audience);
+
+        mockMvc.perform(get(ME_PATH).header("Authorization", bearer(token)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void putMeIsNoLongerMappedEvenWithValidToken() throws Exception {
+        String token = token(SOLICITANTE, 1L, Instant.now().plusSeconds(60), issuer, audience);
+
+        mockMvc.perform(put(ME_PATH)
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fullName\":\"Ana Lopez\"}"))
+                .andExpect(status().isMethodNotAllowed());
+    }
+
+    @Test
+    void createUserWithoutTokenReturns401() throws Exception {
+        mockMvc.perform(post(USERS_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(CREATE_USER_BODY))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void createUserWithAgenteReturns403() throws Exception {
+        String token = token(AGENTE, 2L, Instant.now().plusSeconds(60), issuer, audience);
+
+        mockMvc.perform(post(USERS_PATH)
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(CREATE_USER_BODY))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getUserByIdWithoutTokenReturns401() throws Exception {
+        mockMvc.perform(get(USER_BY_ID_PATH))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void updateStatusWithoutTokenReturns401() throws Exception {
+        mockMvc.perform(patch(STATUS_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"active\":false}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void updateStatusWithAgenteReturns403() throws Exception {
+        String token = token(AGENTE, 2L, Instant.now().plusSeconds(60), issuer, audience);
+
+        mockMvc.perform(patch(STATUS_PATH)
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"active\":false}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getUserByNonNumericIdWithAdminReturns400MalformedRequest() throws Exception {
+        String token = token(ADMIN, 3L, Instant.now().plusSeconds(60), issuer, audience);
+
+        mockMvc.perform(get("/api/v1/users/abc").header("Authorization", bearer(token)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
     }
 
     private String token(String role, long subject, Instant expiresAt, String iss, String aud) {

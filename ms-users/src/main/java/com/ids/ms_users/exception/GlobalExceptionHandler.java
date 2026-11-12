@@ -4,13 +4,19 @@ import java.net.URI;
 import java.time.Instant;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
@@ -18,6 +24,7 @@ public class GlobalExceptionHandler {
 
     private static final String FIELD_CODE = "code";
     private static final String TIMESTAMP_PROPERTY = "timestamp";
+    private static final Logger LOG = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(EmailAlreadyExistsException.class)
     public ProblemDetail handleEmailAlreadyExists(EmailAlreadyExistsException ex) {
@@ -45,7 +52,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.FORBIDDEN, "No tiene permisos para realizar esta operación");
         problem.setTitle("Acceso Denegado");
         problem.setType(URI.create("https://ids.com/errors/forbidden"));
-        problem.setProperty(FIELD_CODE, "FORBIDDEN_OPERATION");
+        problem.setProperty(FIELD_CODE, "FORBIDDEN");
         problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return problem;
     }
@@ -56,7 +63,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.UNAUTHORIZED, "Autenticación requerida o token inválido");
         problem.setTitle("No Autenticado");
         problem.setType(URI.create("https://ids.com/errors/unauthorized"));
-        problem.setProperty(FIELD_CODE, "UNAUTHENTICATED");
+        problem.setProperty(FIELD_CODE, "UNAUTHORIZED");
         problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return problem;
     }
@@ -76,7 +83,7 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
         problem.setTitle("Acceso Denegado");
         problem.setType(URI.create("https://ids.com/errors/forbidden"));
-        problem.setProperty(FIELD_CODE, "FORBIDDEN_OPERATION");
+        problem.setProperty(FIELD_CODE, "FORBIDDEN");
         problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return problem;
     }
@@ -99,18 +106,40 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ProblemDetail> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.METHOD_NOT_ALLOWED, "El método HTTP no está permitido para este recurso");
+        problem.setTitle("Método No Permitido");
+        problem.setType(URI.create("https://ids.com/errors/method-not-allowed"));
+        problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).headers(ex.getHeaders()).body(problem);
+    }
+
     @ExceptionHandler(NoResourceFoundException.class)
     public ProblemDetail handleNoResourceFound(NoResourceFoundException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, "Recurso no encontrado");
         problem.setTitle("Recurso No Encontrado");
         problem.setType(URI.create("https://ids.com/errors/not-found"));
-        problem.setProperty(FIELD_CODE, "NOT_FOUND");
+        problem.setProperty(FIELD_CODE, "ROUTE_NOT_FOUND");
+        problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
+        return problem;
+    }
+
+    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
+    public ProblemDetail handleMalformedRequest(Exception ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST, "La petición no se puede leer o tiene un formato inválido");
+        problem.setTitle("Petición Malformada");
+        problem.setType(URI.create("https://ids.com/errors/malformed-request"));
+        problem.setProperty(FIELD_CODE, "MALFORMED_REQUEST");
         problem.setProperty(TIMESTAMP_PROPERTY, Instant.now());
         return problem;
     }
 
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleGeneralException(Exception ex) {
+        LOG.error("Error no controlado al procesar la petición", ex);
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
         HttpStatus.INTERNAL_SERVER_ERROR, "Ha ocurrido un error inesperado en el servidor");
         problem.setTitle("Error Interno del Servidor");

@@ -28,15 +28,16 @@ class UnmappedRouteSecurityTest {
     private JwtDecoder jwtDecoder;
 
     @Test
-    void anonymousRequestToUnmappedRouteReturnsRouteNotMapped401() throws Exception {
+    void anonymousRequestToUnmappedRouteReturns401Unauthorized() throws Exception {
         mockMvc.perform(get("/no-existe"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("ROUTE_NOT_MAPPED"));
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
     }
 
     @Test
     void authenticatedRequestToUnmappedRouteReturns404() throws Exception {
         mockMvc.perform(get("/no-existe").with(jwt()))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ROUTE_NOT_FOUND"));
     }
 }

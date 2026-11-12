@@ -1,5 +1,6 @@
 package com.ids.ms_users.controller;
 
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -41,9 +42,14 @@ class AuthControllerSecurityTest {
     private static final String LOGIN_PATH = "/api/v1/auth/login";
     private static final String LOGOUT_PATH = "/api/v1/auth/logout";
     private static final String REFRESH_PATH = "/api/v1/auth/refresh";
+    private static final String REGISTER_PATH = "/api/v1/auth/register";
     private static final String LOGIN_BODY = "{\"email\":\"ana@ids.com\",\"password\":\"Passw0rd!\"}";
     private static final String REFRESH_BODY = "{\"refreshToken\":\"rt-123\"}";
     private static final String LOGOUT_BODY = "{\"refreshToken\":\"rt-123\"}";
+    private static final String REGISTER_BODY =
+            "{\"fullName\":\"Ana Lopez\",\"email\":\"ana@ids.com\",\"password\":\"Passw0rd!\"}";
+    private static final String WEAK_REGISTER_BODY =
+            "{\"fullName\":\"Ana Lopez\",\"email\":\"ana@ids.com\",\"password\":\"solodeletras\"}";
 
     @Autowired
     private MockMvc mockMvc;
@@ -117,6 +123,79 @@ class AuthControllerSecurityTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(LOGOUT_BODY))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void logoutWithAgenteReturns204() throws Exception {
+        String token = token("AGENTE", Instant.now().plusSeconds(60));
+
+        mockMvc.perform(post(LOGOUT_PATH)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(LOGOUT_BODY))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void logoutWithAdminReturns204() throws Exception {
+        String token = token("ADMIN", Instant.now().plusSeconds(60));
+
+        mockMvc.perform(post(LOGOUT_PATH)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(LOGOUT_BODY))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void registerIsPublicAndReturns201WithoutToken() throws Exception {
+        mockMvc.perform(post(REGISTER_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(REGISTER_BODY))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void registerWithWeakPasswordReturns400() throws Exception {
+        mockMvc.perform(post(REGISTER_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(WEAK_REGISTER_BODY))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void refreshWithInvalidTokenReturns401() throws Exception {
+        doThrow(new InvalidCredentialsException("Credenciales inválidas")).when(userService)
+                .refresh(anyString());
+
+        mockMvc.perform(post(REFRESH_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(REFRESH_BODY))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
+    }
+
+    @Test
+    void registerWithMalformedJsonReturns400MalformedRequest() throws Exception {
+        mockMvc.perform(post(REGISTER_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fullName\":"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
+    }
+
+    @Test
+    void registerWithUnexpectedErrorReturns500WithoutLeakingInternalDetail() throws Exception {
+        doThrow(new IllegalStateException("fallo interno con datos sensibles")).when(userService)
+                .register(org.mockito.ArgumentMatchers.any());
+
+        mockMvc.perform(post(REGISTER_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(REGISTER_BODY))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
+                .andExpect(jsonPath("$.detail").value("Ha ocurrido un error inesperado en el servidor"));
     }
 
     private String token(String role, Instant expiresAt) {

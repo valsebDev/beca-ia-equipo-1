@@ -172,7 +172,7 @@ Cada respuesta de error es un `ProblemDetail` con campo `code`; el `detail` va e
 | 500 | `INTERNAL_ERROR` | Genérico, sin detalle interno |
 | 503 | `DEPENDENCY_UNAVAILABLE` | Servicio dependiente caído, lento o que rechaza el token |
 
-`ms-users` renombra `UNAUTHENTICATED` y `FORBIDDEN_OPERATION` a `UNAUTHORIZED` y `FORBIDDEN`.
+`ms-users` usa `UNAUTHORIZED` y `FORBIDDEN` (no `UNAUTHENTICATED` ni `FORBIDDEN_OPERATION`). Las rutas inexistentes responden 404 `ROUTE_NOT_FOUND` y las anónimas en rutas inexistentes 401 `UNAUTHORIZED`. El 405 (método no permitido) va sin `code`, porque §3.4 no define ninguno.
 
 ## 8. Configuración y secretos
 
