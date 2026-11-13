@@ -10,13 +10,11 @@ public final class UserMapper {
 
     public static UserResponse toResponse(User user) {
         return new UserResponse(
-                user.getUserIdentifier(),
-                user.getName(),
-                user.getPaternalName(),
-                user.getMaternalName(),
+                user.getId(),
                 user.getEmail(),
+                user.getFullName(),
                 user.getRole(),
-                user.getIsActive(),
+                user.getActive(),
                 user.getCreatedAt()
         );
     }

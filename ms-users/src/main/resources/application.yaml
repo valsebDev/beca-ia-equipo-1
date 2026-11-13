@@ -29,9 +29,22 @@ app:
   security:
     jwt:
       secret: ${JWT_SECRET}
-      access-ttl-minutes: ${JWT_ACCESS_TTL_MINUTES:15}
+      access-ttl: ${JWT_ACCESS_TTL:PT15M}
+      refresh-ttl-days: ${JWT_REFRESH_TTL_DAYS:7}
       issuer: ms-users
       audience: mesa-ayuda
-    lock:
-      max-failed-attempts: ${MAX_FAILED_ATTEMPTS:5}
-      duration-minutes: ${LOCK_DURATION_MINUTES:15}
+    password:
+      bcrypt-cost: ${BCRYPT_COST:10}
+  bootstrap:
+    admin:
+      email: ${ADMIN_EMAIL}
+      password: ${ADMIN_PASSWORD}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never

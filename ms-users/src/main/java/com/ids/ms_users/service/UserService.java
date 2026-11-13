@@ -2,182 +2,105 @@ package com.ids.ms_users.service;
 
 import com.ids.ms_users.domain.Role;
 import com.ids.ms_users.domain.User;
-import com.ids.ms_users.dto.response.AuthResponse;
-import com.ids.ms_users.dto.request.LoginRequest;
+import com.ids.ms_users.dto.request.CreateUserRequest;
 import com.ids.ms_users.dto.request.RegisterUserRequest;
-import com.ids.ms_users.dto.request.UpdateProfileRequest;
 import com.ids.ms_users.dto.request.UpdateUserStatusRequest;
 import com.ids.ms_users.dto.response.UserResponse;
-import com.ids.ms_users.exception.AccountInactiveException;
-import com.ids.ms_users.exception.AccountLockedException;
 import com.ids.ms_users.exception.EmailAlreadyExistsException;
-import com.ids.ms_users.exception.ForbiddenOperationException;
-import com.ids.ms_users.exception.InvalidCredentialsException;
 import com.ids.ms_users.exception.UserNotFoundException;
 import com.ids.ms_users.mapper.UserMapper;
 import com.ids.ms_users.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
+import java.util.Locale;
 
 @Service
 public class UserService {
 
     private static final String USER_NOT_FOUND_MESSAGE = "Usuario no encontrado con identificador: ";
+    private static final String ADMIN_FULL_NAME = "Administrador Sistema";
 
     private final UserRepository userRepository;
-    private final TokenService tokenService;
-    private final BCryptPasswordEncoder passwordEncoder;
-    private final int maxFailedAttempts;
-    private final int lockDurationMinutes;
+    private final RefreshTokenService refreshTokenService;
+    private final PasswordEncoder passwordEncoder;
 
     public UserService(
             UserRepository userRepository,
-            TokenService tokenService,
-            @Value("${app.security.lock.max-failed-attempts}") int maxFailedAttempts,
-            @Value("${app.security.lock.duration-minutes}") int lockDurationMinutes) {
+            RefreshTokenService refreshTokenService,
+            PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
-        this.tokenService = tokenService;
-        this.passwordEncoder = new BCryptPasswordEncoder();
-        this.maxFailedAttempts = maxFailedAttempts;
-        this.lockDurationMinutes = lockDurationMinutes;
+        this.refreshTokenService = refreshTokenService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
     public UserResponse register(RegisterUserRequest request) {
-        if (userRepository.existsByEmail(request.email())) {
-            throw new EmailAlreadyExistsException(request.email());
-        }
+        return persistNewUser(request.fullName(), request.email(), request.password(), Role.SOLICITANTE);
+    }
 
-        String encodedPassword = passwordEncoder.encode(request.password());
+    @Transactional
+    public UserResponse createByAdmin(CreateUserRequest request) {
+        return persistNewUser(request.fullName(), request.email(), request.password(), request.role());
+    }
+
+    @Transactional
+    public UserResponse createAdminIfAbsent(String email, String rawPassword) {
+        return persistNewUser(ADMIN_FULL_NAME, email, rawPassword, Role.ADMIN);
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse getProfile(Long id) {
+        return UserMapper.toResponse(findUser(id));
+    }
+
+    @Transactional
+    public UserResponse updateStatusByAdmin(Long id, UpdateUserStatusRequest request) {
+        User user = findUser(id);
+        user.setActive(request.active());
+        if (Boolean.FALSE.equals(request.active())) {
+            refreshTokenService.revokeAllForUser(user.getId());
+        }
+        return UserMapper.toResponse(userRepository.save(user));
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse getUserByIdByAdmin(Long id) {
+        return UserMapper.toResponse(findUser(id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserResponse> listUsersByAdmin(Role role) {
+        List<User> users = role == null ? userRepository.findAll() : userRepository.findByRole(role);
+        return users.stream().map(UserMapper::toResponse).toList();
+    }
+
+    private UserResponse persistNewUser(String fullName, String email, String rawPassword, Role role) {
+        String normalizedEmail = normalizeEmail(email);
+        if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
+            throw new EmailAlreadyExistsException(normalizedEmail);
+        }
         User user = new User(
-                UUID.randomUUID().toString(),
-                request.name(),
-                request.paternalName(),
-                request.maternalName(),
-                request.email(),
-                encodedPassword,
-                Role.SOLICITANTE,
+                fullName,
+                normalizedEmail,
+                passwordEncoder.encode(rawPassword),
+                role,
                 true,
-                LocalDateTime.now()
+                Instant.now()
         );
-
-        User saved = userRepository.save(user);
-        return UserMapper.toResponse(saved);
+        return UserMapper.toResponse(userRepository.save(user));
     }
 
-    @Transactional
-    public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new InvalidCredentialsException("Credenciales no válidas"));
-
-        validateAccountStatus(user);
-        validatePassword(user, request.softPassword());
-
-        user.setFailedAttempts(0);
-        user.setLockedUntil(null);
-
-        String token = tokenService.generateToken(user);
-        storeTokenMetadata(user);
-
-        return new AuthResponse(
-                token,
-                "Bearer",
-                tokenService.getExpirationSeconds(),
-                UserMapper.toResponse(user)
-        );
+    private String normalizeEmail(String email) {
+        return email.toLowerCase(Locale.ROOT);
     }
 
-    private void validateAccountStatus(User user) {
-        if (Boolean.FALSE.equals(user.getIsActive())) {
-            throw new AccountInactiveException("La cuenta está desactivada");
-        }
-
-        if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now())) {
-            throw new AccountLockedException("La cuenta está bloqueada temporalmente por intentos fallidos");
-        }
+    private User findUser(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException(USER_NOT_FOUND_MESSAGE + id));
     }
-
-    private void validatePassword(User user, String providedPassword) {
-        if (!passwordEncoder.matches(providedPassword, user.getPassword())) {
-            handleFailedLoginAttempt(user);
-        }
-    }
-
-    private void handleFailedLoginAttempt(User user) {
-        int attempts = user.getFailedAttempts() + 1;
-        user.setFailedAttempts(attempts);
-        if (attempts >= maxFailedAttempts) {
-            user.setLockedUntil(LocalDateTime.now().plusMinutes(lockDurationMinutes));
-            userRepository.save(user);
-            throw new AccountLockedException("La cuenta se ha bloqueado tras superar el número máximo de intentos");
-        }
-        userRepository.save(user);
-        throw new InvalidCredentialsException("Credenciales no válidas");
-    }
-
-    private void storeTokenMetadata(User user) {
-        user.setJwtId(UUID.randomUUID().toString());
-        user.setJwtExpiresAt(LocalDateTime.now().plusSeconds(tokenService.getExpirationSeconds()));
-        userRepository.save(user);
-    }
-
-    @Transactional(readOnly = true)
-    public UserResponse getProfile(String userIdentifier) {
-        User user = userRepository.findByUserIdentifier(userIdentifier)
-            .orElseThrow(() -> new UserNotFoundException(
-                USER_NOT_FOUND_MESSAGE + userIdentifier));
-        return UserMapper.toResponse(user);
-    }
-
-    @Transactional
-    public UserResponse updateProfile(String userIdentifier, UpdateProfileRequest request) {
-        User user = userRepository.findByUserIdentifier(userIdentifier)
-            .orElseThrow(() -> new UserNotFoundException(
-                USER_NOT_FOUND_MESSAGE + userIdentifier));
-        user.setName(request.name());
-        user.setPaternalName(request.paternalName());
-        user.setMaternalName(request.maternalName());
-
-        User updated = userRepository.save(user);
-        return UserMapper.toResponse(updated);
-    }
-
-    @Transactional
-    public UserResponse updateStatusByAdmin(
-            String userIdentifier, UpdateUserStatusRequest request, List<String> requesterRoles) {
-        requireAdmin(requesterRoles);
-        User user = userRepository.findByUserIdentifier(userIdentifier)
-            .orElseThrow(() -> new UserNotFoundException(
-                USER_NOT_FOUND_MESSAGE + userIdentifier));
-        user.setIsActive(request.isActive());
-        if (Boolean.FALSE.equals(request.isActive())) {
-            user.setJwtId(null);
-            user.setJwtExpiresAt(null);
-        }
-
-        User updated = userRepository.save(user);
-        return UserMapper.toResponse(updated);
-    }
-
-    @Transactional(readOnly = true)
-    public UserResponse getUserByIdByAdmin(String userIdentifier, List<String> requesterRoles) {
-        requireAdmin(requesterRoles);
-        User user = userRepository.findByUserIdentifier(userIdentifier)
-            .orElseThrow(() -> new UserNotFoundException(
-                USER_NOT_FOUND_MESSAGE + userIdentifier));
-        return UserMapper.toResponse(user);
-    }
-
-    private void requireAdmin(List<String> roles) {
-        if (roles == null || !roles.contains(Role.ADMIN.name())) {
-            throw new ForbiddenOperationException("Solo un usuario con rol ADMIN puede cambiar estados");
-        }
-    }
-
 }
+

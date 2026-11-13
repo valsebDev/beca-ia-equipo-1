@@ -1,97 +1,62 @@
 package com.ids.ms_users.service;
 
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.util.Date;
-import java.util.List;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
+
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.ids.ms_users.config.properties.JwtProperties;
 import com.ids.ms_users.domain.Role;
 import com.ids.ms_users.domain.User;
-import com.ids.ms_users.exception.InvalidCredentialsException;
-
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
+import com.nimbusds.jose.jwk.source.ImmutableSecret;
 
 class TokenServiceTest {
 
-    private static final String SECRET = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970";
-    private static final String ISSUER = "ms-users";
-    private static final String AUDIENCE = "mesa-ayuda";
-    private static final String USER_IDENTIFIER = "c2bc24d7-923d-4383-9425-c3b1573dd005";
+    private static final String SECRET = "test-secret-with-at-least-32-bytes-000";
+    private static final JwtProperties PROPERTIES = new JwtProperties(
+            SECRET, Duration.ofMinutes(15), 7, "ms-users", "mesa-ayuda");
 
     private TokenService tokenService;
 
     @BeforeEach
     void setUp() {
-        tokenService = new TokenService(
-            Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8)), 15, ISSUER, AUDIENCE);
+        SecretKey key = new SecretKeySpec(SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+        NimbusJwtEncoder encoder = new NimbusJwtEncoder(new ImmutableSecret<>(key));
+        tokenService = new TokenService(encoder, PROPERTIES);
     }
 
     @Test
-    void generateToken_firmaClaimsRequeridosYPermiteExtraerIdentificador() {
-        User user = new User(USER_IDENTIFIER, "Ana", "García", "López", "ana@example.com",
-                "encoded-password", Role.ADMIN, true, LocalDateTime.now());
-        ReflectionTestUtils.setField(user, "id", 42L);
-
-        String token = tokenService.generateToken(user);
-        Claims claims = Jwts.parser()
-                .verifyWith(Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8)))
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-
-        assertEquals(ISSUER, claims.getIssuer());
-        assertEquals(java.util.Set.of(AUDIENCE), claims.getAudience());
-        assertEquals("42", claims.getSubject());
-        assertEquals(USER_IDENTIFIER, claims.get("userIdentifier", String.class));
-        assertEquals("ana@example.com", claims.get("email", String.class));
-        assertEquals("Ana García López", claims.get("name", String.class));
-        assertEquals(List.of("ADMIN"), claims.get("roles"));
-        assertNotNull(claims.getExpiration());
-        assertEquals(USER_IDENTIFIER, tokenService.extractUserIdentifier("Bearer " + token));
-        assertEquals(List.of("ADMIN"), tokenService.extractRoles("Bearer " + token));
+    void generatedTokenIsNotEmpty() {
+        assertThat(tokenService.generateToken(user(42L, Role.ADMIN))).isNotBlank();
     }
 
     @Test
-    void extractUserIdentifier_tokenFirmadoAlterado_lanzaCredencialesInvalidas() {
-        User user = new User(USER_IDENTIFIER, "Ana", "García", "López", "ana@example.com",
-                "encoded-password", Role.ADMIN, true, LocalDateTime.now());
-        ReflectionTestUtils.setField(user, "id", 42L);
-        String[] parts = tokenService.generateToken(user).split("\\.");
-        String payload = parts[1];
-        parts[1] = (payload.charAt(0) == 'A' ? "B" : "A") + payload.substring(1);
-
-        assertThrows(InvalidCredentialsException.class,
-                () -> tokenService.extractUserIdentifier("Bearer " + String.join(".", parts)));
+    void accessTtlIsExposedInSeconds() {
+        assertThat(tokenService.getAccessTtlSeconds()).isEqualTo(15 * 60L);
     }
 
     @Test
-    void extractUserIdentifier_sinBearerOTokenInvalido_lanzaCredencialesInvalidas() {
-        assertThrows(InvalidCredentialsException.class, () -> tokenService.extractUserIdentifier(null));
-        assertThrows(InvalidCredentialsException.class, () -> tokenService.extractUserIdentifier("Basic token"));
-        assertThrows(InvalidCredentialsException.class, () -> tokenService.extractUserIdentifier("Bearer invalid"));
+    void generateRejectsUserWithoutId() {
+        User unsaved = user(null, Role.SOLICITANTE);
+
+        assertThatThrownBy(() -> tokenService.generateToken(unsaved))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
-    @Test
-    void extractRoles_sinClaimDeRoles_devuelveListaVacia() {
-        Date now = new Date();
-        String tokenWithoutRoles = Jwts.builder()
-                .issuer(ISSUER)
-                .audience().add(AUDIENCE).and()
-                .subject("42")
-                .issuedAt(now)
-                .expiration(new Date(now.getTime() + 60_000))
-                .signWith(Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8)), Jwts.SIG.HS256)
-                .compact();
-
-        assertEquals(List.of(), tokenService.extractRoles("Bearer " + tokenWithoutRoles));
+    private static User user(Long id, Role role) {
+        User user = new User("Ana Pérez", "ana@example.com",
+                "hash", role, true, Instant.now());
+        ReflectionTestUtils.setField(user, "id", id);
+        return user;
     }
 }

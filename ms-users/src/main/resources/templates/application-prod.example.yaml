@@ -1,0 +1,25 @@
+# Plantilla para producción. Copiar a application-prod.yaml (ignorado por git) y activar con SPRING_PROFILES_ACTIVE=prod.
+# Solo referencia: todas las variables son obligatorias, sin valores por defecto para la base de datos ni para secretos.
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET}
+      access-ttl: ${JWT_ACCESS_TTL:PT15M}
+      refresh-ttl-days: ${JWT_REFRESH_TTL_DAYS:7}
+    password:
+      bcrypt-cost: ${BCRYPT_COST:10}
+  bootstrap:
+    admin:
+      email: ${ADMIN_EMAIL}
+      password: ${ADMIN_PASSWORD}
+
+management:
+  endpoint:
+    health:
+      show-details: never

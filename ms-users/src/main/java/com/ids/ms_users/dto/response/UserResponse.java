@@ -1,15 +1,13 @@
 package com.ids.ms_users.dto.response;
 
 import com.ids.ms_users.domain.Role;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record UserResponse(
-    String userIdentifier,
-    String name,
-    String paternalName,
-    String maternalName,
+    Long id,
     String email,
+    String fullName,
     Role role,
-    Boolean isActive,
-    LocalDateTime createdAt
+    Boolean active,
+    Instant createdAt
 ) {}

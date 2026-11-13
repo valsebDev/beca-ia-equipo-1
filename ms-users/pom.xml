@@ -21,7 +21,6 @@
     
     <properties>
         <java.version>17</java.version>
-        <jjwt.version>0.12.6</jjwt.version>
         <checkstyle.version>10.21.4</checkstyle.version>
         <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
         <maven-pmd-plugin.version>3.28.0</maven-pmd-plugin.version>
@@ -38,28 +37,31 @@
             <artifactId>spotbugs-annotations</artifactId>
             <version>4.9.3</version>
         </dependency>
-        <!-- JJWT para generación y validación de tokens HS256 -->
+        <!-- Resource Server: NimbusJwtEncoder/NimbusJwtDecoder para JWT HS256 -->
         <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-api</artifactId>
-            <version>${jjwt.version}</version>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
+        </dependency>
+        <!-- Pruebas de seguridad: SecurityMockMvcRequestPostProcessors.jwt() -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Testcontainers: PostgreSQL 16 real para pruebas de integración -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-impl</artifactId>
-            <version>${jjwt.version}</version>
-            <scope>runtime</scope>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-postgresql</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-jackson</artifactId>
-            <version>${jjwt.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-        <!-- Base de datos en memoria para pruebas de integración -->
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
         <!-- Spring Boot Web: arquitectura REST, controladores y ProblemDetail (RFC 9457) -->
@@ -93,7 +95,11 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Flyway: migraciones de base de datos -->
+        <!-- Flyway: migraciones de base de datos (autoconfiguración en Boot 4) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-flyway</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>

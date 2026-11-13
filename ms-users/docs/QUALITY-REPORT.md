@@ -3,6 +3,103 @@
 Fecha: 2026-11-08
 Versión de plataforma: Java 17, Spring Boot 4.1.2
 
+## Verificación del 2026-11-13
+
+Se ejecutó `.\mvnw.cmd -B verify` con Java 17 y Docker: **BUILD SUCCESS**,
+105 pruebas, sin fallos, errores ni pruebas omitidas. Checkstyle, PMD, CPD y
+SpotBugs terminaron sin hallazgos que bloqueen el build. Dependency-Check
+actualizó los datos de NVD y terminó correctamente; el reporte no registró
+vulnerabilidades para las dependencias analizadas. El analizador OSS Index
+ya estaba desactivado en la configuración existente.
+
+Para medir la cobertura sin acumular ejecuciones anteriores, se repitió
+`verify` con un archivo JaCoCo nuevo para el reporte:
+
+| Cobertura de líneas | Cubiertas / total | Resultado |
+|---|---:|---:|
+| Total | 357 / 417 | 85.61% |
+| Service | 117 / 125 | 93.60% |
+| Controller | 18 / 18 | 100% |
+
+El gate configurado en el POM comprueba cobertura de **instrucciones** global,
+no de líneas por capa; los porcentajes anteriores se verificaron en el reporte
+JaCoCo. La configuración no se modificó.
+
+El CI del PR #30 ejecutó las 105 pruebas correctamente, pero Dependency-Check
+falló al actualizar NVD por HTTP 503. El reintento del 2026-11-13 volvió a
+fallar por la misma causa; por tanto, el CI sigue pendiente, aunque la
+verificación local haya terminado correctamente. No se desactivó ningún gate.
+
+Las cifras y decisiones de las secciones siguientes son históricas. En la
+revisión actual, `config/dependency-check-suppressions.xml` está vacío; no
+contiene la supresión que se describe en el informe original.
+
+### Caché independiente de NVD en CI
+
+El [workflow de ms-users](../../.github/workflows/ci-fernando.yml) mantiene la
+base de Dependency-Check en un directorio temporal del runner, separado de
+la caché Maven. La clave contiene sistema operativo, servicio, versión
+`13.0.0` del plugin y fecha UTC. Si no existe la entrada del día, se restaura
+la más reciente con el mismo prefijo compatible. Al cambiar la versión del
+plugin, se debe actualizar también la versión de la clave.
+
+La actualización de NVD se ejecuta en un paso propio
+(`dependency-check:update-only`) con hasta 3 intentos espaciados (2 y 4
+minutos) ante errores como el 503. La caché se guarda con
+`actions/cache/save@v4` justo después de una actualización exitosa, de modo
+que se conserva aunque después fallen pruebas o analizadores. Si los tres
+intentos fallan, el job termina sin guardar una caché incompleta. Después,
+`verify` reutiliza los datos recién actualizados (vigencia de 240 minutos)
+sin volver a consultar NVD. No se usa `autoUpdate=false` ni
+`failOnError=false`; no se acepta un análisis incompleto.
+
+GitHub limita el alcance de las cachés: un `pull_request` solo restaura
+entradas de su propia referencia o de `main`, no las guardadas por push en la
+rama de trabajo. Cada alcance necesita una primera descarga exitosa.
+
+**Fuente de datos (aprobada por el equipo):** la API REST de NVD devolvió
+503 de forma persistente desde los runners de GitHub en la carga inicial
+(425.542 registros; 3 intentos fallidos en la ejecución 43475650763). El
+workflow pasa `-DnvdDatafeedUrl` con los feeds JSON 2.0 oficiales de NIST
+(`https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-{0}.json.gz`), opción
+documentada por Dependency-Check. Riesgo aceptado: los feeds de NIST se
+publican una vez al día y pueden retrasarse. La clave de caché usa el prefijo
+`nvd-feed-` para no mezclarla con bases construidas desde la API. El cambio
+solo afecta al workflow; el POM sigue igual.
+
+Push y pull_request usan grupos de concurrencia distintos
+(`ci-fernando-<evento>-<rama>`). Con un grupo compartido, la ejecución
+de pull_request en cola cancelaba la de push (ejecución 43480057335). Se
+conservan los triggers, las pruebas, los umbrales y la lectura de
+`NVD_API_KEY` desde el secreto existente. No se agregaron dependencias ni
+plugins.
+
+| Aspecto | Antes | Con la nueva configuración |
+|---|---|---|
+| Datos NVD | Dependían de la restauración de la caché Maven | Caché propia, guardada tras actualizar y antes de `verify` |
+| Carga inicial | API NVD: 425.512 registros, falló con 503 | Feeds JSON 2.0 de NIST: ~2 min, sin errores |
+| `verify` | Consultaba NVD y fallaba con 503 | Reutiliza la base recién actualizada (16 ms de chequeo) |
+| Gate | Bloqueado por un error externo | Activo, con `failBuildOnCVSS=7` sin cambios |
+
+Validación local del cambio:
+
+- `actionlint` 1.7.12 sobre el workflow: sin errores.
+- `.\mvnw.cmd -B "-DdataDirectory=<copia>" dependency-check:update-only`
+  con una copia de la base local: **BUILD SUCCESS**; usó el directorio
+  indicado y omitió la descarga porque los datos tenían menos de 240 minutos.
+- Desde `ms-users`, con Java 17 y Docker:
+  `.\mvnw.cmd -B "-DdataDirectory=$env:DEPENDENCY_CHECK_DATA_DIRECTORY" verify`
+  → **BUILD SUCCESS**, 105 pruebas, 0 fallos, errores u omitidas; 3:03 minutos.
+
+Validación en GitHub Actions (commit `febec0a`):
+
+- push, ejecución 43480208647: **success**. Sin caché previa; carga desde los
+  feeds en 121 s; `Cache saved with key: nvd-feed-Linux-ms-users-13.0.0-2026-11-13`;
+  en `verify`, `Check for updates complete (16 ms)`, 105 pruebas sin fallos,
+  0 violaciones de Checkstyle, cobertura cumplida y BUILD SUCCESS.
+- pull_request, ejecución 43480221322: **success**. Carga en 98 s, caché
+  guardada en el alcance del PR, 105 pruebas sin fallos y BUILD SUCCESS.
+
 ## Antes / Después
 
 | Herramienta | Antes | Después |
