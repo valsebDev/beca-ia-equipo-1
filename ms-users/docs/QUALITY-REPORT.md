@@ -3,6 +3,37 @@
 Fecha: 2026-11-08
 Versión de plataforma: Java 17, Spring Boot 4.1.2
 
+## Verificación del 2026-11-13
+
+Se ejecutó `.\mvnw.cmd -B verify` con Java 17 y Docker: **BUILD SUCCESS**,
+105 pruebas, sin fallos, errores ni pruebas omitidas. Checkstyle, PMD, CPD y
+SpotBugs terminaron sin hallazgos que bloqueen el build. Dependency-Check
+actualizó los datos de NVD y terminó correctamente; el reporte no registró
+vulnerabilidades para las dependencias analizadas. El analizador OSS Index
+ya estaba desactivado en la configuración existente.
+
+Para medir la cobertura sin acumular ejecuciones anteriores, se repitió
+`verify` con un archivo JaCoCo nuevo para el reporte:
+
+| Cobertura de líneas | Cubiertas / total | Resultado |
+|---|---:|---:|
+| Total | 357 / 417 | 85.61% |
+| Service | 117 / 125 | 93.60% |
+| Controller | 18 / 18 | 100% |
+
+El gate configurado en el POM comprueba cobertura de **instrucciones** global,
+no de líneas por capa; los porcentajes anteriores se verificaron en el reporte
+JaCoCo. La configuración no se modificó.
+
+El CI del PR #30 ejecutó las 105 pruebas correctamente, pero Dependency-Check
+falló al actualizar NVD por HTTP 503. El reintento del 2026-11-13 volvió a
+fallar por la misma causa; por tanto, el CI sigue pendiente, aunque la
+verificación local haya terminado correctamente. No se desactivó ningún gate.
+
+Las cifras y decisiones de las secciones siguientes son históricas. En la
+revisión actual, `config/dependency-check-suppressions.xml` está vacío; no
+contiene la supresión que se describe en el informe original.
+
 ## Antes / Después
 
 | Herramienta | Antes | Después |
