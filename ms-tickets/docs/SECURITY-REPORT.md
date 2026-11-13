@@ -1,79 +1,72 @@
 # Reporte de seguridad P3 — ms-tickets
 
-Servicio: `ms-tickets` (Spring Boot 4.1.2, Java 17). Fuente de verdad: `ARCHITECTURE.md` (§6.3 matriz de estados, §3.4 errores, §7 propagación). Plan: `prompts/p3-plan.md`.
+Servicio: `ms-tickets` (Spring Boot 4.1.2, Java 17). Fuente de verdad: `ARCHITECTURE.md` (§6.3 matriz de autorización, §3.4 errores, §7 propagación). Plan: `prompts/p3-plan.md`.
 
 ## 1. Matriz endpoint → rol
 
-Cada endpoint exige JWT (`bearerAuth`). Sin token o con token inválido responde `401`. La autorización por rol y propiedad se aplica en `TicketAccessPolicy`.
+Cada endpoint exige JWT (`bearerAuth`). Sin token o con token inválido responde `401`. La regla de rol se aplica en `SecurityConfig` y la de propiedad en `TicketAccessPolicy`.
 
 | Endpoint | Rol que puede | Notas |
 |---|---|---|
-| `POST /api/v1/tickets` | SOLICITANTE, ADMIN | El solicitante queda como dueño del ticket |
-| `GET /api/v1/tickets` | Según rol (propiedad / asignación / ADMIN) | Filtra por visibilidad |
+| `POST /api/v1/tickets` | SOLICITANTE | ARCHITECTURE §6.3: ADMIN y AGENTE reciben `403`. El solicitante queda como dueño |
+| `GET /api/v1/tickets` | Según rol (propios / asignados / todos) | Filtra por visibilidad |
 | `GET /api/v1/tickets/{id}` | Dueño, agente asignado, ADMIN | Otro usuario recibe `403` |
-| `PATCH /api/v1/tickets/{id}/assignment` | ADMIN | Valida agente con ms-users (ver §4) |
-| `PATCH /api/v1/tickets/{id}/status` | Ver §2, divergencia con PLAN §4 | Transiciones según ARCHITECTURE §6.3 |
+| `PATCH /api/v1/tickets/{id}/assignment` | ADMIN | Valida agente con ms-users (ver §5) |
+| `PATCH /api/v1/tickets/{id}/status` | Según transición (ver §2) | Matriz de ARCHITECTURE §6.3 |
 | `GET /api/v1/tickets/{id}/history` | Dueño, agente asignado, ADMIN | Otro usuario recibe `403` |
-
-Las celdas exactas por estado están en `prompts/p3-plan.md` §4 (línea ~69). Las pruebas de `TicketControllerTest` cubren 401 en los seis endpoints y 200/403 por rol y dueño.
 
 ## 2. Correcciones al plan
 
-- **Transición de estado (decisión tomada):** ARCHITECTURE §6.3 indica que el SOLICITANTE dueño cierra o cancela, y que el AGENTE asignado pasa a EN_PROGRESO o RESUELTO. `requerimientos.md` (RN-06, HU-04) y PLAN §7 decisión 2 dicen que solo el AGENTE cambia el estado. Se siguió ARCHITECTURE §6.3. **Pendiente:** actualizar `requerimientos.md` para que coincida.
-- **AGENTE → CANCELADO:** el plan lo ubicaba como permitido; la implementación responde `403`, según ARCHITECTURE §6.3.
-- **SOLICITANTE → CERRADO / CANCELADO:** `200` para el dueño del ticket (plan lo dejaba solo a AGENTE).
-- **ADMIN:** `200` para cambios de estado.
-- **Nombre de dependencia de pruebas:** ARCHITECTURE usa `spring-boot-starter-security-test`; el plan decía `oauth2-resource-server-test`. Se usó la de ARCHITECTURE.
+Estas cuatro correcciones siguen ARCHITECTURE §6.3 y están aplicadas en el código. `requerimientos.md` RN-05 y RN-06 y HU-TCK-04 ya coinciden con esa matriz.
 
-## 3. Hallazgos del revisor (SEC-01 a SEC-11)
+1. **AGENTE → CANCELADO = 403.** El plan lo permitía; ARCHITECTURE §6.3 y la implementación lo rechazan con `403`.
+2. **SOLICITANTE dueño cierra o cancela.** `CERRADO` desde `RESUELTO` y `CANCELADO` desde `ABIERTO` o `ASIGNADO`, solo para el dueño. El plan lo dejaba solo para el AGENTE.
+3. **ADMIN cambia el estado.** Puede ejecutar cualquier transición válida. El plan no lo contemplaba.
+4. **Dependencia de pruebas:** `spring-boot-starter-security-test` (`pom.xml`), la que indica ARCHITECTURE. El plan decía `oauth2-resource-server-test`.
 
-Revisión OWASP A01–A09 de solo lectura (P4, `.github/agents/revisor-seguridad-ms-tickets.agent.md`). Sin hallazgos CRITICAL ni HIGH en código. Decisión de Isaac: solo CRITICAL y HIGH se corrigen en P4, así que no hubo cambios de código por este paso.
+Pendiente: marcar la casilla "Plan corregido… marcando tus cambios" en la sección 7 de `prompts/p3-plan.md`.
 
-| ID | Estado | Resumen | Motivo |
-|---|---|---|---|
-| SEC-01 | No corregido (verificado) | Secretos en `.env` local | Archivo sin versionar y listado en `.gitignore` (`ms-tickets/.gitignore:38`). Riesgo local, no en repositorio |
-| SEC-02 | No corregido (verificado) | `TicketAccessPolicy.requireTransition` sin validación de rol | Riesgo medio. Aceptado y documentado; se revisará en la siguiente iteración |
-| SEC-03 | No corregido | `/v3/api-docs` con `permitAll` | Motivo pendiente de confirmar con Isaac (no hay decisión registrada) |
-| SEC-04 | **Pendiente de transcribir** | Detalle no guardado en el repositorio | Se necesita el texto original del revisor para completar esta fila |
-| SEC-05 | No corregido | `CurrentUser` con múltiples roles | Motivo pendiente de confirmar con Isaac (no hay decisión registrada) |
-| SEC-06 | No corregido | Valores por defecto en `application.yaml` | Solo en propiedades no secretas. Los secretos no tienen default (`JWT_SECRET`) |
-| SEC-07 | No corregido | `Dockerfile` y `.dockerignore` vacíos | Fuera del alcance de P3 (contenedorización) |
-| SEC-08 | No corregido | Sin auditoría de 401/403 | Mejora de observabilidad; fuera del alcance de P3 |
-| SEC-09 | No corregido | `@Setter` en `Ticket` | Motivo pendiente de confirmar con Isaac (no hay decisión registrada) |
-| SEC-10 | No corregido | `JwtProperties.toString` expone el secreto | Riesgo bajo; se registra como mejora |
-| SEC-11 | **Pendiente de transcribir** | Detalle no guardado en el repositorio | Se necesita el texto original del revisor para completar esta fila |
+## 3. Hallazgos del revisor (re-ejecución del 2026-11-12)
+
+Esta sección sustituye la tabla anterior SEC-01 a SEC-11. Ese registro no se conservó con el texto original, así que no se reconstruyó. Esta tabla viene de una nueva revisión de solo lectura (`revisor-seguridad-ms-tickets`, OWASP A01–A09) sobre el código actual. Ningún hallazgo es CRITICAL ni HIGH.
+
+| ID | Severidad | OWASP | Archivo:línea | Hallazgo | Estado |
+|---|---|---|---|---|---|
+| SEC-01 | BAJO | A01 | `service/TicketService.java:88-89`, `:118-119`, `:156-158` | Oráculo de existencia: `load()` responde `404 TICKET_NOT_FOUND` antes de comprobar acceso, así que un usuario sin relación recibe `404` o `403` según exista el id. Con ids secuenciales permite enumerar tickets. | No corregido. Corrección sugerida: responder igual en ambos casos |
+| SEC-02 | BAJO | A05 | `resources/application.yaml:5-6`, `:27-29` | Valores por defecto para la URL de la base de datos (`localhost:5434`), el usuario `tickets` y las URLs de servicios. La contraseña (`:7`) y `JWT_SECRET` (`:35`) no tienen default. | No corregido. Corrección sugerida: quitar defaults fuera de un perfil de desarrollo |
+| SEC-03 | BAJO | A01 / A04 | `security/CurrentUser.java:28-33`, `security/JwtRolesConverter.java:19-21`, `config/SecurityConfig.java:32-33` | Con varios roles, el filtro concede todos, pero `CurrentUser` toma el primero según el orden del enum. No hay escalada: el rol de menor privilegio gana y falla cerrado. El comportamiento no está especificado. | No corregido. Corrección sugerida: rechazar tokens con más de un rol reconocido |
+| SEC-04 | BAJO | A05 / A09 | `exception/GlobalExceptionHandler.java:74-77` | El manejador genérico `Exception.class` registra con stack trace errores como 405 o 415, que no tienen handler propio, así que un cliente puede generar logs ruidosos. **Inferido del código; no ejecutado.** | No corregido. Corrección sugerida: handlers específicos (405, 415) a nivel WARN sin stack trace |
+
+Categorías revisadas sin hallazgos: A03 (sin SQL concatenado), A04 (DTO de creación con Bean Validation; el cliente no fija `owner`, `status` ni `assigneeId`), A06 (Dependency-Check reporta 0 vulnerabilidades; no se verificó que el escaneo fuera completo), A09 (sin logs de tokens, contraseñas ni correos en `src/main`).
 
 ## 4. Qué se corrigió
 
 - Autenticación JWT como resource server (`JwtDecoderConfig`, `JwtRolesConverter`, handlers de 401/403, `SecurityConfig`, `CurrentUser`).
 - Validación de `iss` y `aud`, algoritmo fijo HS256, rechazo de `none`, expiración.
-- `JWT_SECRET` sin valor por defecto; arranque falla si mide menos de 32 bytes (`JwtDecoderConfig.java:28-34`).
+- `JWT_SECRET` sin valor por defecto; el arranque falla si mide menos de 32 bytes (`JwtDecoderConfig.java:28-34`).
 - `server.error.include-stacktrace=never` e `include-message=never`.
-- Clientes HTTP reales hacia ms-users y ms-catalog con `RestClient` (P5): timeouts configurables, propagación del Bearer token, mapeo de errores según ARCHITECTURE §3.4 y §7 (provider 404 → 422; 401/403/5xx/timeout/conexión → 503 `DEPENDENCY_UNAVAILABLE`).
+- Clientes HTTP reales hacia ms-users y ms-catalog (`ClientsConfig`, `RemoteUserGateway`, `RemoteCatalogGateway`, `UsersClient`, `CatalogClient`) con `RestClient`: timeouts configurables, propagación del Bearer token, y errores según ARCHITECTURE §3.4 y §7 (provider 404 → 422; 401/403/5xx/timeout/conexión → 503 `DEPENDENCY_UNAVAILABLE`).
 - Excepciones de dominio con causa (`DomainException`, `BusinessRuleException`, `DependencyUnavailableException`), corrigiendo 6 violaciones de PMD `PreserveStackTrace`.
-- Pruebas: 69 tests en total al cierre de P5, incluidos 19 tests de WireMock en `RemoteClientsTest`.
+- Pruebas: 69 tests al cierre de P5, incluidos los de WireMock en `RemoteClientsTest`.
 
 ## 5. Qué no se corrigió y por qué
 
-- SEC-01 a SEC-11 según la tabla de §3. Ninguno es CRITICAL ni HIGH.
-- **Contract test contra `docs/contratos/ms-users.yaml`:** bloqueado. Requiere confirmación de Isaac y que `GET /api/v1/users/{id}` esté en `main` (Fernando). No se ejecutó ninguna prueba contra el ms-users real.
-- **D13 (excepción):** ms-users no tiene cliente en ms-tickets. La validación de existencia de ticket se hace por la matriz de propiedad y por el catálogo; cualquier consulta a ms-users queda fuera de este paso hasta la confirmación.
+- **Prueba de contrato contra `docs/contratos/ms-users.yaml`:** pendiente. Requiere que `GET /api/v1/users/{id}` esté en `main` (ms-users) y no se ha ejecutado contra el servicio real.
+- Hallazgos SEC-01 a SEC-04 de la §3: ninguno es CRITICAL ni HIGH, y la decisión de P3 es corregir solo CRITICAL y HIGH.
 
 ## 6. Riesgos aceptados
 
 - **Clave HS256 compartida** entre ms-users (emisor) y ms-tickets (validador). Decisión D5 del plan.
 - **Access token válido hasta 15 minutos** después de desactivar un usuario, porque el JWT no se revoca en tiempo real.
 - **Sin rate limiting en `/auth/login`.** Es responsabilidad de ms-users; no se modifica desde ms-tickets.
+- **Transición de estados sin validación de rol específica** (riesgo medio del registro anterior): `TicketAccessPolicy.requireTransition` valida propiedad y asignación, no el rol por transición. Se revisará en la siguiente iteración.
 
 ## 7. Evidencia de verificación
 
-- `./mvnw -B verify` (con `NVD_API_KEY` cargada desde `.env` en un solo proceso, sin imprimirla): resultado registrado en `BITACORA-IA.md` entrada 20.
-- Cierre previo de P5: BUILD SUCCESS, 69 tests, Checkstyle 0, PMD 0, JaCoCo cumplido, SpotBugs y OWASP Dependency-Check sin hallazgos.
+- Re-ejecución del revisor de seguridad sobre el código en `ebf8f24`, solo lectura, sin cambios en el código.
+- `./mvnw -B verify`: CI `ci-isaac` sobre `ebf8f24`, 69 tests, 0 fallos (https://github.com/valsebDev/beca-ia-equipo-1/actions/runs/43155129535).
 
 ## 8. Pendientes
 
-1. Transcribir SEC-04 y SEC-11 desde la salida original del revisor.
-2. Confirmar con Fernando que `GET /api/v1/users/{id}` está en `main` y autorizar la prueba de contrato contra ms-users (STOP).
-3. Actualizar `docs/requerimientos.md` (RN-06, HU-04) para que coincida con ARCHITECTURE §6.3.
-4. Decidir qué hacer con la etiqueta existente `p3-entrega-isaac` (mover o usar otro nombre).
-5. Revisar si el `SpotBugs` exclude de `SPRING_CSRF_PROTECTION_DISABLED` (`spotbugs-exclude.xml`) puede estrecharse.
+1. Decidir si se corrigen SEC-01 a SEC-04 en P4 o se aceptan como riesgo.
+2. Revisar si el exclude de SpotBugs `SPRING_CSRF_PROTECTION_DISABLED` (`spotbugs-exclude.xml`) puede estrecharse.
