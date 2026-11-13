@@ -26,6 +26,28 @@ Cobertura de ramas: 52.1 % (38/73), sin umbral. Pruebas: 17, 0 fallos, 0 omitida
 
 Dependency-Check corrió con `NVD_API_KEY`. El analizador Sonatype OSS Index quedó deshabilitado por falta de credenciales: **pendiente** de revisar con esa fuente.
 
+### 1.1 Configuración compartida (revisión del PR #24, punto 3)
+
+Se reemplazaron `config/checkstyle/checkstyle.xml` y `config/pmd/ruleset.xml` por `references/checkstyle.xml` y `references/pmd-ruleset.xml`. Sin diferencias contra las referencias.
+
+| Elemento | ANTES (config propia de P2) | DESPUÉS (config compartida) |
+|---|---|---|
+| Módulos de Checkstyle | Faltaban `NewlineAtEndOfFile`, `AvoidNestedBlocks`, `OneStatementPerLine`, `MultipleVariableDeclarations` e `InnerAssignment` | Los 5 presentes |
+| Reglas de PMD | Faltaban 10 (p. ej. `MissingOverride`, `EqualsNull`, `DoubleCheckedLocking`) | Las 10 presentes |
+| Checkstyle | No se volvió a ejecutar con la config anterior | 0 violaciones |
+| PMD | No se volvió a ejecutar con la config anterior | 0 violaciones |
+| CPD (`cpd-check`) | No se volvió a ejecutar con la config anterior | Ejecutado en `verify`, sin fallos |
+| SpotBugs | 0 | 0 (`BugInstance size is 0`) |
+| Pruebas | 17 | 17, 0 fallos |
+| JaCoCo (líneas) | 81.8 % | "All coverage checks have been met" (umbral 70 %) |
+| Dependency-Check | pendiente | 0 vulnerabilidades reportadas, `BUILD SUCCESS` con `NVD_API_KEY` cargada desde `.env` |
+
+Código: sin cambios. La configuración compartida no produjo hallazgos nuevos. El `ConstantName` de la tabla anterior ya estaba corregido (`LOGGER` en `GlobalExceptionHandler.java:25`).
+
+PMD muestra un aviso (no una violación) de que `AvoidLosingExceptionInformation` se retirará en PMD 8. Se deja la regla porque viene de la referencia compartida.
+
+`./mvnw -B verify` termina con `BUILD SUCCESS` con `NVD_API_KEY` cargada desde `ms-tickets/.env`. Sin esa clave, Dependency-Check falla con `Invalid API Key` y el resultado queda como pendiente.
+
 ## 2. Tres hallazgos explicados
 
 ### 2.1 Checkstyle `ConstantName` en `GlobalExceptionHandler.java:25`
