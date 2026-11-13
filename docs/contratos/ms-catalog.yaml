@@ -4,7 +4,7 @@ info:
   version: v1
   description: >-
     Gestión de categorías, prioridades y políticas SLA de la mesa de ayuda.
-    En la Práctica 1 no hay autenticación; la seguridad JWT se añade en la Práctica 3.
+    Las rutas de negocio requieren JWT; las operaciones de escritura requieren el rol ADMIN.
   license:
     name: Uso académico (Práctica 1)
 servers:
@@ -12,7 +12,8 @@ servers:
     description: Desarrollo local (puerto host de docker-compose)
   - url: http://localhost:8080
     description: Ejecución directa con ./mvnw spring-boot:run
-security: []
+security:
+  - bearerAuth: []
 tags:
   - name: Categorías
     description: Clasificación de incidencias. Se desactivan, nunca se borran.
@@ -42,6 +43,8 @@ paths:
                   $ref: '#/components/schemas/CategoryResponse'
         '400':
           $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     post:
       tags: [Categorías]
       operationId: createCategory
@@ -69,6 +72,10 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '409':
           $ref: '#/components/responses/CategoryAlreadyExists'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/categories/{id}:
     parameters:
       - $ref: '#/components/parameters/Id'
@@ -85,6 +92,8 @@ paths:
                 $ref: '#/components/schemas/CategoryResponse'
         '404':
           $ref: '#/components/responses/CategoryNotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     put:
       tags: [Categorías]
       operationId: updateCategory
@@ -108,6 +117,10 @@ paths:
           $ref: '#/components/responses/CategoryNotFound'
         '409':
           $ref: '#/components/responses/CategoryAlreadyExists'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
     delete:
       tags: [Categorías]
       operationId: deactivateCategory
@@ -118,6 +131,10 @@ paths:
           description: Categoría desactivada
         '404':
           $ref: '#/components/responses/CategoryNotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/priorities:
     get:
       tags: [Prioridades]
@@ -135,6 +152,8 @@ paths:
                   $ref: '#/components/schemas/PriorityResponse'
         '400':
           $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     post:
       tags: [Prioridades]
       operationId: createPriority
@@ -162,6 +181,10 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '409':
           $ref: '#/components/responses/PriorityAlreadyExists'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/priorities/{id}:
     parameters:
       - $ref: '#/components/parameters/Id'
@@ -178,6 +201,8 @@ paths:
                 $ref: '#/components/schemas/PriorityResponse'
         '404':
           $ref: '#/components/responses/PriorityNotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/v1/priorities/{id}/sla:
     parameters:
       - $ref: '#/components/parameters/Id'
@@ -205,7 +230,16 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '404':
           $ref: '#/components/responses/PriorityNotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   parameters:
     Id:
       name: id
@@ -357,6 +391,18 @@ components:
                 type: string
                 example: debe tener entre 2 y 80 caracteres
   responses:
+    Unauthorized:
+      description: Token ausente, inválido o expirado
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    Forbidden:
+      description: El rol del usuario no permite realizar esta operación
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
     ValidationError:
       description: Datos no válidos o JSON ilegible
       content:

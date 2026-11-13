@@ -3,6 +3,7 @@ package com.ids.ms_catalog.controller;
 import com.ids.ms_catalog.dto.request.PriorityRequest;
 import com.ids.ms_catalog.dto.request.SlaRequest;
 import com.ids.ms_catalog.dto.response.PriorityResponse;
+import com.ids.ms_catalog.security.AdminGuard;
 import com.ids.ms_catalog.service.PriorityService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ import java.util.List;
 public class PriorityController {
 
 	private final PriorityService priorityService;
+	private final AdminGuard adminGuard;
 
 	@GetMapping
 	public List<PriorityResponse> list() {
@@ -37,6 +39,7 @@ public class PriorityController {
 
 	@PostMapping
 	public ResponseEntity<PriorityResponse> create(@Valid @RequestBody PriorityRequest request) {
+		adminGuard.verifyActiveAdmin();
 		PriorityResponse created = priorityService.create(request);
 		return ResponseEntity.created(ServletUriComponentsBuilder.fromCurrentRequest()
 				.path("/{id}").buildAndExpand(created.id()).toUri()).body(created);
@@ -44,6 +47,7 @@ public class PriorityController {
 
 	@PutMapping("/{id}/sla")
 	public PriorityResponse updateSla(@PathVariable Long id, @Valid @RequestBody SlaRequest request) {
+		adminGuard.verifyActiveAdmin();
 		return priorityService.updateSla(id, request);
 	}
 }

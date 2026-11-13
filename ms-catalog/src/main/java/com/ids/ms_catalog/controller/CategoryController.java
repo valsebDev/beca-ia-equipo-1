@@ -2,6 +2,7 @@ package com.ids.ms_catalog.controller;
 
 import com.ids.ms_catalog.dto.request.CategoryRequest;
 import com.ids.ms_catalog.dto.response.CategoryResponse;
+import com.ids.ms_catalog.security.AdminGuard;
 import com.ids.ms_catalog.service.CategoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class CategoryController {
 	private static final String ID_PATH = "/{id}";
 
 	private final CategoryService categoryService;
+	private final AdminGuard adminGuard;
 
 	@GetMapping
 	public List<CategoryResponse> list(@RequestParam(required = false) Boolean active) {
@@ -40,6 +42,7 @@ public class CategoryController {
 
 	@PostMapping
 	public ResponseEntity<CategoryResponse> create(@Valid @RequestBody CategoryRequest request) {
+		adminGuard.verifyActiveAdmin();
 		CategoryResponse created = categoryService.create(request);
 		return ResponseEntity.created(ServletUriComponentsBuilder.fromCurrentRequest()
 				.path(ID_PATH).buildAndExpand(created.id()).toUri()).body(created);
@@ -47,11 +50,13 @@ public class CategoryController {
 
 	@PutMapping(ID_PATH)
 	public CategoryResponse update(@PathVariable Long id, @Valid @RequestBody CategoryRequest request) {
+		adminGuard.verifyActiveAdmin();
 		return categoryService.update(id, request);
 	}
 
 	@DeleteMapping(ID_PATH)
 	public ResponseEntity<Void> deactivate(@PathVariable Long id) {
+		adminGuard.verifyActiveAdmin();
 		categoryService.deactivate(id);
 		return ResponseEntity.noContent().build();
 	}
