@@ -13,6 +13,9 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # Feeds JSON 2.0 oficiales de NVD: evitan los 503 de la API en la carga inicial.
+      NVD_DATAFEED_URL: https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-{0}.json.gz
     defaults:
       run:
         working-directory: ms-users
@@ -30,20 +33,21 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ steps.nvd-cache-key.outputs.data-directory }}
-          key: nvd-${{ runner.os }}-ms-users-13.0.0-${{ steps.nvd-cache-key.outputs.day }}
+          key: nvd-feed-${{ runner.os }}-ms-users-13.0.0-${{ steps.nvd-cache-key.outputs.day }}
           restore-keys: |
-            nvd-${{ runner.os }}-ms-users-13.0.0-
+            nvd-feed-${{ runner.os }}-ms-users-13.0.0-
       # La base NVD se actualiza aparte y se guarda en cuanto termina bien,
       # aunque después fallen pruebas o analizadores.
-      - name: Actualizar datos NVD (con reintentos ante 503)
+      - name: Actualizar datos NVD (con reintentos)
         run: |
           chmod +x mvnw
           for attempt in 1 2 3; do
-            if ./mvnw -B "-DdataDirectory=$DEPENDENCY_CHECK_DATA_DIRECTORY" dependency-check:update-only; then
+            if ./mvnw -B "-DdataDirectory=$DEPENDENCY_CHECK_DATA_DIRECTORY" \
+              "-DnvdDatafeedUrl=$NVD_DATAFEED_URL" dependency-check:update-only; then
               exit 0
             fi
             echo "::warning::Fallo al actualizar NVD (intento $attempt de 3)"
-            sleep $((attempt * 120))
+            if [ "$attempt" -lt 3 ]; then sleep $((attempt * 120)); fi
           done
           exit 1
         env:
@@ -56,7 +60,9 @@ jobs:
           path: ${{ steps.nvd-cache-key.outputs.data-directory }}
           key: ${{ steps.nvd-cache.outputs.cache-primary-key }}
       - name: Quality gates y pruebas (mvn verify)
-        run: chmod +x mvnw && ./mvnw -B "-DdataDirectory=$DEPENDENCY_CHECK_DATA_DIRECTORY" verify
+        run: |
+          chmod +x mvnw
+          ./mvnw -B "-DdataDirectory=$DEPENDENCY_CHECK_DATA_DIRECTORY" "-DnvdDatafeedUrl=$NVD_DATAFEED_URL" verify
         env:
           DEPENDENCY_CHECK_DATA_DIRECTORY: ${{ steps.nvd-cache-key.outputs.data-directory }}
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
