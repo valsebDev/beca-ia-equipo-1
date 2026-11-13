@@ -1,15 +1,17 @@
 <?xml version="1.0"?>
-<!-- Ruleset PMD 7 para ms-tickets. Destino en el proyecto: config/pmd/ruleset.xml
+<!-- Ruleset PMD 7 para los microservicios Spring Boot. Destino en el proyecto: config/pmd/ruleset.xml
      Reglas de PMD 6 que ya no existen en PMD 7 y que NO se incluyen:
        bestpractices/UnusedImports            -> codestyle/UnnecessaryImport
        errorprone/EmptyIfStmt (y EmptyWhile, EmptyTry...) -> codestyle/EmptyControlStatement
        design/ExcessiveMethodLength, ExcessiveClassLength -> design/NcssCount (y Checkstyle MethodLength)
-       errorprone/DataflowAnomalyAnalysis     -> eliminada; la cubre bestpractices/UnusedAssignment -->
-<ruleset name="ms-tickets"
+       errorprone/DataflowAnomalyAnalysis     -> eliminada; la cubre bestpractices/UnusedAssignment
+     Se usa una lista curada de reglas y no las categorias completas: design y codestyle
+     traen reglas de estilo muy ruidosas (LawOfDemeter, CommentRequired, etc.). -->
+<ruleset name="ms-quality"
          xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
-  <description>Reglas de calidad de ms-tickets: codigo muerto, complejidad y errores comunes.</description>
+  <description>Reglas de calidad de los microservicios: codigo muerto, complejidad, errores comunes, rendimiento y concurrencia.</description>
 
   <!-- Codigo muerto -->
   <rule ref="category/java/bestpractices.xml/UnusedPrivateField"/>
@@ -49,8 +51,13 @@
   <rule ref="category/java/errorprone.xml/CompareObjectsWithEquals"/>
   <rule ref="category/java/errorprone.xml/CloseResource"/>
   <rule ref="category/java/errorprone.xml/AssignmentInOperand"/>
+  <rule ref="category/java/errorprone.xml/EqualsNull"/>
+  <rule ref="category/java/errorprone.xml/ReturnFromFinallyBlock"/>
+  <rule ref="category/java/errorprone.xml/SuspiciousEqualsMethodName"/>
   <rule ref="category/java/bestpractices.xml/PreserveStackTrace"/>
   <rule ref="category/java/bestpractices.xml/AvoidReassigningParameters"/>
+  <rule ref="category/java/bestpractices.xml/MissingOverride"/>
+  <rule ref="category/java/bestpractices.xml/ForLoopCanBeForeach"/>
   <rule ref="category/java/design.xml/AvoidThrowingRawExceptionTypes"/>
   <rule ref="category/java/design.xml/AvoidThrowingNullPointerException"/>
   <rule ref="category/java/design.xml/SignatureDeclareThrowsException"/>
@@ -66,6 +73,15 @@
       <property name="skipAnnotations" value="true"/>
     </properties>
   </rule>
+
+  <!-- Rendimiento -->
+  <rule ref="category/java/performance.xml/UseStringBufferForStringAppends"/>
+  <rule ref="category/java/performance.xml/InefficientEmptyStringCheck"/>
+
+  <!-- Concurrencia -->
+  <rule ref="category/java/multithreading.xml/DoubleCheckedLocking"/>
+  <rule ref="category/java/multithreading.xml/AvoidThreadGroup"/>
+  <rule ref="category/java/multithreading.xml/NonThreadSafeSingleton"/>
 
   <!-- Seguridad -->
   <rule ref="category/java/security.xml/HardCodedCryptoKey"/>

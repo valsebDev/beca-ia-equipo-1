@@ -1,0 +1,6 @@
+app:
+  security:
+    jwt:
+      secret: test-only-secret-ms-catalog-do-not-use-in-prod-0123456789
+      issuer: ms-users
+      audience: mesa-ayuda
