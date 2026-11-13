@@ -12,12 +12,12 @@ Fuentes: [ARCHITECTURE.md](../ARCHITECTURE.md) §0, §3.4, §6 y §7 (fuente de 
 | D2 | Librería JWT | Nimbus (`NimbusJwtEncoder` / `NimbusJwtDecoder`) con `spring-boot-starter-security-oauth2-resource-server`. Se retira JJWT de `ms-users`. |
 | D3 | Identificador de usuario | `sub` = id numérico (`Long`, como texto). Rutas con `{id}`. |
 | D4 | Login con cuenta inactiva | **401** `INVALID_CREDENTIALS` genérico; no revela el estado de la cuenta. |
-| D5 | Cuenta bloqueada | Descartado: ARCHITECTURE no define bloqueo por intentos fallidos. Login fallido responde 401 (§4). |
+| D5 | Cuenta bloqueada | **423** `ACCOUNT_LOCKED` (HU-USR-03). Se agrega a la tabla §3.4 de ARCHITECTURE. |
 | D6 | Vigencia | Access token 15 min (`expiresIn` = 900). Refresh token 7 días (`refreshExpiresIn` = 604800). |
 | D7 | Endpoints adicionales de ms-users | `POST /auth/refresh`, `POST /auth/logout`, `GET /users`, `POST /users`. |
 | D8 | Base de datos en pruebas | PostgreSQL 16 con Testcontainers (`@ServiceConnection`). Sin H2. |
 | D9 | Administrador inicial | `AdminBootstrap` crea un ADMIN desde `ADMIN_EMAIL` / `ADMIN_PASSWORD` solo si no existe ninguno. |
-| D10 | Reactivación de usuario | `PATCH /api/v1/users/{id}/status` con `{"active": true}`. |
+| D10 | Reactivación de usuario | `PATCH /api/v1/users/{id}/status` con `{"active": true}`; también limpia el bloqueo. |
 | D11 | Fuera de alcance | Rate limiting, CORS abierto, Resilience4j, correlation-id, paginación. Riesgos aceptados. |
 | D12 | Sin librería común | Cada servicio implementa su propia configuración de seguridad; no hay módulo compartido. |
 | D13 | ADMIN activo en ms-catalog | En `POST/PUT/DELETE`, ms-catalog consulta a ms-users que el ADMIN autenticado siga activo. `ms-users` no consume ningún servicio. |
@@ -65,14 +65,15 @@ Fuentes: [ARCHITECTURE.md](../ARCHITECTURE.md) §0, §3.4, §6 y §7 (fuente de 
 - **Email**: se normaliza a minúsculas; único sin distinguir mayúsculas.
 - **Administrador inicial**: `AdminBootstrap` con `ADMIN_EMAIL` / `ADMIN_PASSWORD` sin valor por defecto; no duplica si ya existe un ADMIN.
 
-### Orden de validación en login (HU-USR-02)
+### Orden de validación en login (HU-USR-02 / HU-USR-03)
 
 1. Buscar el usuario por email en minúsculas.
-2. Contraseña incorrecta → **401** `INVALID_CREDENTIALS`.
-3. Cuenta inactiva → **401** `INVALID_CREDENTIALS`.
-4. Éxito: emitir tokens.
+2. Cuenta bloqueada (`locked_until` vigente) → **423** `ACCOUNT_LOCKED`.
+3. Contraseña incorrecta → incrementar `failed_attempts`; al llegar a `MAX_FAILED_ATTEMPTS` (5) fijar `locked_until` (`LOCK_DURATION_MINUTES`, 15) → **401** `INVALID_CREDENTIALS`.
+4. Cuenta inactiva → **401** `INVALID_CREDENTIALS`.
+5. Éxito: reiniciar `failed_attempts` y `locked_until` y emitir tokens.
 
-Login y refresh fallidos responden siempre 401 con el mismo mensaje, para no revelar si el email existe ni si la cuenta está inactiva.
+Los fallos se persisten aunque la respuesta sea de error (`noRollbackFor` o `REQUIRES_NEW` en el registro del fallo). Al expirar el bloqueo, `failed_attempts` se reinicia. Login y refresh fallidos responden siempre 401 con el mismo mensaje, para no revelar si el email existe ni si la cuenta está inactiva.
 
 ## 5. Autorización: matrices endpoint × rol
 
@@ -83,10 +84,11 @@ Leyenda: ✔ permitido · 403 rol insuficiente o recurso ajeno · 401 sin token 
 | Endpoint | Sin token | SOLICITANTE | AGENTE | ADMIN | Éxito |
 |---|---|---|---|---|---|
 | `POST /api/v1/auth/register` | — | — | — | — | 201 (400, 409) |
-| `POST /api/v1/auth/login` | — | — | — | — | 200 (401) |
+| `POST /api/v1/auth/login` | — | — | — | — | 200 (401, 423) |
 | `POST /api/v1/auth/refresh` | — | — | — | — | 200 (401) |
 | `POST /api/v1/auth/logout` | 401 | ✔ | ✔ | ✔ | 204 |
 | `GET /api/v1/users/me` | 401 | ✔ | ✔ | ✔ | 200 |
+| `PUT /api/v1/users/me` | 401 | ✔ | ✔ | ✔ | 200 (400) |
 | `GET /api/v1/users?role=` | 401 | 403 | 403 | ✔ | 200 |
 | `GET /api/v1/users/{id}` | 401 | 403 | 403 | ✔ | 200 (404) |
 | `POST /api/v1/users` | 401 | 403 | 403 | ✔ | 201 (400, 409) |
@@ -94,7 +96,7 @@ Leyenda: ✔ permitido · 403 rol insuficiente o recurso ajeno · 401 sin token 
 | `GET /actuator/health` | ✔ | ✔ | ✔ | ✔ | 200 |
 | Otro `/actuator/*` | 401 | 404 | 404 | 404 | — |
 
-`/users/me` opera siempre sobre el `sub`; no existe recurso ajeno. Solo ADMIN puede consultar o cambiar el estado de otro usuario.
+`/users/me` opera siempre sobre el `sub`; no existe recurso ajeno. Solo ADMIN puede consultar o modificar a otro usuario.
 
 ### 5.2 ms-catalog
 
@@ -169,10 +171,11 @@ Cada respuesta de error es un `ProblemDetail` con campo `code`; el `detail` va e
 | 404 | `USER_NOT_FOUND` y equivalentes | Recurso inexistente |
 | 409 | `USER_ALREADY_EXISTS` | Email duplicado |
 | 422 | `CATEGORY_INVALID` / `PRIORITY_INVALID` / `ASSIGNEE_INVALID` | Referencia inválida en ms-tickets |
+| 423 | `ACCOUNT_LOCKED` | Cuenta bloqueada temporalmente (D5) |
 | 500 | `INTERNAL_ERROR` | Genérico, sin detalle interno |
 | 503 | `DEPENDENCY_UNAVAILABLE` | Servicio dependiente caído, lento o que rechaza el token |
 
-`ms-users` usa `UNAUTHORIZED` y `FORBIDDEN` (no `UNAUTHENTICATED` ni `FORBIDDEN_OPERATION`). Las rutas inexistentes responden 404 `ROUTE_NOT_FOUND` y las anónimas en rutas inexistentes 401 `UNAUTHORIZED`. El 405 (método no permitido) va sin `code`, porque §3.4 no define ninguno.
+`ms-users` renombra `UNAUTHENTICATED` y `FORBIDDEN_OPERATION` a `UNAUTHORIZED` y `FORBIDDEN`.
 
 ## 8. Configuración y secretos
 
@@ -183,9 +186,11 @@ Cada respuesta de error es un `ProblemDetail` con campo `code`; el `detail` va e
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | ms-users | Sí | — | ADMIN inicial |
 | `SERVICES_USERS_URL` | ms-catalog, ms-tickets | Sí | — | URL de ms-users |
 | `SERVICES_CATALOG_URL` | ms-tickets | Sí | — | URL de ms-catalog |
-| `JWT_ACCESS_TTL` | ms-users | No | `PT15M` | Vigencia del access token (`Duration` ISO-8601) |
+| `JWT_ACCESS_TTL_MINUTES` | ms-users | No | 15 | Vigencia del access token |
 | `JWT_REFRESH_TTL_DAYS` | ms-users | No | 7 | Vigencia del refresh token |
 | `BCRYPT_COST` | ms-users | No | 10 | Costo de BCrypt |
+| `MAX_FAILED_ATTEMPTS` | ms-users | No | 5 | Fallos antes del bloqueo |
+| `LOCK_DURATION_MINUTES` | ms-users | No | 15 | Duración del bloqueo |
 | `SWAGGER_ENABLED` | los 3 | No | `true` | Publica `/swagger-ui` y `/v3/api-docs`; `false` en producción |
 | `CORS_ALLOWED_ORIGINS` | los 3 | No | vacío | Orígenes permitidos; nunca `*` |
 | `NVD_API_KEY` | CI | Sí en CI | — | Dependency-Check (secreto de GitHub) |
@@ -201,7 +206,7 @@ Cada regla nueva tiene al menos una prueba positiva y una negativa. Las pruebas 
 - **Propiedad** (ms-tickets): recurso ajeno para SOLICITANTE y AGENTE → 403; dueño y asignado → éxito; AGENTE no dueño no cierra ni cancela.
 - **Roles**: `JwtRolesConverterTest` (lista válida, vacía, ausente, tipo inválido, minúsculas; `scope` no otorga roles).
 - **Configuración**: `JwtPropertiesTest` / arranque falla con `JWT_SECRET` de menos de 32 bytes; `ActuatorSecurityTest` en ms-users.
-- **ms-users**: `TokenServiceTest`, `RefreshTokenServiceTest`, `UserServiceTest` (rotación, reutilización, revocación, inactivo 401, desactivar revoca), `AdminBootstrapTest`.
+- **ms-users**: `TokenServiceTest`, `RefreshTokenServiceTest`, `UserServiceTest` (rotación, reutilización, revocación, bloqueo persistente tras 5 fallos positivo y negativo, inactivo 401, desactivar revoca), `AdminBootstrapTest`.
 - **Clientes** (WireMock o `MockRestServiceServer`): 200; 404 → 422 o 403 según el caso; inactivo; 500, timeout y conexión rechazada → 503; el `Authorization` original llega al proveedor.
 - **Integración**: `Ms*ApplicationTests` con `postgres:16` de Testcontainers, Flyway activo y `ddl-auto=validate`.
 - **Gates**: `./mvnw -B verify` desde la carpeta de cada servicio, con `BUILD SUCCESS` (Checkstyle, PMD + CPD, SpotBugs con FindSecBugs, Dependency-Check, JaCoCo ≥ 70 %; en ms-users también en `service` y `controller`). Los resultados reales se anotan en `docs/SECURITY-REPORT.md` de cada servicio. Si no se pudo ejecutar Docker, `NVD_API_KEY` o red, el análisis queda "pendiente", nunca aprobado.
@@ -224,4 +229,4 @@ Cada regla nueva tiene al menos una prueba positiva y una negativa. Las pruebas 
 
 - **Cancelación y cierre de tickets**: este documento sigue ARCHITECTURE §6.3 (dueño → CERRADO/CANCELADO; AGENTE asignado → EN_PROGRESO/RESUELTO; ADMIN todo). El plan de ms-tickets y su `requerimientos.md` (RN-05, RN-06, HU-04) proponen que solo el AGENTE asignado cambie el estado, y que ADMIN y SOLICITANTE reciban 403. Debe cerrarse con el equipo y actualizar el documento que corresponda (regla 14).
 - **Fase de ms-catalog**: el plan de ms-catalog difiere D13 (validación de ADMIN activo); aquí se documenta como regla vigente por decisión del equipo, y el plan debe alinearse.
-- **Códigos de error**: `DEPENDENCY_UNAVAILABLE` y los 422 deben quedar en la tabla de ARCHITECTURE §3.4.
+- **Códigos de error**: `ACCOUNT_LOCKED`, `DEPENDENCY_UNAVAILABLE` y los 422 deben quedar en la tabla de ARCHITECTURE §3.4.
