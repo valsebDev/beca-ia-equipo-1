@@ -16,6 +16,7 @@ services:
       - mesa-ayuda
 
   ms-catalog:
+    image: ms-catalog:0.0.1
     build: ./ms-catalog
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db-catalog:5432/catalog_db
