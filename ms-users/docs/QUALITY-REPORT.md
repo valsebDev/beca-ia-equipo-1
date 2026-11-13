@@ -34,6 +34,59 @@ Las cifras y decisiones de las secciones siguientes son históricas. En la
 revisión actual, `config/dependency-check-suppressions.xml` está vacío; no
 contiene la supresión que se describe en el informe original.
 
+### Caché independiente de NVD en CI
+
+El [workflow de ms-users](../../.github/workflows/ci-fernando.yml) mantiene la
+base de Dependency-Check en un directorio temporal del runner, separado de
+la caché Maven. La clave contiene sistema operativo, servicio, versión
+`13.0.0` del plugin y fecha UTC. Si no existe la entrada del día, se restaura
+la más reciente con el mismo prefijo compatible. Al cambiar la versión del
+plugin, se debe actualizar también la versión de la clave.
+
+La actualización de NVD se ejecuta en un paso propio
+(`dependency-check:update-only`) con hasta 3 intentos espaciados (2 y 4
+minutos) ante errores como el 503. La caché se guarda con
+`actions/cache/save@v4` justo después de una actualización exitosa, de modo
+que se conserva aunque después fallen pruebas o analizadores. Si los tres
+intentos fallan, el job termina sin guardar una caché incompleta. Después,
+`verify` reutiliza los datos recién actualizados (vigencia de 240 minutos)
+sin volver a consultar NVD. No se usa `autoUpdate=false` ni
+`failOnError=false`; no se acepta un análisis incompleto.
+
+GitHub limita el alcance de las cachés: un `pull_request` solo restaura
+entradas de su propia referencia o de `main`, no las guardadas por push en la
+rama de trabajo. Cada alcance necesita una primera descarga exitosa.
+
+Las ejecuciones de push y pull_request de una misma rama se serializan
+sin cancelar la ejecución en curso. Se conservan los triggers, las pruebas,
+los umbrales y la lectura de `NVD_API_KEY` desde el secreto existente.
+No se modificó el POM ni se agregaron dependencias o plugins.
+
+| Aspecto | Antes | Con la nueva configuración |
+|---|---|---|
+| Datos NVD | Dependían de la restauración de la caché Maven | Caché propia, independiente de los cambios de dependencias |
+| Restauración | El último CI intentó descargar 425.512 registros | Recupera una entrada compatible cuando está disponible |
+| Actualizaciones y fallos | Actualización automática; 503 bloqueaba el build | Se mantiene la misma política, sin omitir el gate |
+
+Validación local del cambio:
+
+- `actionlint` 1.7.12 sobre el workflow: sin errores.
+- `.\mvnw.cmd -B "-DdataDirectory=<copia>" dependency-check:update-only`
+  con una copia de la base local: **BUILD SUCCESS**; usó el directorio
+  indicado y omitió la descarga porque los datos tenían menos de 240 minutos.
+- Desde `ms-users`, con Java 17 y Docker:
+  `.\mvnw.cmd -B "-DdataDirectory=$env:DEPENDENCY_CHECK_DATA_DIRECTORY" verify`
+  → **BUILD SUCCESS**, 105 pruebas, 0 fallos, errores u omitidas; 3:03 minutos.
+- Para simular una restauración, se copió la base NVD local previamente
+  actualizada a un directorio de datos independiente. Dependency-Check
+  reutilizó los datos aún vigentes y ejecutó el análisis: 55 dependencias,
+  0 vulnerabilidades reportadas. Checkstyle, PMD, CPD y SpotBugs:
+  0 hallazgos; JaCoCo cumplido.
+- **Pendiente:** comprobar guardado y restauración reales en GitHub Actions
+  tras publicar estos cambios. No se ejecutó commit ni push. Una primera
+  ejecución sin caché todavía requiere una descarga exitosa de NVD;
+  esta validación local no demuestra que el HTTP 503 remoto haya desaparecido.
+
 ## Antes / Después
 
 | Herramienta | Antes | Después |
