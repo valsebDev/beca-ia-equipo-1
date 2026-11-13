@@ -29,7 +29,7 @@ La mesa de ayuda necesita un canal único para que el personal reporte incidenci
 - RN-03: Solo un `ADMIN` puede asignar un ticket; el asignado debe existir en ms-users, estar activo y tener rol `AGENTE`.
 - RN-04: La asignación solo es válida si el ticket está en `ABIERTO` o `ASIGNADO`; pasa a `ASIGNADO`.
 - RN-05: Transiciones de estado permitidas: `ASIGNADO` → `EN_PROGRESO` → `RESUELTO` → `CERRADO`. `CANCELADO` es posible desde `ABIERTO` o `ASIGNADO`. Cualquier otra transición se rechaza.
-- RN-06: Solo el `AGENTE` asignado puede cambiar el estado de un ticket (`ADMIN` asigna, no ejecuta trabajo). SUPUESTO.
+- RN-06: El `AGENTE` asignado solo puede pasar el ticket a `EN_PROGRESO` (desde `ASIGNADO`) y a `RESUELTO` (desde `EN_PROGRESO`). El `SOLICITANTE` dueño del ticket puede pasarlo a `CERRADO` (desde `RESUELTO`) y a `CANCELADO` (desde `ABIERTO` o `ASIGNADO`). El `ADMIN` puede cualquier transición válida. Cualquier otro actor recibe 403. Fuente: ARCHITECTURE §6.3 (decisión de Isaac; reemplaza la versión anterior que daba el cambio solo al AGENTE).
 - RN-07: La categoría y la prioridad deben existir y estar activas en ms-catalog al crear el ticket.
 - RN-08: Al crear el ticket se copian las horas de SLA de la prioridad y se calculan `responseDueAt` y `resolutionDueAt` a partir de la fecha de creación.
 - RN-09: Un ticket está `overdue` cuando la hora actual supera `resolutionDueAt` y su estado no es `RESUELTO`, `CERRADO` ni `CANCELADO`.
@@ -56,7 +56,7 @@ La mesa de ayuda necesita un canal único para que el personal reporte incidenci
 
 **HU-TCK-03 — Asignar ticket a un agente.** Como ADMIN quiero asignar un ticket a un agente para que tenga un responsable claro.
 
-**HU-TCK-04 — Cambiar estado del ticket asignado.** Como AGENTE quiero avanzar el estado de mis tickets para reflejar el progreso real de la atención.
+**HU-TCK-04 — Cambiar estado del ticket asignado.** Como AGENTE quiero avanzar el estado de mis tickets para reflejar el progreso real de la atención. Como SOLICITANTE dueño quiero cerrar o cancelar mi ticket cuando ya no aplique.
 
 **HU-TCK-05 — Consultar historial de un ticket.** Como ADMIN quiero consultar el historial de cambios de un ticket para auditar la atención brindada.
 
@@ -143,10 +143,20 @@ Escenario: Avance de estado por el agente asignado
   Entonces el sistema responde 200 con estado "EN_PROGRESO"
   Y se registra un evento "STATUS_CHANGED" en el historial
 
-Escenario: Cancelación desde ABIERTO por el agente asignado
-  Dado un AGENTE autenticado asignado al ticket 31 en estado "ASIGNADO"
+Escenario: Cancelación desde ASIGNADO por el solicitante dueño
+  Dado un SOLICITANTE autenticado dueño del ticket 31 en estado "ASIGNADO"
   Cuando cambia el estado a "CANCELADO" con comentario "Duplicado"
   Entonces el sistema responde 200 con estado "CANCELADO" y "closedAt" nulo
+
+Escenario: Cierre desde RESUELTO por el solicitante dueño
+  Dado un SOLICITANTE autenticado dueño del ticket 34 en estado "RESUELTO"
+  Cuando cambia el estado a "CERRADO"
+  Entonces el sistema responde 200 con estado "CERRADO" y "closedAt" registrado
+
+Escenario negativo: Agente intenta cancelar
+  Dado un AGENTE autenticado asignado al ticket 35 en estado "ASIGNADO"
+  Cuando cambia el estado a "CANCELADO"
+  Entonces el sistema responde 403 con código "FORBIDDEN"
 
 Escenario negativo: Transición no permitida
   Dado un AGENTE autenticado asignado al ticket 32 en estado "ASIGNADO"

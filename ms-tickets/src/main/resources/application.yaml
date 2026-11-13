@@ -27,6 +27,14 @@ clients:
     url: ${SERVICES_USERS_URL:http://localhost:8081}
   catalog:
     url: ${SERVICES_CATALOG_URL:http://localhost:8083}
+  connect-timeout: ${CLIENTS_CONNECT_TIMEOUT:2s}
+  read-timeout: ${CLIENTS_READ_TIMEOUT:3s}
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET}
+      issuer: ms-users
+      audience: mesa-ayuda
 springdoc:
   swagger-ui:
     enabled: ${SWAGGER_ENABLED:true}
