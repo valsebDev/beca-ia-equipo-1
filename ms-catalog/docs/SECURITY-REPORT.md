@@ -6,17 +6,17 @@ Autor: Sebastián (ms-catalog). Referencias: [ARCHITECTURE.md](../../ARCHITECTUR
 
 Implementada en `SecurityConfig` con `requestMatchers(...).hasRole("ADMIN")` y `anyRequest().authenticated()`. No se usa `@PreAuthorize`.
 
-| Endpoint | Sin token | SOLICITANTE | AGENTE | ADMIN |
-|---|---|---|---|---|
-| GET `/api/v1/categories`, `/{id}` | 401 | 200 | 200 | 200 |
-| POST `/api/v1/categories` | 401 | 403 | 403 | 201 |
-| PUT `/api/v1/categories/{id}` | 401 | 403 | 403 | 200 |
-| DELETE `/api/v1/categories/{id}` | 401 | 403 | 403 | 204 |
-| GET `/api/v1/priorities`, `/{id}` | 401 | 200 | 200 | 200 |
-| POST `/api/v1/priorities` | 401 | 403 | 403 | 201 |
-| PUT `/api/v1/priorities/{id}/sla` | 401 | 403 | 403 | 200 |
-| GET `/actuator/health`, `/v3/api-docs/**`, `/swagger-ui/**` | 200 | 200 | 200 | 200 |
-| Otras rutas de `/actuator/*` | 401 | 401 | 401 | 401 |
+| Endpoint | Sin token | SOLICITANTE | AGENTE | ADMIN | Pruebas |
+|---|---|---|---|---|---|
+| GET `/api/v1/categories`, `/{id}` | 401 | 200 | 200 | 200 | `CategoryControllerSecurityTest.todaRutaProtegidaSinTokenDevuelve401`, `lecturaPermitidaParaTodosLosRoles`, `consultaCategoriaPorIdPermitidaParaTodosLosRoles` |
+| POST `/api/v1/categories` | 401 | 403 | 403 | 201 | `CategoryControllerSecurityTest.todaRutaProtegidaSinTokenDevuelve401`, `crearCategoriaRequiereAdmin`, `CategoryControllerTest.createDevuelve201ConCabeceraLocation` |
+| PUT `/api/v1/categories/{id}` | 401 | 403 | 403 | 200 | `CategoryControllerSecurityTest.todaRutaProtegidaSinTokenDevuelve401`, `actualizarCategoriaRequiereAdmin`, `adminPuedeActualizarCategoria` |
+| DELETE `/api/v1/categories/{id}` | 401 | 403 | 403 | 204 | `CategoryControllerSecurityTest.todaRutaProtegidaSinTokenDevuelve401`, `eliminarCategoriaRequiereAdmin`, `adminPuedeEliminarCategoria` |
+| GET `/api/v1/priorities`, `/{id}` | 401 | 200 | 200 | 200 | `PriorityControllerSecurityTest.todaRutaProtegidaSinTokenDevuelve401`, `lecturaPermitidaParaTodosLosRoles`, `consultaPrioridadPorIdPermitidaParaTodosLosRoles` |
+| POST `/api/v1/priorities` | 401 | 403 | 403 | 201 | `PriorityControllerSecurityTest.todaRutaProtegidaSinTokenDevuelve401`, `crearPrioridadRequiereAdmin`, `PriorityControllerTest.createDevuelve201ConCabeceraLocation` |
+| PUT `/api/v1/priorities/{id}/sla` | 401 | 403 | 403 | 200 | `PriorityControllerSecurityTest.todaRutaProtegidaSinTokenDevuelve401`, `actualizarSlaRequiereAdmin`, `PriorityControllerTest.updateSlaDevuelve200ConLasNuevasHoras` |
+| GET `/actuator/health`, `/v3/api-docs/**`, `/swagger-ui/**` | 200 | 200 | 200 | 200 | `ActuatorSecurityTest.healthEsPublico` |
+| Otras rutas de `/actuator/*` | 401 | 401 | 401 | 401 | `ActuatorSecurityTest.otrosEndpointsDeActuatorRequierenToken` |
 
 Además, en POST/PUT/DELETE el controller llama a `AdminGuard` (D13) antes del service. Si el ADMIN está desactivado en ms-users o no existe, responde 403; si ms-users no responde correctamente, responde 503.
 
@@ -61,4 +61,4 @@ No hubo hallazgos CRÍTICOS ni ALTOS.
 
 - Matriz y casos 401/403/200: `CategoryControllerSecurityTest`, `PriorityControllerSecurityTest`, `SecurityTokenValidationTest`, `ActuatorSecurityTest`.
 - Guard D13: `AdminGuardTest` (7 pruebas) y `UsersClientWireMockTest` (8 pruebas: 200, inactivo, 404, 401, 500, conexión cerrada, timeout y `Authorization`).
-- `./mvnw -B verify` (ver última ejecución en la bitácora): BUILD SUCCESS, 108 pruebas, 0 violaciones de Checkstyle, PMD y SpotBugs, JaCoCo cumplido.
+- Última ejecución de `./mvnw -B verify`: 120 pruebas sin fallos; Checkstyle, PMD/CPD, SpotBugs  y JaCoCo pasaron. `BUILD SUCCESS`.
