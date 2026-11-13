@@ -39,5 +39,5 @@ Registro estructurado de interacciones, prompts, skills y agentes empleados.
 
 **Estado de P3:**
 - El reporte documenta la integración como proveedor; el usuario confirmó que D13 es válido.
-- SEC-01 y su prueba de concurrencia siguen pendientes.
+- SEC-01 corregido: `@Lock(PESSIMISTIC_WRITE)` en `findByTokenHash` y prueba de concurrencia `RefreshTokenServiceConcurrencyTest` (pasa en 20 rondas).
 - La revisión D8 fue publicada en el PR #29; sus evidencias requieren comprobación.
