@@ -67,12 +67,12 @@ Pendiente de revisión por esta pasada: entidades `User` y `RefreshToken`, `User
 
 - **Llave HS256 compartida** entre servicios. Cualquier servicio que la tenga puede firmar tokens válidos. Mitigación: rotación de secretos y `JWT_SECRET` sin valor por defecto.
 - **Access token vigente hasta 15 min** después de desactivar a un usuario. La validación de estado se hace al emitir el token, no en cada petición.
-- **Integración entre servicios (rúbrica, 10 pts)**: N/A para `ms-users`. Solo es proveedor del JWT y de `GET /api/v1/users/{id}`. No consume ningún servicio (D13 en `docs/seguridad.md`), así que no hay cliente `RestClient` ni propagación de token. La parte de proveedor está cubierta por `UserProviderContractTest`. Pendiente confirmar con el profesor.
+- **Integración entre servicios (rúbrica, 10 pts)**: ms-users es proveedor. Detalle en §7.
 - **SEC-01 (MEDIA, carrera en refresh)**: no se corrige sin prueba de concurrencia que lo reproduzca. Queda como pendiente.
 - **SEC-02 (MEDIA, enumeración en registro)**: riesgo aceptado por especificación (ARCHITECTURE §3.1).
 - **SEC-03 y SEC-04 (BAJA)**: decisiones documentadas en §3.
 - **Revisor**: ningún hallazgo CRÍTICO ni ALTO confirmado. No se requiere corrección obligatoria.
-- **Revisión de PR ajeno (D8)**: diferida por decisión del usuario.
+- **Revisión de PR ajeno (D8)**: comentario publicado en el PR #29; sus evidencias requieren comprobación.
 - **Contrato consumidor (D8)**: pendiente de acordar con el equipo.
 
 
@@ -87,3 +87,33 @@ Ejecutado desde `ms-users/` (`.\mvnw.cmd -B verify`) después de la prueba `User
 ```
 
 Historial: 88 tests antes del handler 415; 89 tras añadirlo (`dc9f715`); 104 con las pruebas `jwt()`.
+
+## 7. Integración (proveedor)
+
+ms-users no consume ningún servicio. Solo actúa como proveedor: emite el JWT y expone `GET /api/v1/users/{id}`.
+
+| Campo | Valor |
+|---|---|
+| Consumidores | ms-catalog y ms-tickets |
+| Endpoint | `GET /api/v1/users/{id}` (`{id}` es el `sub` numérico del token) |
+| Token y rol | Bearer JWT de un **ADMIN**. El consumidor reenvía el token del ADMIN que originó la petición (propagación). ms-users responde 403 a cualquier otro rol. |
+| Cliente propio en ms-users | No. |
+| Prueba que lo cubre | `UserProviderContractTest` (Testcontainers `postgres:16`, 4 casos) |
+
+**Quién consume y para qué** (según `ARCHITECTURE.md`):
+
+- **ms-catalog** (§1.1 y D13): en `POST`, `PUT` y `DELETE` consulta `GET /api/v1/users/{sub}` para comprobar que el ADMIN autenticado sigue activo. Cierra la ventana de 15 min del access token de un ADMIN desactivado.
+- **ms-tickets** (§4.1): en `PATCH /api/v1/tickets/{id}/assignment` consulta `GET /api/v1/users/{assigneeId}` para comprobar que el asignado es `AGENTE` y está activo. Si no lo es o no existe, responde 422 `ASSIGNEE_INVALID`.
+
+**Por qué ms-users no tiene cliente propio:** la tabla de contextos de `ARCHITECTURE.md` §1.1 le asigna "Consume: —". Es el contexto de identidad y no necesita datos de otros servicios. D13 lo registra como excepción a la rúbrica de integración, acordada con el instructor.
+
+**Qué prueba `UserProviderContractTest`:**
+
+- 200 con exactamente los campos de `UserResponse` (`id`, `email`, `fullName`, `role`, `active`, `createdAt`), según `docs/contratos/ms-users.yaml`.
+- 404 `USER_NOT_FOUND` para un ID inexistente.
+- 401 `UNAUTHORIZED` sin token.
+- 403 `FORBIDDEN` con token de SOLICITANTE.
+
+Esta prueba protege el contrato del proveedor. No prueba el cliente de ms-catalog ni de ms-tickets, que vive en cada servicio. En la rama actual, `src/main` de ms-catalog y ms-tickets no contiene llamadas a `/users`, así que el lado consumidor no se verificó en esta entrega.
+
+El usuario confirmó que D13 es válido para la rúbrica.
