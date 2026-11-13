@@ -57,16 +57,29 @@ GitHub limita el alcance de las cachés: un `pull_request` solo restaura
 entradas de su propia referencia o de `main`, no las guardadas por push en la
 rama de trabajo. Cada alcance necesita una primera descarga exitosa.
 
-Las ejecuciones de push y pull_request de una misma rama se serializan
-sin cancelar la ejecución en curso. Se conservan los triggers, las pruebas,
-los umbrales y la lectura de `NVD_API_KEY` desde el secreto existente.
-No se modificó el POM ni se agregaron dependencias o plugins.
+**Fuente de datos (aprobada por el equipo):** la API REST de NVD devolvió
+503 de forma persistente desde los runners de GitHub en la carga inicial
+(425.542 registros; 3 intentos fallidos en la ejecución 43475650763). El
+workflow pasa `-DnvdDatafeedUrl` con los feeds JSON 2.0 oficiales de NIST
+(`https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-{0}.json.gz`), opción
+documentada por Dependency-Check. Riesgo aceptado: los feeds de NIST se
+publican una vez al día y pueden retrasarse. La clave de caché usa el prefijo
+`nvd-feed-` para no mezclarla con bases construidas desde la API. El cambio
+solo afecta al workflow; el POM sigue igual.
+
+Push y pull_request usan grupos de concurrencia distintos
+(`ci-fernando-<evento>-<rama>`). Con un grupo compartido, la ejecución
+de pull_request en cola cancelaba la de push (ejecución 43480057335). Se
+conservan los triggers, las pruebas, los umbrales y la lectura de
+`NVD_API_KEY` desde el secreto existente. No se agregaron dependencias ni
+plugins.
 
 | Aspecto | Antes | Con la nueva configuración |
 |---|---|---|
-| Datos NVD | Dependían de la restauración de la caché Maven | Caché propia, independiente de los cambios de dependencias |
-| Restauración | El último CI intentó descargar 425.512 registros | Recupera una entrada compatible cuando está disponible |
-| Actualizaciones y fallos | Actualización automática; 503 bloqueaba el build | Se mantiene la misma política, sin omitir el gate |
+| Datos NVD | Dependían de la restauración de la caché Maven | Caché propia, guardada tras actualizar y antes de `verify` |
+| Carga inicial | API NVD: 425.512 registros, falló con 503 | Feeds JSON 2.0 de NIST: ~2 min, sin errores |
+| `verify` | Consultaba NVD y fallaba con 503 | Reutiliza la base recién actualizada (16 ms de chequeo) |
+| Gate | Bloqueado por un error externo | Activo, con `failBuildOnCVSS=7` sin cambios |
 
 Validación local del cambio:
 
@@ -77,15 +90,15 @@ Validación local del cambio:
 - Desde `ms-users`, con Java 17 y Docker:
   `.\mvnw.cmd -B "-DdataDirectory=$env:DEPENDENCY_CHECK_DATA_DIRECTORY" verify`
   → **BUILD SUCCESS**, 105 pruebas, 0 fallos, errores u omitidas; 3:03 minutos.
-- Para simular una restauración, se copió la base NVD local previamente
-  actualizada a un directorio de datos independiente. Dependency-Check
-  reutilizó los datos aún vigentes y ejecutó el análisis: 55 dependencias,
-  0 vulnerabilidades reportadas. Checkstyle, PMD, CPD y SpotBugs:
-  0 hallazgos; JaCoCo cumplido.
-- **Pendiente:** comprobar guardado y restauración reales en GitHub Actions
-  tras publicar estos cambios. No se ejecutó commit ni push. Una primera
-  ejecución sin caché todavía requiere una descarga exitosa de NVD;
-  esta validación local no demuestra que el HTTP 503 remoto haya desaparecido.
+
+Validación en GitHub Actions (commit `febec0a`):
+
+- push, ejecución 43480208647: **success**. Sin caché previa; carga desde los
+  feeds en 121 s; `Cache saved with key: nvd-feed-Linux-ms-users-13.0.0-2026-11-13`;
+  en `verify`, `Check for updates complete (16 ms)`, 105 pruebas sin fallos,
+  0 violaciones de Checkstyle, cobertura cumplida y BUILD SUCCESS.
+- pull_request, ejecución 43480221322: **success**. Carga en 98 s, caché
+  guardada en el alcance del PR, 105 pruebas sin fallos y BUILD SUCCESS.
 
 ## Antes / Después
 
