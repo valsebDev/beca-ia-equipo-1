@@ -8,9 +8,10 @@ import java.util.List;
 import javax.crypto.SecretKey;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Service;
 
+import com.ids.ms_users.config.JwtProperties;
 import com.ids.ms_users.domain.User;
 import com.ids.ms_users.exception.InvalidCredentialsException;
 
@@ -20,7 +21,13 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
 @Service
+@EnableConfigurationProperties(JwtProperties.class)
 public final class TokenService {
+
+    private static final String BEARER_PREFIX = "Bearer ";
+    private static final int MIN_SECRET_BYTES = 32;
+    private static final int SECONDS_PER_MINUTE = 60;
+    private static final int MILLIS_PER_SECOND = 1000;
 
     private final SecretKey signingKey;
     private final long expirationMinutes;
@@ -28,12 +35,12 @@ public final class TokenService {
     private final String audience;
 
     @Autowired
-    public TokenService(
-            @Value("${app.security.jwt.secret}") String secret,
-            @Value("${app.security.jwt.access-ttl-minutes:15}") long expirationMinutes,
-            @Value("${app.security.jwt.issuer:ms-users}") String issuer,
-            @Value("${app.security.jwt.audience:mesa-ayuda}") String audience) {
-        this(createSigningKey(secret), expirationMinutes, issuer, audience);
+    public TokenService(JwtProperties properties) {
+        this(
+                createSigningKey(properties.secret()),
+                properties.accessTtlMinutes(),
+                properties.issuer(),
+                properties.audience());
     }
 
         public TokenService(
@@ -56,7 +63,7 @@ public final class TokenService {
         }
         long nowMillis = System.currentTimeMillis();
         Date now = new Date(nowMillis);
-        Date expiryDate = new Date(nowMillis + (expirationMinutes * 60 * 1000));
+        Date expiryDate = new Date(nowMillis + (expirationMinutes * SECONDS_PER_MINUTE * MILLIS_PER_SECOND));
         String fullName = user.getName() + " " + user.getPaternalName();
         if (user.getMaternalName() != null && !user.getMaternalName().isBlank()) {
             fullName += " " + user.getMaternalName();
@@ -109,10 +116,10 @@ public final class TokenService {
     }
 
     private Claims extractAllClaims(String bearerHeader) {
-        if (bearerHeader == null || !bearerHeader.startsWith("Bearer ")) {
+        if (bearerHeader == null || !bearerHeader.startsWith(BEARER_PREFIX)) {
             throw new InvalidCredentialsException("Cabecera de autorización faltante o con formato inválido");
         }
-        String token = bearerHeader.substring(7);
+        String token = bearerHeader.substring(BEARER_PREFIX.length());
         try {
             return Jwts.parser()
                     .verifyWith(signingKey)
@@ -127,11 +134,11 @@ public final class TokenService {
     }
 
     public long getExpirationSeconds() {
-        return expirationMinutes * 60;
+        return expirationMinutes * SECONDS_PER_MINUTE;
     }
 
     private static SecretKey createSigningKey(String secret) {
-        if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+        if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < MIN_SECRET_BYTES) {
             throw new IllegalArgumentException("JWT_SECRET debe tener al menos 32 caracteres (256 bits)");
         }
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));

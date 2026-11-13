@@ -80,3 +80,37 @@ No identifiqué falsos positivos en esta ejecución. Todos los hallazgos de los 
 Captura de SonarQube for IDE:
 - Antes: [sonarqube-servicio.png](img/sonarqube-servicio.png) (errores iniciales).
 - Después: [sonarqube-servicio-limpio.png](img/sonarqube-servicio-limpio.png) (0 hallazgos de Sonar).
+
+## 6. Alineación con la skill compartida `quality-gates-java`
+
+Se reemplazaron `config/checkstyle/checkstyle.xml` y `config/pmd/ruleset.xml` por los de `.github/skills/quality-gates-java/references/`, que unifican las reglas de ms-catalog, ms-tickets y ms-users. El `pom.xml` no cambió.
+
+Con esas reglas aparecieron hallazgos nuevos que se corrigieron en el código (commit `48d4396`), sin desactivar reglas:
+
+| Herramienta | Regla | Antes | Después | Archivos |
+|---|---|---|---|---|
+| Checkstyle | LineLength (máx. 120) | 4 líneas | 0 | `GlobalExceptionHandler`, `PriorityService` |
+| PMD | AvoidDuplicateLiterals | 4 literales en pruebas | 0 | `PriorityControllerTest`, `CategoryServiceTest`, `PriorityServiceTest` |
+
+Resultado de `./mvnw -B verify` completo del 2026-11-09 (con Docker y `NVD_API_KEY`): BUILD SUCCESS.
+
+| Gate | Resultado |
+|---|---|
+| Checkstyle | 0 violaciones |
+| PMD y CPD | 0 violaciones |
+| SpotBugs + FindSecBugs | 0 hallazgos (`spotbugs:check`) |
+| Pruebas | 52 de 52 pasan, incluida `MsCatalogApplicationTests` con Testcontainers |
+| JaCoCo | 96.05 % de líneas (170/177), mínimo 70 %; `jacoco:check` cumplido |
+| Dependency-Check | Sin fallos con `failBuildOnCVSS=7` |
+
+Avisos de PMD 7.29.0 (no bloquean el build): `UnnecessaryLocalBeforeReturn` y `AvoidLosingExceptionInformation` están marcadas para eliminación en PMD 8.0.0. Hay que reemplazarlas en la skill cuando se migre a PMD 8.
+
+### Ajuste a las instrucciones globales (`.github/copilot-instructions.md`)
+
+Se revisó ms-catalog contra la regla 8 de las instrucciones globales, que prohíbe `@Autowired` en campos. Las tres pruebas de controller (`CategoryControllerTest`, `CategoryErrorResponseTest`, `PriorityControllerTest`) inyectaban `MockMvc` por campo. Ahora el campo es `private final` y el constructor de la prueba lleva `@Autowired`. Las aserciones no cambiaron.
+
+| Herramienta | Regla | Antes | Después |
+|---|---|---|---|
+| Pruebas | `@Autowired` por campo | 3 archivos | 0 |
+| `verify` | Build | BUILD SUCCESS | BUILD SUCCESS (52 de 52 pruebas) |
+

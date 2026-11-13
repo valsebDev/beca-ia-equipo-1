@@ -18,8 +18,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.ids.ms_users.domain.Role;
 import com.ids.ms_users.domain.User;
-import com.ids.ms_users.dto.UpdateUserStatusRequest;
-import com.ids.ms_users.dto.UserResponse;
+import com.ids.ms_users.dto.request.UpdateUserStatusRequest;
+import com.ids.ms_users.dto.response.UserResponse;
 import com.ids.ms_users.exception.GlobalExceptionHandler;
 import com.ids.ms_users.exception.ForbiddenOperationException;
 import com.ids.ms_users.exception.UserNotFoundException;

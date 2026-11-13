@@ -45,7 +45,8 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(DomainValidationException.class)
 	ProblemDetail handleDomainValidation(DomainValidationException ex, HttpServletRequest request) {
-		ProblemDetail problem = build(HttpStatus.BAD_REQUEST, ex.getCode(), "Error de validación", ex.getMessage(), request);
+		ProblemDetail problem = build(
+				HttpStatus.BAD_REQUEST, ex.getCode(), "Error de validación", ex.getMessage(), request);
 		problem.setProperty("errors", List.of(new FieldViolation(ex.getField(), ex.getMessage())));
 		return problem;
 	}
@@ -73,7 +74,8 @@ public class GlobalExceptionHandler {
 				"Ocurrió un error interno. Intente más tarde", request);
 	}
 
-	static ProblemDetail build(HttpStatus status, String code, String title, String detail, HttpServletRequest request) {
+	static ProblemDetail build(
+			HttpStatus status, String code, String title, String detail, HttpServletRequest request) {
 		ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
 		problem.setType(URI.create(PROBLEM_BASE_URI + code.toLowerCase(Locale.ROOT).replace('_', '-')));
 		problem.setTitle(title);

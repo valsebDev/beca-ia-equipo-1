@@ -27,10 +27,12 @@ public class PriorityService {
 	public PriorityResponse create(PriorityRequest request) {
 		validateSla(request.sla());
 		if (priorityRepository.existsByCode(request.code())) {
-			throw new ConflictException("PRIORITY_ALREADY_EXISTS", "Ya existe una prioridad con código " + request.code());
+			throw new ConflictException(
+					"PRIORITY_ALREADY_EXISTS", "Ya existe una prioridad con código " + request.code());
 		}
 		if (priorityRepository.existsByLevel(request.level().shortValue())) {
-			throw new ConflictException("PRIORITY_LEVEL_ALREADY_EXISTS", "Ya existe una prioridad con nivel " + request.level());
+			throw new ConflictException(
+					"PRIORITY_LEVEL_ALREADY_EXISTS", "Ya existe una prioridad con nivel " + request.level());
 		}
 		return PriorityMapper.toResponse(priorityRepository.save(PriorityMapper.toEntity(request)));
 	}

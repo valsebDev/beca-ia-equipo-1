@@ -38,17 +38,22 @@ class PriorityControllerTest {
 	private static final String BASE_PATH = "/api/v1/priorities";
 	private static final String SLA_PATH = "/api/v1/priorities/2/sla";
 	private static final String CODE_PATH = "$.code";
+	private static final String ALTA_NAME = "Alta";
 
-	@Autowired
-	private MockMvc mockMvc;
+	private final MockMvc mockMvc;
 
 	@MockitoBean
 	private PriorityService priorityService;
 
+	@Autowired
+	PriorityControllerTest(MockMvc mockMvc) {
+		this.mockMvc = mockMvc;
+	}
+
 	@Test
 	void updateSlaDevuelve200ConLasNuevasHoras() throws Exception {
 		when(priorityService.updateSla(anyLong(), any())).thenReturn(
-				new PriorityResponse(2L, PriorityCode.ALTA, "Alta", 2, true, new SlaResponse(2, 8)));
+				new PriorityResponse(2L, PriorityCode.ALTA, ALTA_NAME, 2, true, new SlaResponse(2, 8)));
 
 		mockMvc.perform(put(SLA_PATH).contentType(JSON).content("{\"responseHours\":2,\"resolutionHours\":8}"))
 				.andExpect(status().isOk())
@@ -65,7 +70,7 @@ class PriorityControllerTest {
 		mockMvc.perform(put(SLA_PATH).contentType(JSON).content("{\"responseHours\":10,\"resolutionHours\":5}"))
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentTypeCompatibleWith("application/problem+json"))
-				.andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+				.andExpect(jsonPath(CODE_PATH).value("VALIDATION_ERROR"))
 				.andExpect(jsonPath("$.errors[0].field").value("resolutionHours"));
 		verify(priorityService).updateSla(anyLong(), any());
 	}
@@ -86,7 +91,7 @@ class PriorityControllerTest {
 		mockMvc.perform(put("/api/v1/priorities/999/sla").contentType(JSON)
 						.content("{\"responseHours\":2,\"resolutionHours\":8}"))
 				.andExpect(status().isNotFound())
-				.andExpect(jsonPath("$.code").value("PRIORITY_NOT_FOUND"));
+				.andExpect(jsonPath(CODE_PATH).value("PRIORITY_NOT_FOUND"));
 		verify(priorityService).updateSla(999L, new SlaRequest(2, 8));
 	}
 
@@ -104,7 +109,7 @@ class PriorityControllerTest {
 	@Test
 	void listDevuelve200ConPrioridadesOrdenadas() throws Exception {
 		when(priorityService.findAll()).thenReturn(List.of(
-				new PriorityResponse(2L, PriorityCode.ALTA, "Alta", 2, true, new SlaResponse(2, 8))));
+				new PriorityResponse(2L, PriorityCode.ALTA, ALTA_NAME, 2, true, new SlaResponse(2, 8))));
 
 		mockMvc.perform(get(BASE_PATH))
 				.andExpect(status().isOk())
@@ -115,7 +120,7 @@ class PriorityControllerTest {
 	@Test
 	void getDevuelve200ConLaPrioridadSolicitada() throws Exception {
 		when(priorityService.findById(2L)).thenReturn(
-				new PriorityResponse(2L, PriorityCode.ALTA, "Alta", 2, true, new SlaResponse(2, 8)));
+				new PriorityResponse(2L, PriorityCode.ALTA, ALTA_NAME, 2, true, new SlaResponse(2, 8)));
 
 		mockMvc.perform(get(BASE_PATH + "/2"))
 				.andExpect(status().isOk())

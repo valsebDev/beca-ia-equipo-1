@@ -2,12 +2,12 @@ package com.ids.ms_users.service;
 
 import com.ids.ms_users.domain.Role;
 import com.ids.ms_users.domain.User;
-import com.ids.ms_users.dto.AuthResponse;
-import com.ids.ms_users.dto.LoginRequest;
-import com.ids.ms_users.dto.RegisterUserRequest;
-import com.ids.ms_users.dto.UpdateProfileRequest;
-import com.ids.ms_users.dto.UpdateUserStatusRequest;
-import com.ids.ms_users.dto.UserResponse;
+import com.ids.ms_users.dto.response.AuthResponse;
+import com.ids.ms_users.dto.request.LoginRequest;
+import com.ids.ms_users.dto.request.RegisterUserRequest;
+import com.ids.ms_users.dto.request.UpdateProfileRequest;
+import com.ids.ms_users.dto.request.UpdateUserStatusRequest;
+import com.ids.ms_users.dto.response.UserResponse;
 import com.ids.ms_users.exception.AccountInactiveException;
 import com.ids.ms_users.exception.AccountLockedException;
 import com.ids.ms_users.exception.EmailAlreadyExistsException;
@@ -198,5 +198,36 @@ class UserServiceTest {
         assertThrows(ForbiddenOperationException.class, () -> userService.updateStatusByAdmin(
                 "uuid-agente", new UpdateUserStatusRequest(false), List.of("SOLICITANTE")));
         then(userRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/users/{id}: ADMIN obtiene el usuario solicitado")
+    void getUserByIdByAdmin_adminConsulta_retornaUsuario() {
+        String identifier = "uuid-agente";
+        User user = new User(identifier, "Agente", "Uno", null, "agente@ids.com", "pass", Role.AGENTE, true, LocalDateTime.now());
+
+        given(userRepository.findByUserIdentifier(identifier)).willReturn(Optional.of(user));
+
+        UserResponse response = userService.getUserByIdByAdmin(identifier, List.of("ADMIN"));
+
+        assertEquals(identifier, response.userIdentifier());
+        assertEquals("agente@ids.com", response.email());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/users/{id}: un rol distinto de ADMIN no puede consultar usuarios")
+    void getUserByIdByAdmin_sinRolAdmin_lanzaForbiddenOperationException() {
+        assertThrows(ForbiddenOperationException.class, () -> userService.getUserByIdByAdmin(
+                "uuid-agente", List.of("SOLICITANTE")));
+        then(userRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/users/{id}: identificador inexistente lanza UserNotFoundException")
+    void getUserByIdByAdmin_usuarioInexistente_lanzaUserNotFoundException() {
+        given(userRepository.findByUserIdentifier("uuid-no-existe")).willReturn(Optional.empty());
+
+        assertThrows(UserNotFoundException.class, () -> userService.getUserByIdByAdmin(
+                "uuid-no-existe", List.of("ADMIN")));
     }
 }

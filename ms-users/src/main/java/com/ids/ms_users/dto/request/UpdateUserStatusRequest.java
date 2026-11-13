@@ -1,4 +1,4 @@
-package com.ids.ms_users.dto;
+package com.ids.ms_users.dto.request;
 
 import jakarta.validation.constraints.NotNull;
 

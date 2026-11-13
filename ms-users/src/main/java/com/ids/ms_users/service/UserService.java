@@ -2,18 +2,19 @@ package com.ids.ms_users.service;
 
 import com.ids.ms_users.domain.Role;
 import com.ids.ms_users.domain.User;
-import com.ids.ms_users.dto.AuthResponse;
-import com.ids.ms_users.dto.LoginRequest;
-import com.ids.ms_users.dto.RegisterUserRequest;
-import com.ids.ms_users.dto.UpdateProfileRequest;
-import com.ids.ms_users.dto.UpdateUserStatusRequest;
-import com.ids.ms_users.dto.UserResponse;
+import com.ids.ms_users.dto.response.AuthResponse;
+import com.ids.ms_users.dto.request.LoginRequest;
+import com.ids.ms_users.dto.request.RegisterUserRequest;
+import com.ids.ms_users.dto.request.UpdateProfileRequest;
+import com.ids.ms_users.dto.request.UpdateUserStatusRequest;
+import com.ids.ms_users.dto.response.UserResponse;
 import com.ids.ms_users.exception.AccountInactiveException;
 import com.ids.ms_users.exception.AccountLockedException;
 import com.ids.ms_users.exception.EmailAlreadyExistsException;
 import com.ids.ms_users.exception.ForbiddenOperationException;
 import com.ids.ms_users.exception.InvalidCredentialsException;
 import com.ids.ms_users.exception.UserNotFoundException;
+import com.ids.ms_users.mapper.UserMapper;
 import com.ids.ms_users.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -26,6 +27,8 @@ import java.util.UUID;
 
 @Service
 public class UserService {
+
+    private static final String USER_NOT_FOUND_MESSAGE = "Usuario no encontrado con identificador: ";
 
     private final UserRepository userRepository;
     private final TokenService tokenService;
@@ -65,7 +68,7 @@ public class UserService {
         );
 
         User saved = userRepository.save(user);
-        return mapToResponse(saved);
+        return UserMapper.toResponse(saved);
     }
 
     @Transactional
@@ -86,7 +89,7 @@ public class UserService {
                 token,
                 "Bearer",
                 tokenService.getExpirationSeconds(),
-                mapToResponse(user)
+                UserMapper.toResponse(user)
         );
     }
 
@@ -128,21 +131,21 @@ public class UserService {
     public UserResponse getProfile(String userIdentifier) {
         User user = userRepository.findByUserIdentifier(userIdentifier)
             .orElseThrow(() -> new UserNotFoundException(
-                "Usuario no encontrado con identificador: " + userIdentifier));
-        return mapToResponse(user);
+                USER_NOT_FOUND_MESSAGE + userIdentifier));
+        return UserMapper.toResponse(user);
     }
 
     @Transactional
     public UserResponse updateProfile(String userIdentifier, UpdateProfileRequest request) {
         User user = userRepository.findByUserIdentifier(userIdentifier)
             .orElseThrow(() -> new UserNotFoundException(
-                "Usuario no encontrado con identificador: " + userIdentifier));
+                USER_NOT_FOUND_MESSAGE + userIdentifier));
         user.setName(request.name());
         user.setPaternalName(request.paternalName());
         user.setMaternalName(request.maternalName());
 
         User updated = userRepository.save(user);
-        return mapToResponse(updated);
+        return UserMapper.toResponse(updated);
     }
 
     @Transactional
@@ -151,7 +154,7 @@ public class UserService {
         requireAdmin(requesterRoles);
         User user = userRepository.findByUserIdentifier(userIdentifier)
             .orElseThrow(() -> new UserNotFoundException(
-                "Usuario no encontrado con identificador: " + userIdentifier));
+                USER_NOT_FOUND_MESSAGE + userIdentifier));
         user.setIsActive(request.isActive());
         if (Boolean.FALSE.equals(request.isActive())) {
             user.setJwtId(null);
@@ -159,7 +162,16 @@ public class UserService {
         }
 
         User updated = userRepository.save(user);
-        return mapToResponse(updated);
+        return UserMapper.toResponse(updated);
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse getUserByIdByAdmin(String userIdentifier, List<String> requesterRoles) {
+        requireAdmin(requesterRoles);
+        User user = userRepository.findByUserIdentifier(userIdentifier)
+            .orElseThrow(() -> new UserNotFoundException(
+                USER_NOT_FOUND_MESSAGE + userIdentifier));
+        return UserMapper.toResponse(user);
     }
 
     private void requireAdmin(List<String> roles) {
@@ -168,16 +180,4 @@ public class UserService {
         }
     }
 
-    private UserResponse mapToResponse(User user) {
-        return new UserResponse(
-                user.getUserIdentifier(),
-                user.getName(),
-                user.getPaternalName(),
-                user.getMaternalName(),
-                user.getEmail(),
-                user.getRole(),
-                user.getIsActive(),
-                user.getCreatedAt()
-        );
-    }
 }

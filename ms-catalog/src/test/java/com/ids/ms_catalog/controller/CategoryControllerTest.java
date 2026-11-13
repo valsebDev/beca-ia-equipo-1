@@ -30,11 +30,15 @@ class CategoryControllerTest {
 	private static final String JSON = MediaType.APPLICATION_JSON_VALUE;
 	private static final String BASE_PATH = "/api/v1/categories";
 
-	@Autowired
-	private MockMvc mockMvc;
+	private final MockMvc mockMvc;
 
 	@MockitoBean
 	private CategoryService categoryService;
+
+	@Autowired
+	CategoryControllerTest(MockMvc mockMvc) {
+		this.mockMvc = mockMvc;
+	}
 
 	@Test
 	void createDevuelve201ConCabeceraLocation() throws Exception {

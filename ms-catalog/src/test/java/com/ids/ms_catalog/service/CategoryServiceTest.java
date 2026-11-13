@@ -32,6 +32,7 @@ import static org.mockito.Mockito.when;
 class CategoryServiceTest {
 
 	private static final String SOFTWARE_NAME = "Software";
+	private static final String REDES_NAME = "Redes";
 
 	@Mock
 	private CategoryRepository categoryRepository;
@@ -52,17 +53,17 @@ class CategoryServiceTest {
 
 	@Test
 	void createGuardaCategoriaActivaCuandoElNombreEstaDisponible() {
-		when(categoryRepository.existsByName("Redes")).thenReturn(false);
+		when(categoryRepository.existsByName(REDES_NAME)).thenReturn(false);
 		when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> {
 			Category saved = invocation.getArgument(0);
 			saved.setId(10L);
 			return saved;
 		});
 
-		CategoryResponse response = categoryService.create(new CategoryRequest("Redes", "Problemas de red"));
+		CategoryResponse response = categoryService.create(new CategoryRequest(REDES_NAME, "Problemas de red"));
 
 		assertThat(response).usingRecursiveComparison()
-				.isEqualTo(new CategoryResponse(10L, "Redes", "Problemas de red", true));
+				.isEqualTo(new CategoryResponse(10L, REDES_NAME, "Problemas de red", true));
 	}
 
 	@Test
