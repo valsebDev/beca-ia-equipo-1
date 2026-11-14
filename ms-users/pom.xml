@@ -14,7 +14,7 @@
 
     <groupId>com.ids</groupId>
     <artifactId>ms-users</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.1</version>
     <name>ms-users</name>
     <description>Microservicio de gestión de usuarios y autenticación para el sistema Mesa de Ayuda</description>
 
