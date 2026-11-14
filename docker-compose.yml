@@ -3,13 +3,15 @@ services:
     image: postgres:16
     environment:
       POSTGRES_DB: users_db
-      POSTGRES_USER: ${USERS_DB_USER}
-      POSTGRES_PASSWORD: ${USERS_DB_PASSWORD}
+      POSTGRES_USER: ${USERS_DB_USER:?Define USERS_DB_USER en .env}
+      POSTGRES_PASSWORD: ${USERS_DB_PASSWORD:?Define USERS_DB_PASSWORD en .env}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 3s
       retries: 10
+    volumes:
+      - db-users-data:/var/lib/postgresql/data
     ports:
       - "5433:5432"
     networks:
@@ -22,16 +24,22 @@ services:
       # La app lee ${PORT:8081}; el contenedor debe escuchar en 8080 (EXPOSE y HEALTHCHECK).
       PORT: 8080
       SPRING_DATASOURCE_URL: jdbc:postgresql://db-users:5432/users_db
-      SPRING_DATASOURCE_USERNAME: ${USERS_DB_USER}
-      SPRING_DATASOURCE_PASSWORD: ${USERS_DB_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_ISSUER: ${JWT_ISSUER}
-      JWT_AUDIENCE: ${JWT_AUDIENCE}
-      ADMIN_EMAIL: ${ADMIN_EMAIL}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      SPRING_DATASOURCE_USERNAME: ${USERS_DB_USER:?Define USERS_DB_USER en .env}
+      SPRING_DATASOURCE_PASSWORD: ${USERS_DB_PASSWORD:?Define USERS_DB_PASSWORD en .env}
+      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en .env}
+      JWT_ISSUER: ${JWT_ISSUER:?Define JWT_ISSUER en .env}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:?Define JWT_AUDIENCE en .env}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Define ADMIN_EMAIL en .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Define ADMIN_PASSWORD en .env}
     depends_on:
       db-users:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
     ports:
       - "8081:8080"
     networks:
@@ -41,13 +49,15 @@ services:
     image: postgres:16
     environment:
       POSTGRES_DB: catalog_db
-      POSTGRES_USER: ${CATALOG_DB_USER}
-      POSTGRES_PASSWORD: ${CATALOG_DB_PASSWORD}
+      POSTGRES_USER: ${CATALOG_DB_USER:?Define CATALOG_DB_USER en .env}
+      POSTGRES_PASSWORD: ${CATALOG_DB_PASSWORD:?Define CATALOG_DB_PASSWORD en .env}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
       timeout: 5s
       retries: 5
+    volumes:
+      - db-catalog-data:/var/lib/postgresql/data
     ports:
       - "5435:5432"
     networks:
@@ -58,15 +68,21 @@ services:
     build: ./ms-catalog
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db-catalog:5432/catalog_db
-      SPRING_DATASOURCE_USERNAME: ${CATALOG_DB_USER}
-      SPRING_DATASOURCE_PASSWORD: ${CATALOG_DB_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_ISSUER: ${JWT_ISSUER}
-      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      SPRING_DATASOURCE_USERNAME: ${CATALOG_DB_USER:?Define CATALOG_DB_USER en .env}
+      SPRING_DATASOURCE_PASSWORD: ${CATALOG_DB_PASSWORD:?Define CATALOG_DB_PASSWORD en .env}
+      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en .env}
+      JWT_ISSUER: ${JWT_ISSUER:?Define JWT_ISSUER en .env}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:?Define JWT_AUDIENCE en .env}
       SERVICES_USERS_URL: http://ms-users:8080
     depends_on:
       db-catalog:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
     ports:
       - "8083:8080"
     networks:
@@ -76,13 +92,15 @@ services:
     image: postgres:16
     environment:
       POSTGRES_DB: tickets_db
-      POSTGRES_USER: ${TICKETS_DB_USER}
-      POSTGRES_PASSWORD: ${TICKETS_DB_PASSWORD}
+      POSTGRES_USER: ${TICKETS_DB_USER:?Define TICKETS_DB_USER en .env}
+      POSTGRES_PASSWORD: ${TICKETS_DB_PASSWORD:?Define TICKETS_DB_PASSWORD en .env}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -d tickets_db -U $$POSTGRES_USER"]
       interval: 5s
       timeout: 5s
       retries: 10
+    volumes:
+      - db-tickets-data:/var/lib/postgresql/data
     ports:
       - "5434:5432"
     networks:
@@ -93,20 +111,31 @@ services:
     build: ./ms-tickets
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db-tickets:5432/tickets_db
-      SPRING_DATASOURCE_USERNAME: ${TICKETS_DB_USER}
-      SPRING_DATASOURCE_PASSWORD: ${TICKETS_DB_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_ISSUER: ${JWT_ISSUER}
-      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      SPRING_DATASOURCE_USERNAME: ${TICKETS_DB_USER:?Define TICKETS_DB_USER en .env}
+      SPRING_DATASOURCE_PASSWORD: ${TICKETS_DB_PASSWORD:?Define TICKETS_DB_PASSWORD en .env}
+      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET en .env}
+      JWT_ISSUER: ${JWT_ISSUER:?Define JWT_ISSUER en .env}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:?Define JWT_AUDIENCE en .env}
       SERVICES_USERS_URL: http://ms-users:8080
       SERVICES_CATALOG_URL: http://ms-catalog:8080
     depends_on:
       db-tickets:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
     ports:
       - "8082:8080"
     networks:
       - mesa-ayuda
+
+volumes:
+  db-users-data:
+  db-catalog-data:
+  db-tickets-data:
 
 networks:
   mesa-ayuda:
