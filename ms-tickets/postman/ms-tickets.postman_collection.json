@@ -1,24 +1,136 @@
 {
 	"info": {
 		"name": "ms-tickets",
-		"description": "Pruebas de los endpoints de /api/v1/tickets. Identidad simulada con X-User-Id y X-User-Role (Práctica 1).",
+		"description": "Pruebas de los endpoints de /api/v1/tickets con autenticación JWT (Bearer) emitido por ms-users. Antes de ejecutar, rellena en las variables de colección los correos y contraseñas de cada rol, y los IDs reales de agentId y requesterId (ver ms-users). Los tokens se guardan automáticamente al ejecutar las peticiones de login.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
-		{ "key": "baseUrl", "value": "http://localhost:8080" },
-		{ "key": "adminId", "value": "1" },
+		{ "key": "baseUrl", "value": "http://localhost:8082" },
+		{ "key": "usersUrl", "value": "http://localhost:8081" },
+		{ "key": "adminEmail", "value": "" },
+		{ "key": "adminPassword", "value": "" },
+		{ "key": "agentEmail", "value": "" },
+		{ "key": "agentPassword", "value": "" },
+		{ "key": "requesterEmail", "value": "" },
+		{ "key": "requesterPassword", "value": "" },
+		{ "key": "otherEmail", "value": "" },
+		{ "key": "otherPassword", "value": "" },
 		{ "key": "agentId", "value": "2" },
 		{ "key": "requesterId", "value": "10" },
+		{ "key": "adminToken", "value": "" },
+		{ "key": "agentToken", "value": "" },
+		{ "key": "requesterToken", "value": "" },
+		{ "key": "otherToken", "value": "" },
 		{ "key": "ticketId", "value": "1" }
 	],
 	"item": [
+		{
+			"name": "0. Autenticación (ms-users)",
+			"item": [
+				{
+					"name": "0a. Login ADMIN",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"email\": \"{{adminEmail}}\",\n\t\"password\": \"{{adminPassword}}\"\n}"
+						},
+						"url": "{{usersUrl}}/api/v1/auth/login"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Login ADMIN responde 200', () => pm.response.to.have.status(200));",
+									"pm.collectionVariables.set('adminToken', pm.response.json().accessToken);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "0b. Login AGENTE",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"email\": \"{{agentEmail}}\",\n\t\"password\": \"{{agentPassword}}\"\n}"
+						},
+						"url": "{{usersUrl}}/api/v1/auth/login"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Login AGENTE responde 200', () => pm.response.to.have.status(200));",
+									"pm.collectionVariables.set('agentToken', pm.response.json().accessToken);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "0c. Login SOLICITANTE",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"email\": \"{{requesterEmail}}\",\n\t\"password\": \"{{requesterPassword}}\"\n}"
+						},
+						"url": "{{usersUrl}}/api/v1/auth/login"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Login SOLICITANTE responde 200', () => pm.response.to.have.status(200));",
+									"pm.collectionVariables.set('requesterToken', pm.response.json().accessToken);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "0d. Login SOLICITANTE ajeno",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"email\": \"{{otherEmail}}\",\n\t\"password\": \"{{otherPassword}}\"\n}"
+						},
+						"url": "{{usersUrl}}/api/v1/auth/login"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Login SOLICITANTE ajeno responde 200', () => pm.response.to.have.status(200));",
+									"pm.collectionVariables.set('otherToken', pm.response.json().accessToken);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		},
 		{
 			"name": "1. Crear ticket (SOLICITANTE)",
 			"request": {
 				"method": "POST",
 				"header": [
-					{ "key": "X-User-Id", "value": "{{requesterId}}" },
-					{ "key": "X-User-Role", "value": "SOLICITANTE" },
+					{ "key": "Authorization", "value": "Bearer {{requesterToken}}" },
 					{ "key": "Content-Type", "value": "application/json" }
 				],
 				"body": {
@@ -47,8 +159,7 @@
 			"request": {
 				"method": "POST",
 				"header": [
-					{ "key": "X-User-Id", "value": "{{requesterId}}" },
-					{ "key": "X-User-Role", "value": "SOLICITANTE" },
+					{ "key": "Authorization", "value": "Bearer {{requesterToken}}" },
 					{ "key": "Content-Type", "value": "application/json" }
 				],
 				"body": {
@@ -75,10 +186,7 @@
 			"name": "3. Listar mis tickets (SOLICITANTE)",
 			"request": {
 				"method": "GET",
-				"header": [
-					{ "key": "X-User-Id", "value": "{{requesterId}}" },
-					{ "key": "X-User-Role", "value": "SOLICITANTE" }
-				],
+				"header": [{ "key": "Authorization", "value": "Bearer {{requesterToken}}" }],
 				"url": "{{baseUrl}}/api/v1/tickets"
 			},
 			"event": [
@@ -97,13 +205,35 @@
 			]
 		},
 		{
+			"name": "3b. Listar mis tickets filtrados por estado ABIERTO (SOLICITANTE)",
+			"request": {
+				"method": "GET",
+				"header": [{ "key": "Authorization", "value": "Bearer {{requesterToken}}" }],
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/tickets?status=ABIERTO",
+					"host": ["{{baseUrl}}"],
+					"path": ["api", "v1", "tickets"],
+					"query": [{ "key": "status", "value": "ABIERTO" }]
+				}
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Responde 200', () => pm.response.to.have.status(200));",
+							"pm.test('Todos los tickets están ABIERTO', () => pm.expect(pm.response.json().every(t => t.status === 'ABIERTO')).to.be.true);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
 			"name": "4. Consultar ticket por ID (dueño)",
 			"request": {
 				"method": "GET",
-				"header": [
-					{ "key": "X-User-Id", "value": "{{requesterId}}" },
-					{ "key": "X-User-Role", "value": "SOLICITANTE" }
-				],
+				"header": [{ "key": "Authorization", "value": "Bearer {{requesterToken}}" }],
 				"url": "{{baseUrl}}/api/v1/tickets/{{ticketId}}"
 			},
 			"event": [
@@ -122,10 +252,7 @@
 			"name": "5. Consultar ticket ajeno (403) [negativo]",
 			"request": {
 				"method": "GET",
-				"header": [
-					{ "key": "X-User-Id", "value": "99" },
-					{ "key": "X-User-Role", "value": "SOLICITANTE" }
-				],
+				"header": [{ "key": "Authorization", "value": "Bearer {{otherToken}}" }],
 				"url": "{{baseUrl}}/api/v1/tickets/{{ticketId}}"
 			},
 			"event": [
@@ -134,7 +261,7 @@
 					"script": {
 						"exec": [
 							"pm.test('Responde 403', () => pm.response.to.have.status(403));",
-							"pm.test('Respuesta ProblemDetail', () => pm.expect(pm.response.json().status).to.eql(403));"
+							"pm.test('Código FORBIDDEN', () => pm.expect(pm.response.json().code).to.eql('FORBIDDEN'));"
 						],
 						"type": "text/javascript"
 					}
@@ -145,10 +272,7 @@
 			"name": "6. Consultar ticket inexistente (404) [negativo]",
 			"request": {
 				"method": "GET",
-				"header": [
-					{ "key": "X-User-Id", "value": "{{adminId}}" },
-					{ "key": "X-User-Role", "value": "ADMIN" }
-				],
+				"header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
 				"url": "{{baseUrl}}/api/v1/tickets/999999"
 			},
 			"event": [
@@ -169,8 +293,7 @@
 			"request": {
 				"method": "PATCH",
 				"header": [
-					{ "key": "X-User-Id", "value": "{{adminId}}" },
-					{ "key": "X-User-Role", "value": "ADMIN" },
+					{ "key": "Authorization", "value": "Bearer {{adminToken}}" },
 					{ "key": "Content-Type", "value": "application/json" }
 				],
 				"body": {
@@ -197,8 +320,7 @@
 			"request": {
 				"method": "PATCH",
 				"header": [
-					{ "key": "X-User-Id", "value": "{{requesterId}}" },
-					{ "key": "X-User-Role", "value": "SOLICITANTE" },
+					{ "key": "Authorization", "value": "Bearer {{requesterToken}}" },
 					{ "key": "Content-Type", "value": "application/json" }
 				],
 				"body": {
@@ -212,7 +334,8 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test('Responde 403', () => pm.response.to.have.status(403));"
+							"pm.test('Responde 403', () => pm.response.to.have.status(403));",
+							"pm.test('Código FORBIDDEN', () => pm.expect(pm.response.json().code).to.eql('FORBIDDEN'));"
 						],
 						"type": "text/javascript"
 					}
@@ -224,8 +347,7 @@
 			"request": {
 				"method": "PATCH",
 				"header": [
-					{ "key": "X-User-Id", "value": "{{agentId}}" },
-					{ "key": "X-User-Role", "value": "AGENTE" },
+					{ "key": "Authorization", "value": "Bearer {{agentToken}}" },
 					{ "key": "Content-Type", "value": "application/json" }
 				],
 				"body": {
@@ -252,8 +374,7 @@
 			"request": {
 				"method": "PATCH",
 				"header": [
-					{ "key": "X-User-Id", "value": "{{agentId}}" },
-					{ "key": "X-User-Role", "value": "AGENTE" },
+					{ "key": "Authorization", "value": "Bearer {{agentToken}}" },
 					{ "key": "Content-Type", "value": "application/json" }
 				],
 				"body": {
@@ -279,10 +400,7 @@
 			"name": "11. Consultar historial (ADMIN)",
 			"request": {
 				"method": "GET",
-				"header": [
-					{ "key": "X-User-Id", "value": "{{adminId}}" },
-					{ "key": "X-User-Role", "value": "ADMIN" }
-				],
+				"header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
 				"url": "{{baseUrl}}/api/v1/tickets/{{ticketId}}/history"
 			},
 			"event": [
@@ -293,6 +411,12 @@
 							"pm.test('Responde 200 con arreglo', () => {",
 							"  pm.response.to.have.status(200);",
 							"  pm.expect(pm.response.json()).to.be.an('array');",
+							"});",
+							"pm.test('Cada evento incluye eventType y changedAt', () => {",
+							"  pm.response.json().forEach(e => {",
+							"    pm.expect(e).to.have.property('eventType');",
+							"    pm.expect(e).to.have.property('changedAt');",
+							"  });",
 							"});"
 						],
 						"type": "text/javascript"
@@ -301,12 +425,10 @@
 			]
 		},
 		{
-			"name": "12. Petición sin cabecera de rol (400) [negativo]",
+			"name": "12. Petición sin token (401) [negativo]",
 			"request": {
 				"method": "GET",
-				"header": [
-					{ "key": "X-User-Id", "value": "{{requesterId}}" }
-				],
+				"header": [],
 				"url": "{{baseUrl}}/api/v1/tickets"
 			},
 			"event": [
@@ -314,8 +436,90 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test('Responde 400', () => pm.response.to.have.status(400));",
-							"pm.test('Código MALFORMED_REQUEST', () => pm.expect(pm.response.json().code).to.eql('MALFORMED_REQUEST'));"
+							"pm.test('Responde 401', () => pm.response.to.have.status(401));",
+							"pm.test('Código UNAUTHORIZED', () => pm.expect(pm.response.json().code).to.eql('UNAUTHORIZED'));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "13. Resolver ticket (AGENTE asignado)",
+			"request": {
+				"method": "PATCH",
+				"header": [
+					{ "key": "Authorization", "value": "Bearer {{agentToken}}" },
+					{ "key": "Content-Type", "value": "application/json" }
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"status\": \"RESUELTO\",\n\t\"comment\": \"Impresora reconfigurada\"\n}"
+				},
+				"url": "{{baseUrl}}/api/v1/tickets/{{ticketId}}/status"
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Responde 200', () => pm.response.to.have.status(200));",
+							"pm.test('Estado RESUELTO', () => pm.expect(pm.response.json().status).to.eql('RESUELTO'));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "14. Cerrar por AGENTE asignado (403) [negativo]",
+			"request": {
+				"method": "PATCH",
+				"header": [
+					{ "key": "Authorization", "value": "Bearer {{agentToken}}" },
+					{ "key": "Content-Type", "value": "application/json" }
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"status\": \"CERRADO\"\n}"
+				},
+				"url": "{{baseUrl}}/api/v1/tickets/{{ticketId}}/status"
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Responde 403', () => pm.response.to.have.status(403));",
+							"pm.test('Código FORBIDDEN', () => pm.expect(pm.response.json().code).to.eql('FORBIDDEN'));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			]
+		},
+		{
+			"name": "15. Cerrar por SOLICITANTE dueño",
+			"request": {
+				"method": "PATCH",
+				"header": [
+					{ "key": "Authorization", "value": "Bearer {{requesterToken}}" },
+					{ "key": "Content-Type", "value": "application/json" }
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"status\": \"CERRADO\",\n\t\"comment\": \"Confirmo la solución\"\n}"
+				},
+				"url": "{{baseUrl}}/api/v1/tickets/{{ticketId}}/status"
+			},
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Responde 200', () => pm.response.to.have.status(200));",
+							"pm.test('Estado CERRADO', () => pm.expect(pm.response.json().status).to.eql('CERRADO'));",
+							"pm.test('Incluye closedAt', () => pm.expect(pm.response.json().closedAt).to.not.be.null);"
 						],
 						"type": "text/javascript"
 					}
