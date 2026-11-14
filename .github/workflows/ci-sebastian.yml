@@ -17,6 +17,6 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '17', cache: maven }
       - name: Quality gates y pruebas (mvn verify)
-        run: chmod +x mvnw && ./mvnw -B verify
+        run: chmod +x mvnw && ./mvnw -B verify -DnvdDatafeedUrl=https://dependency-check.github.io/DependencyCheck_Builder/nvd_cache/nvdcve-%7B0%7D.json.gz
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}

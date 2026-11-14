@@ -50,3 +50,21 @@ $env:JWT_SECRET = "<secreto-de-al-menos-32-bytes>"
 
 ### Swagger UI
 Con el servicio en ejecución, abre `http://localhost:8080/swagger-ui.html`.
+
+### Auditoría de la imagen
+Comandos ejecutados sobre `ms-tickets:0.0.1`, desde la raíz del repositorio:
+
+```powershell
+Get-Content -Raw ms-tickets/Dockerfile | docker run --rm -i hadolint/hadolint
+docker save -o $env:TEMP\ms-tickets-audit.tar ms-tickets:0.0.1
+docker run --rm -v "${env:TEMP}:/tmp/audit" aquasec/trivy image --input /tmp/audit/ms-tickets-audit.tar --scanners vuln --severity HIGH,CRITICAL
+```
+
+Resultados:
+- **Hadolint**: sin hallazgos sobre el `Dockerfile`.
+- **Trivy**: 0 vulnerabilidades HIGH o CRITICAL en `ubuntu 26.04` (imagen base), `app/app.jar` y `usr/bin/pebble`.
+
+Correcciones aplicadas en el `Dockerfile`:
+- `curl` fijado a la versión `8.18.0-1ubuntu2.8`.
+- Usuario de sistema `app` con UID/GID `10001`, y `USER 10001:10001` en lugar de un nombre de usuario.
+- `HEALTHCHECK` en forma exec (`CMD ["curl", ...]`).

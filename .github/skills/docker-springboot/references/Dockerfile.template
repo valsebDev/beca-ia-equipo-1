@@ -1,26 +1,22 @@
-# Plantilla Dockerfile para microservicios Spring Boot 4 (Java 17, Maven).
-# Quita las líneas COPY de config/ si el servicio no tiene esa carpeta.
-
-# ---- build ----
-FROM eclipse-temurin:17.0.21_9-jdk AS build
+FROM eclipse-temurin:17-jdk AS build
 WORKDIR /workspace
 COPY mvnw pom.xml ./
 COPY .mvn .mvn
-RUN ./mvnw -B -q dependency:go-offline
-COPY config config
-COPY src src
+RUN chmod +x ./mvnw && ./mvnw -B -q dependency:go-offline
+COPY config ./config
+COPY src ./src
 RUN ./mvnw -B -q package -DskipTests
 
-# ---- runtime ----
-FROM eclipse-temurin:17.0.21_9-jre
+FROM eclipse-temurin:17-jre
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl=8.18.0-1ubuntu2.8 \
+    && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
-RUN groupadd --system app && useradd --system --gid app --no-create-home app
+RUN groupadd --system app \
+    && useradd --system --gid app --home-dir /app --shell /usr/sbin/nologin app
 WORKDIR /app
-COPY --from=build --chown=app:app /workspace/target/*.jar /app/app.jar
+COPY --from=build /workspace/target/*.jar /app/app.jar
 USER app
 EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
     CMD curl -fsS http://localhost:8080/actuator/health || exit 1
 ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "/app/app.jar"]

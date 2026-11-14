@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: ${USERS_DB_USER}
       POSTGRES_PASSWORD: ${USERS_DB_PASSWORD}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${USERS_DB_USER} -d users_db"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -16,8 +16,8 @@ services:
       - mesa-ayuda
 
   ms-users:
-    build: ./ms-users
     image: ms-users:0.0.1
+    build: ./ms-users
     environment:
       # La app lee ${PORT:8081}; el contenedor debe escuchar en 8080 (EXPOSE y HEALTHCHECK).
       PORT: 8080
@@ -37,6 +37,78 @@ services:
     networks:
       - mesa-ayuda
 
+  db-catalog:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: catalog_db
+      POSTGRES_USER: ${CATALOG_DB_USER}
+      POSTGRES_PASSWORD: ${CATALOG_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5435:5432"
+    networks:
+      - mesa-ayuda
+
+  ms-catalog:
+    image: ms-catalog:0.0.1
+    build: ./ms-catalog
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-catalog:5432/catalog_db
+      SPRING_DATASOURCE_USERNAME: ${CATALOG_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${CATALOG_DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      SERVICES_USERS_URL: http://ms-users:8080
+    depends_on:
+      db-catalog:
+        condition: service_healthy
+    ports:
+      - "8083:8080"
+    networks:
+      - mesa-ayuda
+
+  db-tickets:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: tickets_db
+      POSTGRES_USER: ${TICKETS_DB_USER}
+      POSTGRES_PASSWORD: ${TICKETS_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d tickets_db -U $$POSTGRES_USER"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5434:5432"
+    networks:
+      - mesa-ayuda
+
+  ms-tickets:
+    image: ms-tickets:0.0.1
+    build: ./ms-tickets
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-tickets:5432/tickets_db
+      SPRING_DATASOURCE_USERNAME: ${TICKETS_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${TICKETS_DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      SERVICES_USERS_URL: http://ms-users:8080
+      SERVICES_CATALOG_URL: http://ms-catalog:8080
+    depends_on:
+      db-tickets:
+        condition: service_healthy
+    ports:
+      - "8082:8080"
+    networks:
+      - mesa-ayuda
+
 networks:
   mesa-ayuda:
+    name: mesa-ayuda
     driver: bridge
