@@ -17,6 +17,7 @@ services:
 
   ms-tickets:
     build: ./ms-tickets
+    image: ms-tickets:0.0.1
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db-tickets:5432/tickets_db
       SPRING_DATASOURCE_USERNAME: ${TICKETS_DB_USER}
