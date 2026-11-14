@@ -12,6 +12,8 @@ import javax.crypto.spec.SecretKeySpec;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -38,6 +40,21 @@ class TokenServiceTest {
     @Test
     void generatedTokenIsNotEmpty() {
         assertThat(tokenService.generateToken(user(42L, Role.ADMIN))).isNotBlank();
+    }
+
+    @Test
+    void tokenCarriesConfiguredIssuerAndAudience() {
+        SecretKey key = new SecretKeySpec(SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+        JwtProperties custom = new JwtProperties(
+                SECRET, Duration.ofMinutes(15), 7, "otro-emisor", "otra-audiencia");
+        TokenService service = new TokenService(
+                new NimbusJwtEncoder(new ImmutableSecret<>(key)), custom);
+
+        Jwt jwt = NimbusJwtDecoder.withSecretKey(key).build()
+                .decode(service.generateToken(user(42L, Role.ADMIN)));
+
+        assertThat(jwt.getClaimAsString("iss")).isEqualTo("otro-emisor");
+        assertThat(jwt.getAudience()).containsExactly("otra-audiencia");
     }
 
     @Test

@@ -60,7 +60,7 @@ Para construir solo la imagen: `docker build -t ms-users:0.0.1 ms-users`. El Doc
 
 Notas:
 - El compose fija `PORT=8080` dentro del contenedor (la app lee `${PORT:8081}`); el puerto 8081 es el del host.
-- `JWT_ISSUER` y `JWT_AUDIENCE` del compose no tienen efecto por ahora: `application.yaml` tiene fijos `ms-users` y `mesa-ayuda`. Se decide con el equipo.
+- `JWT_ISSUER` y `JWT_AUDIENCE` deben tener el mismo valor en ms-users (que los emite) y en los servicios que validan el token (ms-catalog). Si difieren, el token se rechaza con 401.
 
 ## Colección de Postman
 
@@ -88,6 +88,8 @@ Plantillas de referencia: [.env.example](.env.example) y `src/main/resources/tem
 | `JWT_SECRET` | Sí | — | Clave HMAC de al menos 32 bytes. Si falta o es corta, el servicio no arranca. |
 | `JWT_ACCESS_TTL` | No | `PT15M` | Vigencia del access token (ISO-8601). |
 | `JWT_REFRESH_TTL_DAYS` | No | `7` | Días de vigencia del refresh token. |
+| `JWT_ISSUER` | No | `ms-users` | Valor del claim `iss` al emitir y al validar tokens. |
+| `JWT_AUDIENCE` | No | `mesa-ayuda` | Valor del claim `aud` al emitir y al validar tokens. |
 | `BCRYPT_COST` | No | `10` | Coste de BCrypt. |
 | `ADMIN_EMAIL` | No (ver nota) | — | Correo del administrador inicial. |
 | `ADMIN_PASSWORD` | No (ver nota) | — | Contraseña del administrador inicial. |

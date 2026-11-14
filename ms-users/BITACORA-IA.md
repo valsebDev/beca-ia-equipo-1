@@ -53,8 +53,8 @@ Registro estructurado de interacciones, prompts, skills y agentes empleados.
 
 | 4 | 13/11 | GitHub Copilot | agente | Auditar la imagen con hadolint y trivy | `ms-users/Dockerfile`; `ms-users/.dockerignore` | hadolint: sin avisos. trivy: 0 vulnerabilidades HIGH o CRITICAL en la imagen `ms-users:0.0.1`. | hadolint marcó DL3008 (versión de `curl` sin fijar); lo corregí fijando la versión en la instalación. Revisé de nuevo hadolint tras el cambio. |
 | 5 | 13/11 | GitHub Copilot | agente | Validar la ejecución del contenedor: usuario, contenido, compose y health | `docker-compose-users.yml`; `ms-users/Dockerfile` | `docker compose config -q` sin errores. `whoami` = `app`; `/app` solo contiene `app.jar`; `db-users` y `ms-users` en `healthy`; `/actuator/health` = `UP`. Stack detenido con `down`. | El puerto 5433 estaba ocupado al levantar el stack. Con autorización del usuario liberé el puerto y repetí el `up`. La salud se comprobó solo tras el arranque del contenedor. |
-
+| 6 | 13/11 | GitHub Copilot | agente | Hacer configurables `JWT_ISSUER` y `JWT_AUDIENCE` en ms-users | `ms-users/src/main/resources/application.yaml`; `ms-users/src/test/java/com/ids/ms_users/service/TokenServiceTest.java`; `ms-users/README.md` | `issuer: ${JWT_ISSUER:ms-users}` y `audience: ${JWT_AUDIENCE:mesa-ayuda}`; el compose ya las pasaba. Prueba nueva de `TokenService` con valores distintos. | Dejé defaults porque no son secretos y mantienen el comportamiento actual. El `application.yaml` de pruebas sigue fijo para que sean deterministas. ms-catalog debe recibir los mismos valores. |
 **Estado de P4:**
-- Pendiente: decidir con el equipo si `JWT_ISSUER` y `JWT_AUDIENCE` pasan a ser configurables.
+- `JWT_ISSUER` y `JWT_AUDIENCE` ya son configurables en `application.yaml` (defaults `ms-users` y `mesa-ayuda`); ver fila 6.
 - El compose se llama `docker-compose-users.yml` (el prompt pedía `docker-compose.yml`).
 - No se ejecutó de nuevo `./mvnw -B verify` tras añadir la colección de Postman, que no toca código Java.
