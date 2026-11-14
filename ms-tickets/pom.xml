@@ -331,7 +331,7 @@
 				<configuration>
 					<failBuildOnCVSS>7</failBuildOnCVSS>
 					<nvdApiKeyEnvironmentVariable>NVD_API_KEY</nvdApiKeyEnvironmentVariable>
-					<skipTestScope>true</skipTestScope>
+										<nvdMaxRetryCount>10</nvdMaxRetryCount>					<skipTestScope>true</skipTestScope>
 				</configuration>
 				<executions>
 					<execution>
