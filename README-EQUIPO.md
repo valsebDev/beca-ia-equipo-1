@@ -143,5 +143,8 @@ Cada servicio también tiene su colección propia en `ms-*/postman/`.
 
 ## Resultados de Hadolint y Trivy
 
-- **ms-tickets:** Hadolint sin hallazgos y Trivy con 0 vulnerabilidades HIGH o CRITICAL en `ms-tickets:0.0.1`, según `ms-tickets/BITACORA-IA.md` (filas 24 y 25, 13/11).
-- **ms-users y ms-catalog:** pendiente, no se han ejecutado.
+- Hadolint y Trivy de ms-tickets: sin hallazgos y 0 vulnerabilidades HIGH o CRITICAL en `ms-tickets:0.0.1`.
+- Hadolint de ms-users: sin hallazgos (`hadolint ms-users/Dockerfile` → exit 0).
+- Hadolint de ms-catalog: 1 advertencia `DL3008` en `ms-catalog/Dockerfile:11` (`apt-get install` sin versión fija); exit 1.
+- Trivy de ms-users (`ms-users:0.0.1`, `--severity HIGH,CRITICAL`): 0 vulnerabilidades en `ubuntu 26.04` y en el target Java.
+- Trivy de ms-catalog (`ms-catalog:0.0.1`, `--severity HIGH,CRITICAL`): 0 vulnerabilidades en `ubuntu 26.04` y en el target Java.
