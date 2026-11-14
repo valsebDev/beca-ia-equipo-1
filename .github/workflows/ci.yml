@@ -1,0 +1,69 @@
+name: ci
+on:
+  push:
+    branches: ["equipo/**", main]
+  pull_request:
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    name: verify (${{ matrix.servicio }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        servicio: [ms-users, ms-catalog, ms-tickets]
+    env:
+      # Feeds JSON 2.0 oficiales de NVD: evitan los 503 de la API en la carga inicial.
+      NVD_DATAFEED_URL: https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-{0}.json.gz
+    defaults:
+      run:
+        working-directory: ${{ matrix.servicio }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17', cache: maven }
+      - name: Preparar clave diaria de cache NVD
+        id: nvd-cache-key
+        run: |
+          echo "day=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+          echo "data-directory=$RUNNER_TEMP/${{ matrix.servicio }}-dependency-check-data" >> "$GITHUB_OUTPUT"
+      - name: Restaurar cache de datos de Dependency-Check
+        id: nvd-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.nvd-cache-key.outputs.data-directory }}
+          key: nvd-feed-${{ runner.os }}-${{ matrix.servicio }}-13.0.0-${{ steps.nvd-cache-key.outputs.day }}
+          restore-keys: |
+            nvd-feed-${{ runner.os }}-${{ matrix.servicio }}-13.0.0-
+      - name: Actualizar datos NVD (con reintentos)
+        run: |
+          chmod +x mvnw
+          for attempt in 1 2 3; do
+            if ./mvnw -B "-DdataDirectory=$DEPENDENCY_CHECK_DATA_DIRECTORY" \
+              "-DnvdDatafeedUrl=$NVD_DATAFEED_URL" dependency-check:update-only; then
+              exit 0
+            fi
+            echo "::warning::Fallo al actualizar NVD (intento $attempt de 3)"
+            if [ "$attempt" -lt 3 ]; then sleep $((attempt * 120)); fi
+          done
+          exit 1
+        env:
+          DEPENDENCY_CHECK_DATA_DIRECTORY: ${{ steps.nvd-cache-key.outputs.data-directory }}
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+      - name: Guardar cache de datos de Dependency-Check
+        if: steps.nvd-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.nvd-cache-key.outputs.data-directory }}
+          key: ${{ steps.nvd-cache.outputs.cache-primary-key }}
+      - name: Quality gates y pruebas (mvn verify)
+        run: ./mvnw -B "-DdataDirectory=$DEPENDENCY_CHECK_DATA_DIRECTORY" "-DnvdDatafeedUrl=$NVD_DATAFEED_URL" verify
+        env:
+          DEPENDENCY_CHECK_DATA_DIRECTORY: ${{ steps.nvd-cache-key.outputs.data-directory }}
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+      - name: Construir imagen Docker
+        working-directory: .
+        run: docker build -t ${{ matrix.servicio }}:${{ github.sha }} ./${{ matrix.servicio }}
