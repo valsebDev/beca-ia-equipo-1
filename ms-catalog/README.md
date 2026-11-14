@@ -93,3 +93,32 @@ Antes de cada POST, PUT o DELETE, ms-catalog consulta a ms-users que el ADMIN si
 Los errores siguen RFC 9457 (`application/problem+json`) con los campos `type`, `title`, `status`, `detail`, `instance`, `code` y `timestamp`; los errores 400 de validación incluyen `errors`.
 
 Informe de seguridad: [docs/SECURITY-REPORT.md](docs/SECURITY-REPORT.md).
+
+## Auditoría de la imagen
+
+Auditoría de `ms-catalog:0.0.1` realizada el 2026-11-13:
+
+- Hadolint 2.15.1, ejecutado en contenedor: se corrigió DL3025 usando la forma JSON
+  para el `HEALTHCHECK`. Permanecen dos avisos justificados:
+  - DL3008: `curl` no está fijado a una versión del paquete. Se instala después de
+    `apt-get update` para obtener la revisión de seguridad disponible al construir la
+    imagen; esto prioriza recibir parches frente a fijar un paquete que puede quedar
+    obsoleto.
+  - DL3066 (informativo): se conserva `USER app` para ejecutar con la cuenta de
+    sistema no root `app`, tal como requiere el proyecto. El usuario existe dentro de
+    la imagen.
+- Trivy 0.59.1, escáner `vuln`, severidad `HIGH,CRITICAL`: **0 hallazgos** (`HIGH: 0`,
+  `CRITICAL: 0`). Se usó `aquasec/trivy:0.59.1`. El primer intento agotó el timeout
+  al inicializar la base de datos Java; el segundo terminó correctamente con timeout
+  ampliado.
+
+Comandos de auditoría:
+
+```bash
+docker run --rm -i hadolint/hadolint < ms-catalog/Dockerfile
+docker save ms-catalog:0.0.1 -o ms-catalog.tar
+docker run --rm -v "$PWD:/w" aquasec/trivy:0.59.1 image \
+  --timeout 15m --input /w/ms-catalog.tar --scanners vuln --severity HIGH,CRITICAL
+```
+
+El archivo `ms-catalog.tar` se usó solo para el escaneo local y no se versiona.

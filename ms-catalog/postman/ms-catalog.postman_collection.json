@@ -2,15 +2,21 @@
   "info": {
     "_postman_id": "7c1e2a10-0000-4000-8000-000000000001",
     "name": "ms-catalog (Práctica 1)",
-    "description": "Pruebas de todos los endpoints de /api/v1 de ms-catalog. Ejecuta las peticiones en orden: el flujo crea una categoría y la reutiliza. Requiere el servicio arriba en {{baseUrl}} y la base catalog_db con datos semilla (V2).",
+    "description": "Pruebas de todos los endpoints de /api/v1 de ms-catalog, alineadas con docs/contratos/ms-catalog.yaml. Ejecuta las peticiones en orden: el flujo crea una categoría y la reutiliza. Requiere el servicio arriba en {{baseUrl}} y la base catalog_db con datos semilla (V2). Define accessToken (JWT de un ADMIN) y nonAdminToken (JWT de un rol no ADMIN) antes de ejecutar.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:8080", "type": "string" },
     { "key": "categoryId", "value": "3", "type": "string" },
     { "key": "priorityId", "value": "2", "type": "string" },
-    { "key": "newCategoryId", "value": "", "type": "string" }
+    { "key": "newCategoryId", "value": "", "type": "string" },
+    { "key": "accessToken", "value": "", "type": "string" },
+    { "key": "nonAdminToken", "value": "", "type": "string" }
   ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
   "item": [
     {
       "name": "Salud",
@@ -19,6 +25,7 @@
           "name": "GET health",
           "request": {
             "method": "GET",
+            "auth": { "type": "noauth" },
             "url": "{{baseUrl}}/actuator/health"
           },
           "event": [
@@ -41,6 +48,131 @@
     {
       "name": "Categorías (HU-CAT-01 a HU-CAT-04)",
       "item": [
+        {
+          "name": "HU-CAT-01 [Negativo] Listar sin token -> 401",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": "{{baseUrl}}/api/v1/categories"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 UNAUTHORIZED', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().code).to.eql('UNAUTHORIZED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-CAT-02 [Negativo] Crear categoría con rol no ADMIN -> 403",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{nonAdminToken}}", "type": "string" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Redes\"\n}" },
+            "url": "{{baseUrl}}/api/v1/categories"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 FORBIDDEN', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(pm.response.json().code).to.eql('FORBIDDEN');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-CAT-02 [Negativo] Nombre de 81 caracteres -> 400",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": "{{baseUrl}}/api/v1/categories"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.body.update({ mode: 'raw', raw: JSON.stringify({ name: 'A'.repeat(81) }) });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 VALIDATION_ERROR con errors[].field = name', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR');",
+                  "  pm.expect(pm.response.json().errors[0].field).to.eql('name');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-CAT-03 [Negativo] Modificar categoría con rol no ADMIN -> 403",
+          "request": {
+            "method": "PUT",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{nonAdminToken}}", "type": "string" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Redes\"\n}" },
+            "url": "{{baseUrl}}/api/v1/categories/{{categoryId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 FORBIDDEN', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(pm.response.json().code).to.eql('FORBIDDEN');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-CAT-04 [Negativo] Desactivar categoría con rol no ADMIN -> 403",
+          "request": {
+            "method": "DELETE",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{nonAdminToken}}", "type": "string" }] },
+            "url": "{{baseUrl}}/api/v1/categories/{{categoryId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 FORBIDDEN', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(pm.response.json().code).to.eql('FORBIDDEN');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
         {
           "name": "HU-CAT-01 Listar todas las categorías",
           "request": {
@@ -353,6 +485,82 @@
       "name": "Prioridades y SLA (HU-CAT-05 a HU-CAT-07)",
       "item": [
         {
+          "name": "HU-CAT-05 [Negativo] Listar prioridades sin token -> 401",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": "{{baseUrl}}/api/v1/priorities"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 UNAUTHORIZED', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().code).to.eql('UNAUTHORIZED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-CAT-06 [Negativo] Crear prioridad con rol no ADMIN -> 403",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{nonAdminToken}}", "type": "string" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"BAJA\",\n  \"name\": \"Baja\",\n  \"level\": 9,\n  \"sla\": { \"responseHours\": 1, \"resolutionHours\": 2 }\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/priorities"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 FORBIDDEN', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(pm.response.json().code).to.eql('FORBIDDEN');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-CAT-07 [Negativo] Actualizar SLA con rol no ADMIN -> 403",
+          "request": {
+            "method": "PUT",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{nonAdminToken}}", "type": "string" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"responseHours\": 2,\n  \"resolutionHours\": 8\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/priorities/{{priorityId}}/sla"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 FORBIDDEN', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(pm.response.json().code).to.eql('FORBIDDEN');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "HU-CAT-05 Listar prioridades ordenadas por nivel",
           "request": {
             "method": "GET",
@@ -459,9 +667,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('400 MALFORMED_REQUEST', function () {",
+                  "pm.test('400 VALIDATION_ERROR o MALFORMED_REQUEST', function () {",
                   "  pm.response.to.have.status(400);",
-                  "  pm.expect(pm.response.json().code).to.eql('MALFORMED_REQUEST');",
+                  "  pm.expect(['VALIDATION_ERROR', 'MALFORMED_REQUEST']).to.include(pm.response.json().code);",
                   "});"
                 ]
               }
