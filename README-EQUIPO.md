@@ -143,4 +143,5 @@ Cada servicio también tiene su colección propia en `ms-*/postman/`.
 
 ## Resultados de Hadolint y Trivy
 
-Pendiente: no se han ejecutado.
+- **ms-tickets:** Hadolint sin hallazgos y Trivy con 0 vulnerabilidades HIGH o CRITICAL en `ms-tickets:0.0.1`, según `ms-tickets/BITACORA-IA.md` (filas 24 y 25, 13/11).
+- **ms-users y ms-catalog:** pendiente, no se han ejecutado.
