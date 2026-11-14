@@ -1,0 +1,39 @@
+services:
+  db-catalog:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: catalog_db
+      POSTGRES_USER: ${CATALOG_DB_USER}
+      POSTGRES_PASSWORD: ${CATALOG_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5435:5432"
+    networks:
+      - mesa-ayuda
+
+  ms-catalog:
+    image: ms-catalog:0.0.1
+    build: ./ms-catalog
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-catalog:5432/catalog_db
+      SPRING_DATASOURCE_USERNAME: ${CATALOG_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${CATALOG_DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      SERVICES_USERS_URL: http://ms-users:8080
+    depends_on:
+      db-catalog:
+        condition: service_healthy
+    ports:
+      - "8083:8080"
+    networks:
+      - mesa-ayuda
+
+networks:
+  mesa-ayuda:
+    name: mesa-ayuda
