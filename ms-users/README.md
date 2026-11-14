@@ -36,6 +36,36 @@ $rng.Dispose()
 
 `JWT_SECRET` debe mantenerse fuera del repositorio. La clave generada en el ejemplo es efímera y se debe volver a configurar en cada sesión de PowerShell.
 
+## Ejecución con Docker Compose
+
+Levanta PostgreSQL y `ms-users` en contenedores (red `mesa-ayuda`) desde la raíz del repositorio.
+
+1. Copia [`.env.example`](../.env.example) a `.env` en la raíz y reemplaza los placeholders. El `.env` está en `.gitignore` y nunca se versiona. `ADMIN_EMAIL` debe tener formato de correo válido.
+2. Levanta los servicios y espera a que ambos estén `healthy`:
+```powershell
+docker compose -f docker-compose-users.yml up -d db-users ms-users
+curl.exe -fsS http://localhost:8081/actuator/health
+```
+3. Detén y elimina los contenedores:
+```powershell
+docker compose -f docker-compose-users.yml down
+```
+
+| Servicio | Imagen | Puerto host |
+|---|---|---|
+| `db-users` | `postgres:16` (`users_db`) | `5433` |
+| `ms-users` | `ms-users:0.0.1` | `8081` |
+
+Para construir solo la imagen: `docker build -t ms-users:0.0.1 ms-users`. El Dockerfile es multi-stage (`eclipse-temurin:17.0.21_9`), corre con el usuario no root `app` y define un `HEALTHCHECK` sobre `/actuator/health`. Si cambias la versión del `pom.xml`, actualiza también `image:` en el compose.
+
+Notas:
+- El compose fija `PORT=8080` dentro del contenedor (la app lee `${PORT:8081}`); el puerto 8081 es el del host.
+- `JWT_ISSUER` y `JWT_AUDIENCE` del compose no tienen efecto por ahora: `application.yaml` tiene fijos `ms-users` y `mesa-ayuda`. Se decide con el equipo.
+
+## Colección de Postman
+
+[postman/ms-users.postman_collection.json](postman/ms-users.postman_collection.json) cubre todos los endpoints del contrato, con casos negativos. Ejecútala en orden con el servicio en `http://localhost:8081`. Define `adminEmail` y `adminPassword` en tu entorno de Postman con los valores de `ADMIN_EMAIL` y `ADMIN_PASSWORD`; no los guardes en el archivo.
+
 ## Variables de entorno
 
 Plantillas de referencia: [.env.example](.env.example) y `src/main/resources/templates/`. Los secretos nunca se versionan.
