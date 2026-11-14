@@ -66,6 +66,15 @@ Notas:
 
 [postman/ms-users.postman_collection.json](postman/ms-users.postman_collection.json) cubre todos los endpoints del contrato, con casos negativos. Ejecútala en orden con el servicio en `http://localhost:8081`. Define `adminEmail` y `adminPassword` en tu entorno de Postman con los valores de `ADMIN_EMAIL` y `ADMIN_PASSWORD`; no los guardes en el archivo.
 
+## Auditoría de la imagen
+
+| Validación | Comando o verificación | Resultado |
+|---|---|---|
+| hadolint | `hadolint ms-users/Dockerfile` | Sin avisos |
+| trivy | `trivy image --severity HIGH,CRITICAL ms-users:0.0.1` | 0 vulnerabilidades HIGH o CRITICAL |
+| Usuario en ejecución | `docker run --rm --entrypoint whoami ms-users:0.0.1` | `app` |
+| Health | `curl.exe -fsS http://localhost:8081/actuator/health` | `{"status":"UP"}` |
+
 ## Variables de entorno
 
 Plantillas de referencia: [.env.example](.env.example) y `src/main/resources/templates/`. Los secretos nunca se versionan.
