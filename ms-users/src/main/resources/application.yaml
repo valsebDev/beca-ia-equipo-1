@@ -31,8 +31,8 @@ app:
       secret: ${JWT_SECRET}
       access-ttl: ${JWT_ACCESS_TTL:PT15M}
       refresh-ttl-days: ${JWT_REFRESH_TTL_DAYS:7}
-      issuer: ms-users
-      audience: mesa-ayuda
+      issuer: ${JWT_ISSUER:ms-users}
+      audience: ${JWT_AUDIENCE:mesa-ayuda}
     password:
       bcrypt-cost: ${BCRYPT_COST:10}
   bootstrap:

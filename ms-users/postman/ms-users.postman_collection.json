@@ -1,0 +1,1099 @@
+{
+  "info": {
+    "_postman_id": "7c1e2a10-0000-4000-8000-000000000003",
+    "name": "ms-users (Contrato 1.0.0)",
+    "description": "Pruebas de todos los endpoints de ms-users según docs/contratos/ms-users.yaml (HU-USR-01, 02, 04, 05, 06, 07, 08 y 09; HU-USR-03 fue retirada). Ejecuta las peticiones en orden: el flujo registra un solicitante, crea un agente y reutiliza los tokens. Requiere el servicio en {{baseUrl}} y un usuario ADMIN: define adminEmail y adminPassword (los mismos ADMIN_EMAIL y ADMIN_PASSWORD de tu .env) en las variables de la colección o de tu entorno, sin subirlos al repositorio.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8081", "type": "string" },
+    { "key": "adminEmail", "value": "", "type": "string" },
+    { "key": "adminPassword", "value": "", "type": "string" },
+    { "key": "requesterEmail", "value": "", "type": "string" },
+    { "key": "requesterPassword", "value": "Clave1234", "type": "string" },
+    { "key": "requesterId", "value": "", "type": "string" },
+    { "key": "agentEmail", "value": "", "type": "string" },
+    { "key": "agentPassword", "value": "Clave1234", "type": "string" },
+    { "key": "agentId", "value": "", "type": "string" },
+    { "key": "adminToken", "value": "", "type": "string" },
+    { "key": "accessToken", "value": "", "type": "string" },
+    { "key": "refreshToken", "value": "", "type": "string" },
+    { "key": "previousRefreshToken", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Salud",
+      "item": [
+        {
+          "name": "GET health",
+          "request": { "method": "GET", "auth": { "type": "noauth" }, "url": "{{baseUrl}}/actuator/health" },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var stamp = Date.now();",
+                  "pm.collectionVariables.set('requesterEmail', 'solicitante-' + stamp + '@example.com');",
+                  "pm.collectionVariables.set('agentEmail', 'agente-' + stamp + '@example.com');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y estado UP', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().status).to.eql('UP');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-USR-01 Registro de solicitante",
+      "item": [
+        {
+          "name": "HU-USR-01 Registrar solicitante -> 201",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Ana Solicitante\",\n  \"email\": \"{{requesterEmail}}\",\n  \"password\": \"{{requesterPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/register"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 con rol SOLICITANTE, activo y sin contraseña', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  var body = pm.response.json();",
+                  "  pm.expect(body.role).to.eql('SOLICITANTE');",
+                  "  pm.expect(body.active).to.eql(true);",
+                  "  pm.expect(body.email).to.eql(pm.collectionVariables.get('requesterEmail'));",
+                  "  pm.expect(body).to.have.property('createdAt');",
+                  "  pm.expect(body).to.not.have.property('password');",
+                  "  pm.collectionVariables.set('requesterId', body.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-01 [Negativo] Correo duplicado -> 409",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Ana Solicitante\",\n  \"email\": \"{{requesterEmail}}\",\n  \"password\": \"{{requesterPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/register"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 EMAIL_ALREADY_EXISTS con ProblemDetail', function () {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('problem+json');",
+                  "  pm.expect(pm.response.json().code).to.eql('EMAIL_ALREADY_EXISTS');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-01 [Negativo] Datos inválidos -> 400",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"A\",\n  \"email\": \"no-es-correo\",\n  \"password\": \"corta\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/register"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 VALIDATION_ERROR con lista de errores por campo', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "  var body = pm.response.json();",
+                  "  pm.expect(body.code).to.eql('VALIDATION_ERROR');",
+                  "  pm.expect(body.errors).to.be.an('array').that.is.not.empty;",
+                  "  var fields = body.errors.map(function (e) { return e.field; });",
+                  "  pm.expect(fields).to.include.members(['fullName', 'email', 'password']);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-USR-02 Autenticación",
+      "item": [
+        {
+          "name": "HU-USR-02 Login ADMIN -> 200",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con access token del ADMIN', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().accessToken).to.be.a('string').and.not.empty;",
+                  "  pm.collectionVariables.set('adminToken', pm.response.json().accessToken);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-02 Login solicitante -> 200",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{requesterEmail}}\",\n  \"password\": \"{{requesterPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con par de tokens Bearer (15 min / 7 días)', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  var body = pm.response.json();",
+                  "  pm.expect(body.tokenType).to.eql('Bearer');",
+                  "  pm.expect(body.expiresIn).to.eql(900);",
+                  "  pm.expect(body.refreshExpiresIn).to.eql(604800);",
+                  "  pm.expect(body.accessToken).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.refreshToken).to.be.a('string').and.not.empty;",
+                  "  pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', body.refreshToken);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-02 [Negativo] Contraseña incorrecta -> 401",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{requesterEmail}}\",\n  \"password\": \"Incorrecta999\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 INVALID_CREDENTIALS', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('problem+json');",
+                  "  pm.expect(pm.response.json().code).to.eql('INVALID_CREDENTIALS');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-02 [Negativo] Correo inexistente -> 401 genérico",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"no-existe@example.com\",\n  \"password\": \"Clave1234\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 INVALID_CREDENTIALS igual que con contraseña incorrecta (RN-05)', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().code).to.eql('INVALID_CREDENTIALS');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-02 [Negativo] Datos inválidos -> 400",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"\",\n  \"password\": \"\"\n}" },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 VALIDATION_ERROR', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-USR-04 Perfil propio",
+      "item": [
+        {
+          "name": "HU-USR-04 Consultar mi perfil -> 200",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "url": "{{baseUrl}}/api/v1/users/me"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con mi perfil y sin contraseña', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  var body = pm.response.json();",
+                  "  pm.expect(body.email).to.eql(pm.collectionVariables.get('requesterEmail'));",
+                  "  pm.expect(body.role).to.eql('SOLICITANTE');",
+                  "  pm.expect(body).to.not.have.property('password');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-04 [Negativo] Sin token -> 401",
+          "request": { "method": "GET", "auth": { "type": "noauth" }, "url": "{{baseUrl}}/api/v1/users/me" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 UNAUTHORIZED con ProblemDetail', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('problem+json');",
+                  "  pm.expect(pm.response.json().code).to.eql('UNAUTHORIZED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-USR-06 y HU-USR-07 Refresh y logout",
+      "item": [
+        {
+          "name": "HU-USR-06 Renovar sesión (rotación) -> 200",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
+            "url": "{{baseUrl}}/api/v1/auth/refresh"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.collectionVariables.set('previousRefreshToken', pm.collectionVariables.get('refreshToken'));"]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con un refresh token distinto al anterior', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  var body = pm.response.json();",
+                  "  pm.expect(body.tokenType).to.eql('Bearer');",
+                  "  pm.expect(body.refreshToken).to.not.eql(pm.collectionVariables.get('previousRefreshToken'));",
+                  "  pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', body.refreshToken);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-06 [Negativo] Refresh token desconocido -> 401",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"token-que-no-existe\"\n}" },
+            "url": "{{baseUrl}}/api/v1/auth/refresh"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('401', function () { pm.response.to.have.status(401); });"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-06 [Negativo] Refresh token vacío -> 400",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"\"\n}" },
+            "url": "{{baseUrl}}/api/v1/auth/refresh"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 VALIDATION_ERROR', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-06 [Negativo] Reutilizar token ya rotado -> 401 y revoca todos",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{previousRefreshToken}}\"\n}" },
+            "url": "{{baseUrl}}/api/v1/auth/refresh"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('401 al reutilizar un refresh token rotado', function () { pm.response.to.have.status(401); });"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-06 [Negativo] El token vigente quedó revocado -> 401",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
+            "url": "{{baseUrl}}/api/v1/auth/refresh"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('401 porque se revocaron todos los refresh tokens del usuario', function () { pm.response.to.have.status(401); });"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-02 Login solicitante (nueva sesión) -> 200",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{requesterEmail}}\",\n  \"password\": \"{{requesterPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y guarda los tokens', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.collectionVariables.set('accessToken', pm.response.json().accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', pm.response.json().refreshToken);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-07 Cerrar sesión -> 204",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
+            "url": "{{baseUrl}}/api/v1/auth/logout"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('204 sin cuerpo', function () { pm.response.to.have.status(204); });"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-07 [Negativo] Refresh con token cerrado -> 401",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
+            "url": "{{baseUrl}}/api/v1/auth/refresh"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('401 porque el logout revocó el token', function () { pm.response.to.have.status(401); });"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-07 [Negativo] Logout sin token de acceso -> 401",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
+            "url": "{{baseUrl}}/api/v1/auth/logout"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 UNAUTHORIZED', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().code).to.eql('UNAUTHORIZED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-02 Login solicitante (sesión para pruebas de rol) -> 200",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{requesterEmail}}\",\n  \"password\": \"{{requesterPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y guarda los tokens', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.collectionVariables.set('accessToken', pm.response.json().accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', pm.response.json().refreshToken);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-USR-09 Crear usuario con rol (ADMIN)",
+      "item": [
+        {
+          "name": "HU-USR-09 Crear agente -> 201",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Beto Agente\",\n  \"email\": \"{{agentEmail}}\",\n  \"password\": \"{{agentPassword}}\",\n  \"role\": \"AGENTE\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/users"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 con rol AGENTE y activo', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  var body = pm.response.json();",
+                  "  pm.expect(body.role).to.eql('AGENTE');",
+                  "  pm.expect(body.active).to.eql(true);",
+                  "  pm.expect(body).to.not.have.property('password');",
+                  "  pm.collectionVariables.set('agentId', body.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-09 [Negativo] Correo duplicado -> 409",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Beto Agente\",\n  \"email\": \"{{agentEmail}}\",\n  \"password\": \"{{agentPassword}}\",\n  \"role\": \"AGENTE\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/users"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 EMAIL_ALREADY_EXISTS', function () {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(pm.response.json().code).to.eql('EMAIL_ALREADY_EXISTS');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-09 [Negativo] Sin rol -> 400",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Sin Rol\",\n  \"email\": \"sin-rol@example.com\",\n  \"password\": \"Clave1234\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/users"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 VALIDATION_ERROR con error en role', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "  var body = pm.response.json();",
+                  "  pm.expect(body.code).to.eql('VALIDATION_ERROR');",
+                  "  pm.expect(body.errors.map(function (e) { return e.field; })).to.include('role');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-09 [Negativo] Solicitante no puede crear -> 403",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Intruso\",\n  \"email\": \"intruso@example.com\",\n  \"password\": \"Clave1234\",\n  \"role\": \"ADMIN\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/users"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 FORBIDDEN con ProblemDetail', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('problem+json');",
+                  "  pm.expect(pm.response.json().code).to.eql('FORBIDDEN');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-09 [Negativo] Sin token -> 401",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Anonimo\",\n  \"email\": \"anonimo@example.com\",\n  \"password\": \"Clave1234\",\n  \"role\": \"AGENTE\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/users"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 UNAUTHORIZED', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().code).to.eql('UNAUTHORIZED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-USR-08 Listado y consulta por id (ADMIN)",
+      "item": [
+        {
+          "name": "HU-USR-08 Listar todos los usuarios -> 200",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "url": "{{baseUrl}}/api/v1/users"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con lista que incluye al solicitante y al agente, sin contraseñas', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  var users = pm.response.json();",
+                  "  pm.expect(users).to.be.an('array');",
+                  "  var emails = users.map(function (u) { return u.email; });",
+                  "  pm.expect(emails).to.include(pm.collectionVariables.get('requesterEmail'));",
+                  "  pm.expect(emails).to.include(pm.collectionVariables.get('agentEmail'));",
+                  "  users.forEach(function (u) { pm.expect(u).to.not.have.property('password'); });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-08 Filtrar por rol AGENTE -> 200",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users?role=AGENTE",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users"],
+              "query": [{ "key": "role", "value": "AGENTE" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y todos los usuarios son AGENTE', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  var users = pm.response.json();",
+                  "  pm.expect(users).to.not.be.empty;",
+                  "  users.forEach(function (u) { pm.expect(u.role).to.eql('AGENTE'); });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-08 [Negativo] Solicitante no puede listar -> 403",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "url": "{{baseUrl}}/api/v1/users"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 FORBIDDEN', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(pm.response.json().code).to.eql('FORBIDDEN');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-08 [Negativo] Sin token -> 401",
+          "request": { "method": "GET", "auth": { "type": "noauth" }, "url": "{{baseUrl}}/api/v1/users" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 UNAUTHORIZED', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().code).to.eql('UNAUTHORIZED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar usuario por id -> 200",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "url": "{{baseUrl}}/api/v1/users/{{agentId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con el agente creado', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(String(pm.response.json().id)).to.eql(String(pm.collectionVariables.get('agentId')));",
+                  "  pm.expect(pm.response.json().email).to.eql(pm.collectionVariables.get('agentEmail'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar usuario por id [Negativo] Inexistente -> 404",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "url": "{{baseUrl}}/api/v1/users/999999"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 USER_NOT_FOUND con ProblemDetail', function () {",
+                  "  pm.response.to.have.status(404);",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('problem+json');",
+                  "  pm.expect(pm.response.json().code).to.eql('USER_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar usuario por id [Negativo] Solicitante -> 403",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "url": "{{baseUrl}}/api/v1/users/{{agentId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('403', function () { pm.response.to.have.status(403); });"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-USR-05 Activar y desactivar cuentas (ADMIN)",
+      "item": [
+        {
+          "name": "HU-USR-05 Desactivar agente -> 200",
+          "request": {
+            "method": "PATCH",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"active\": false\n}" },
+            "url": "{{baseUrl}}/api/v1/users/{{agentId}}/status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con active=false', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().active).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-05 [Negativo] Login de cuenta desactivada -> 401 genérico",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{agentEmail}}\",\n  \"password\": \"{{agentPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 INVALID_CREDENTIALS sin revelar que está desactivada (RN-05)', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().code).to.eql('INVALID_CREDENTIALS');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-05 Reactivar agente -> 200",
+          "request": {
+            "method": "PATCH",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"active\": true\n}" },
+            "url": "{{baseUrl}}/api/v1/users/{{agentId}}/status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con active=true', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().active).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-05 Login de cuenta reactivada -> 200",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{agentEmail}}\",\n  \"password\": \"{{agentPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('200', function () { pm.response.to.have.status(200); });"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-05 [Negativo] Campo active nulo -> 400",
+          "request": {
+            "method": "PATCH",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"active\": null\n}" },
+            "url": "{{baseUrl}}/api/v1/users/{{agentId}}/status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 VALIDATION_ERROR', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-05 [Negativo] Usuario inexistente -> 404",
+          "request": {
+            "method": "PATCH",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"active\": false\n}" },
+            "url": "{{baseUrl}}/api/v1/users/999999/status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 USER_NOT_FOUND', function () {",
+                  "  pm.response.to.have.status(404);",
+                  "  pm.expect(pm.response.json().code).to.eql('USER_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-05 [Negativo] Solicitante no puede cambiar estado -> 403",
+          "request": {
+            "method": "PATCH",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"active\": false\n}" },
+            "url": "{{baseUrl}}/api/v1/users/{{agentId}}/status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 FORBIDDEN', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(pm.response.json().code).to.eql('FORBIDDEN');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HU-USR-05 [Negativo] Sin token -> 401",
+          "request": {
+            "method": "PATCH",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"active\": false\n}" },
+            "url": "{{baseUrl}}/api/v1/users/{{agentId}}/status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 UNAUTHORIZED', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().code).to.eql('UNAUTHORIZED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

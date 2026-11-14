@@ -36,6 +36,45 @@ $rng.Dispose()
 
 `JWT_SECRET` debe mantenerse fuera del repositorio. La clave generada en el ejemplo es efímera y se debe volver a configurar en cada sesión de PowerShell.
 
+## Ejecución con Docker Compose
+
+Levanta PostgreSQL y `ms-users` en contenedores (red `mesa-ayuda`) desde la raíz del repositorio.
+
+1. Copia [`.env.example`](../.env.example) a `.env` en la raíz y reemplaza los placeholders. El `.env` está en `.gitignore` y nunca se versiona. `ADMIN_EMAIL` debe tener formato de correo válido.
+2. Levanta los servicios y espera a que ambos estén `healthy`:
+```powershell
+docker compose -f docker-compose-users.yml up -d db-users ms-users
+curl.exe -fsS http://localhost:8081/actuator/health
+```
+3. Detén y elimina los contenedores:
+```powershell
+docker compose -f docker-compose-users.yml down
+```
+
+| Servicio | Imagen | Puerto host |
+|---|---|---|
+| `db-users` | `postgres:16` (`users_db`) | `5433` |
+| `ms-users` | `ms-users:0.0.1` | `8081` |
+
+Para construir solo la imagen: `docker build -t ms-users:0.0.1 ms-users`. El Dockerfile es multi-stage (`eclipse-temurin:17.0.21_9`), corre con el usuario no root `app` y define un `HEALTHCHECK` sobre `/actuator/health`. Si cambias la versión del `pom.xml`, actualiza también `image:` en el compose.
+
+Notas:
+- El compose fija `PORT=8080` dentro del contenedor (la app lee `${PORT:8081}`); el puerto 8081 es el del host.
+- `JWT_ISSUER` y `JWT_AUDIENCE` deben tener el mismo valor en ms-users (que los emite) y en los servicios que validan el token (ms-catalog). Si difieren, el token se rechaza con 401.
+
+## Colección de Postman
+
+[postman/ms-users.postman_collection.json](postman/ms-users.postman_collection.json) cubre todos los endpoints del contrato, con casos negativos. Ejecútala en orden con el servicio en `http://localhost:8081`. Define `adminEmail` y `adminPassword` en tu entorno de Postman con los valores de `ADMIN_EMAIL` y `ADMIN_PASSWORD`; no los guardes en el archivo.
+
+## Auditoría de la imagen
+
+| Validación | Comando o verificación | Resultado |
+|---|---|---|
+| hadolint | `hadolint ms-users/Dockerfile` | Sin avisos |
+| trivy | `trivy image --severity HIGH,CRITICAL ms-users:0.0.1` | 0 vulnerabilidades HIGH o CRITICAL |
+| Usuario en ejecución | `docker run --rm --entrypoint whoami ms-users:0.0.1` | `app` |
+| Health | `curl.exe -fsS http://localhost:8081/actuator/health` | `{"status":"UP"}` |
+
 ## Variables de entorno
 
 Plantillas de referencia: [.env.example](.env.example) y `src/main/resources/templates/`. Los secretos nunca se versionan.
@@ -49,6 +88,8 @@ Plantillas de referencia: [.env.example](.env.example) y `src/main/resources/tem
 | `JWT_SECRET` | Sí | — | Clave HMAC de al menos 32 bytes. Si falta o es corta, el servicio no arranca. |
 | `JWT_ACCESS_TTL` | No | `PT15M` | Vigencia del access token (ISO-8601). |
 | `JWT_REFRESH_TTL_DAYS` | No | `7` | Días de vigencia del refresh token. |
+| `JWT_ISSUER` | No | `ms-users` | Valor del claim `iss` al emitir y al validar tokens. |
+| `JWT_AUDIENCE` | No | `mesa-ayuda` | Valor del claim `aud` al emitir y al validar tokens. |
 | `BCRYPT_COST` | No | `10` | Coste de BCrypt. |
 | `ADMIN_EMAIL` | No (ver nota) | — | Correo del administrador inicial. |
 | `ADMIN_PASSWORD` | No (ver nota) | — | Contraseña del administrador inicial. |
