@@ -2,6 +2,8 @@
 
 Plan aprobado para ejecutar `ms-users`, `ms-catalog` y `ms-tickets` con Docker Compose. Es coherente con `ARCHITECTURE.md` (§0, §1.3, §6.4 y §7), que prevalece ante cualquier diferencia.
 
+**Aprobado por:** Fernando (14/11/2026).
+
 ## 1. Topología
 
 Tres servicios Spring Boot y tres bases `postgres:16` (una por servicio) en la red `mesa-ayuda`. Ningún servicio lee la base de otro.
