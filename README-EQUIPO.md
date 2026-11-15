@@ -6,6 +6,8 @@ Guía del equipo 1 para levantar los 3 microservicios con Docker Compose y proba
 
 Sistema de mesa de ayuda con solo 3 microservicios (Java 17, Spring Boot 4.1.2, PostgreSQL 16): identidad y acceso (`ms-users`), catálogo de categorías, prioridades y SLA (`ms-catalog`), y gestión de tickets (`ms-tickets`). Cada servicio tiene su propia base de datos.
 
+El sistema tiene 3 servicios; notificaciones y reportes no forman parte del alcance.
+
 ## Arquitectura
 
 ```mermaid
@@ -117,6 +119,83 @@ Casos de rechazo que debes poder reproducir: crear ticket sin token → 401; asi
 Importa ambos, edita en el entorno `adminEmail` y `adminPassword` (placeholders) y ejecuta la colección completa en orden con el Collection Runner. Hace login, guarda los tokens y recorre el flujo con 17 peticiones: éxito y rechazos 401, 403 y 409. Dejar `agentEmail` y `requesterEmail` vacíos genera cuentas nuevas en cada corrida.
 
 Cada servicio también tiene su colección propia en `ms-*/postman/`.
+
+## Evidencia de ejecución
+
+Ejecutado el 14/11/2026 por Copilot, por encargo de Fernando, en Windows con Docker Compose.
+Se usó `.env` y un archivo complementario temporal para las variables faltantes y un ADMIN de prueba;
+no se registran credenciales ni tokens.
+
+El comando fue `docker compose --env-file .env --env-file $override up -d --build`, donde `$override`
+apuntaba al archivo complementario. Extracto real de la salida:
+
+```text
+ Container beca-ia-equipo-1-db-users-1 Healthy
+ Container beca-ia-equipo-1-ms-users-1 Starting
+ Container beca-ia-equipo-1-db-tickets-1 Healthy
+ Container beca-ia-equipo-1-ms-tickets-1 Starting
+ Container beca-ia-equipo-1-db-catalog-1 Healthy
+ Container beca-ia-equipo-1-ms-catalog-1 Starting
+ Container beca-ia-equipo-1-ms-users-1 Started
+ Container beca-ia-equipo-1-ms-tickets-1 Started
+ Container beca-ia-equipo-1-ms-catalog-1 Started
+```
+
+Salida de `docker compose --env-file .env --env-file $override ps`, una vez terminados los healthchecks:
+
+```text
+NAME                            IMAGE              COMMAND                  SERVICE      CREATED         STATUS                   PORTS
+beca-ia-equipo-1-db-catalog-1   postgres:16        "docker-entrypoint.s…"   db-catalog   3 minutes ago   Up 3 minutes (healthy)   0.0.0.0:5435->5432/tcp, [::]:5435->5432/tcp
+beca-ia-equipo-1-db-tickets-1   postgres:16        "docker-entrypoint.s…"   db-tickets   3 minutes ago   Up 3 minutes (healthy)   0.0.0.0:5434->5432/tcp, [::]:5434->5432/tcp
+beca-ia-equipo-1-db-users-1     postgres:16        "docker-entrypoint.s…"   db-users     3 minutes ago   Up 3 minutes (healthy)   0.0.0.0:5433->5432/tcp, [::]:5433->5432/tcp
+beca-ia-equipo-1-ms-catalog-1   ms-catalog:0.0.1   "java -XX:MaxRAMPerc…"   ms-catalog   3 minutes ago   Up 3 minutes (healthy)   0.0.0.0:8083->8080/tcp, [::]:8083->8080/tcp
+beca-ia-equipo-1-ms-tickets-1   ms-tickets:0.0.1   "java -XX:MaxRAMPerc…"   ms-tickets   3 minutes ago   Up 3 minutes (healthy)   0.0.0.0:8082->8080/tcp, [::]:8082->8080/tcp
+beca-ia-equipo-1-ms-users-1     ms-users:0.0.1     "java -XX:MaxRAMPerc…"   ms-users     3 minutes ago   Up 3 minutes (healthy)   0.0.0.0:8081->8080/tcp, [::]:8081->8080/tcp
+```
+
+Salida real de `curl.exe -fsS` a `/actuator/health`:
+
+```text
+8081: {"groups":["liveness","readiness"],"status":"UP"}
+8082: {"groups":["liveness","readiness"],"status":"UP"}
+8083: {"groups":["liveness","readiness"],"status":"UP"}
+```
+
+### Resultado E2E
+
+Se ejecutó la colección y el entorno de la sección anterior con Newman 6.2.3 mediante su API de Node.js,
+inyectando las credenciales de prueba en memoria. Resultado: **17 peticiones, 24 aserciones y 0 fallos**
+(código de salida 0).
+
+| # | Petición | HTTP obtenido |
+|---|---|---|
+| 01 | Registrar SOLICITANTE | 201 |
+| 02 | Login ADMIN | 200 |
+| 03 | Crear AGENTE como ADMIN | 201 |
+| 04 | Login AGENTE | 200 |
+| 05 | Login SOLICITANTE | 200 |
+| 06 | Listar categorías | 200 |
+| 07 | Listar prioridades | 200 |
+| 08 | Crear ticket como SOLICITANTE | 201 |
+| 09 | Crear ticket sin token | 401 |
+| 10 | Asignar como SOLICITANTE | 403 |
+| 11 | Asignar como ADMIN | 200 |
+| 12 | Pasar a EN_PROGRESO como AGENTE | 200 |
+| 13 | Pasar a RESUELTO como AGENTE | 200 |
+| 14 | Cerrar como AGENTE | 403 |
+| 15 | Cerrar como SOLICITANTE dueño | 200 |
+| 16 | Cambiar estado después de cerrar | 409 |
+| 17 | Consultar historial como ADMIN | 200 |
+
+El historial obtenido contiene estos cinco eventos, en orden:
+
+| Evento | Estado anterior | Estado nuevo |
+|---|---|---|
+| CREATED | — | ABIERTO |
+| ASSIGNED | ABIERTO | ASIGNADO |
+| STATUS_CHANGED | ASIGNADO | EN_PROGRESO |
+| STATUS_CHANGED | EN_PROGRESO | RESUELTO |
+| STATUS_CHANGED | RESUELTO | CERRADO |
 
 ## CI
 
