@@ -41,7 +41,7 @@ import com.ids.ms_tickets.exception.BusinessRuleException;
 import com.ids.ms_tickets.exception.DependencyUnavailableException;
 
 @SpringJUnitConfig(RemoteClientsTest.TestConfig.class)
-@TestPropertySource(properties = {"clients.connect-timeout=2s", "clients.read-timeout=1s"})
+@TestPropertySource(properties = {"clients.connect-timeout=2s", "clients.read-timeout=5s"})
 class RemoteClientsTest {
 
 	private static final String USER_PATH = "/api/v1/users/7";
@@ -142,7 +142,7 @@ class RemoteClientsTest {
 			server.stubFor(get(urlEqualTo(USER_PATH)).willReturn(aResponse()
 					.withStatus(200)
 					.withBody(ACTIVE_USER)
-					.withFixedDelay(3_000)));
+					.withFixedDelay(7_000)));
 
 			assertThatThrownBy(() -> userGateway.ensureActiveAgent(7L))
 					.isInstanceOf(DependencyUnavailableException.class);
@@ -183,7 +183,7 @@ class RemoteClientsTest {
 
 		@Test
 		void inactiveCategoryIsRejected() {
-			stubJson(CATEGORY_PATH, 200, ACTIVE_CATEGORY.replace("true", "false"));
+			stubJson(CATEGORY_PATH, 200, ACTIVE_CATEGORY.replace("\"active\":true", "\"active\":false"));
 
 			assertThatThrownBy(() -> catalogGateway.ensureActiveCategory(3L))
 					.isInstanceOfSatisfying(BusinessRuleException.class,
