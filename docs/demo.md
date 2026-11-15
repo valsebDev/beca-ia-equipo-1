@@ -86,13 +86,13 @@ Plan B si falla algo: mostrar `docker compose logs ms-tickets` y el resultado de
 
 ## 4. Qué haría diferente cada herramienta de IA
 
-SUPUESTO: las bitácoras no incluyen este punto de forma explícita; esta tabla resume lo que sí registran y el equipo debe confirmarla antes de la demo.
+Las propuestas de mejora siguientes se basan en hechos registrados en las bitácoras; no se presentan como decisiones ya tomadas por el equipo.
 
 | Herramienta | Uso registrado | Qué haríamos diferente |
 |---|---|---|
-| Gemini | P1 de ms-users: requerimientos, modelo y pruebas | Verificar de entrada versiones y dependencias contra Boot 4.1.2 y Java 17; la bitácora anota ajustes manuales en el stack. |
-| GitHub Copilot (Claude Haiku 5.5 y Sonnet 5.5) | Código, pruebas, skills, agentes y CI | Dar desde el inicio las reglas del repositorio (`copilot-instructions.md`) y pedir siempre la ejecución real de `./mvnw -B verify`. |
-| Agentes revisores | Revisión de seguridad de solo lectura | Exigir evidencia (archivo y línea) en cada afirmación; ms-users #8 de P3 anota un comentario con afirmaciones sin comprobar. |
+| Gemini | P1 de ms-users: requerimientos, modelo y pruebas ([bitácora](../ms-users/BITACORA-IA.md), P1 #1, #2 y #5). | Verificar de entrada versiones y dependencias contra Boot 4.1.2 y Java 17; P1 #4 registra ajustes en el stack. |
+| GitHub Copilot (Claude Haiku 5.5 y Sonnet 5.5) | Código, pruebas y quality gates ([bitácora de ms-tickets](../ms-tickets/BITACORA-IA.md), #3, #4 y #10). | Dar desde el inicio las reglas del repositorio y pedir la ejecución real de `./mvnw -B verify`. |
+| Agentes revisores | Revisión de seguridad de solo lectura ([bitácora de ms-tickets](../ms-tickets/BITACORA-IA.md), P3 #18). | Exigir evidencia en cada afirmación; [ms-users](../ms-users/BITACORA-IA.md), P3 #8, registra afirmaciones que requieren comprobación. |
 
 ## 5. Tres lecciones aprendidas
 
